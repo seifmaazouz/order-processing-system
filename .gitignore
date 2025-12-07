@@ -1,0 +1,39 @@
+###############
+# GLOBAL
+###############
+.DS_Store
+Thumbs.db
+*.log
+
+###############
+# IDE
+###############
+.vs/
+.vscode/
+*.user
+*.suo
+*.sln.docstates
+
+###############
+# .NET
+###############
+bin/
+obj/
+.nuget/
+packages/
+project.assets.json
+appsettings*.Development.json
+appsettings*.Local.json
+TestResults/
+Publish/
+
+###############
+# NODE / REACT
+###############
+node_modules/
+build/
+dist/
+npm-debug.log*
+yarn-error.log*
+.env
+.env.local
