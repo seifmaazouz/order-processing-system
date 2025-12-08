@@ -14,12 +14,21 @@ jobs:
         BRANCH_NAME="${{ github.head_ref }}"
         echo "Checking branch: $BRANCH_NAME"
 
-        # Define allowed patterns
-        PATTERN="^(backend|frontend)/(feature|bugfix|hotfix)/.+$"
+        # Skip check for main or dev
+        if [[ "$BRANCH_NAME" == "main" || "$BRANCH_NAME" == "dev" ]]; then
+          echo "Branch is main or dev, skipping naming check ✅"
+          exit 0
+        fi
+
+        # Allowed patterns for feature/bugfix/hotfix
+        PATTERN="^(backend|frontend|database)/(feature|bugfix|hotfix)/.+$"
 
         if [[ ! $BRANCH_NAME =~ $PATTERN ]]; then
           echo "ERROR: Branch name '$BRANCH_NAME' does not match required pattern."
-          echo "Allowed patterns: backend/feature/*, backend/bugfix/*, backend/hotfix/*, frontend/feature/*, frontend/bugfix/*, frontend/hotfix/*"
+          echo "Allowed patterns:"
+          echo "  backend/feature/*, backend/bugfix/*, backend/hotfix/*"
+          echo "  frontend/feature/*, frontend/bugfix/*, frontend/hotfix/*"
+          echo "  database/feature/*, database/bugfix/*, database/hotfix/*"
           exit 1
         fi
 
