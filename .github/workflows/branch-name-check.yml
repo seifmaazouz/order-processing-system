@@ -1,0 +1,26 @@
+name: Enforce Branch Naming
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  check-branch-name:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Check branch name
+      run: |
+        BRANCH_NAME="${{ github.head_ref }}"
+        echo "Checking branch: $BRANCH_NAME"
+
+        # Define allowed patterns
+        PATTERN="^(backend|frontend)/(feature|bugfix|hotfix)/.+$"
+
+        if [[ ! $BRANCH_NAME =~ $PATTERN ]]; then
+          echo "ERROR: Branch name '$BRANCH_NAME' does not match required pattern."
+          echo "Allowed patterns: backend/feature/*, backend/bugfix/*, backend/hotfix/*, frontend/feature/*, frontend/bugfix/*, frontend/hotfix/*"
+          exit 1
+        fi
+
+        echo "Branch name matches the required pattern ✅"

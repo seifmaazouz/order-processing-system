@@ -6,7 +6,7 @@ This plan integrates the **Clean/Onion Architecture** development flow with the 
 
 ## Phase 0: 🚀 Setup and Environment (1 Week)
 
-The goal is to establish the basic structure, environment consistency, and developer workflow.
+The goal is to establish the basic structure, environment consistency, and developer workflow, including the **Continuous Integration (CI)** foundation.
 
 | Step | Task | Output/Goal | Responsibility |
 | :--- | :--- | :--- | :--- |
@@ -15,6 +15,8 @@ The goal is to establish the basic structure, environment consistency, and devel
 | **0.3** | **Docker Compose Setup** | Create `docker-compose.yml` for **MySQL Database**, **Backend API**, and **React Frontend**. | DevOps |
 | **0.4** | **Initial Database** | Write and test the initial `1_schema_creation.sql` script (basic tables like `Books`, `Publishers`, `Orders`, `Sales Transactions`, `User Accounts`, and `Shopping Carts`). Ensure the MySQL container runs and executes the script on startup. | Database Lead |
 | **0.5** | **Git Workflow** | Finalize the **root-level** `.gitignore` and commit the initial empty structure. | All |
+| **0.6** | **CI Pipeline Setup (Build & Test)** | Create the initial CI pipeline (YAML) to: **1.** Restore dependencies. **2.** Build the **Backend** projects. **3.** Run any initial unit/integration tests. | DevOps |
+| **0.7** | **Container Registry Config** | Configure access/push credentials for a container registry (e.g., Docker Hub, ACR) for subsequent CD steps. | DevOps |
 
 ---
 
@@ -47,9 +49,9 @@ This phase builds the main business logic and crucial database integrity rules, 
 
 ---
 
-## Phase 3: 🌐 Frontend and Integration
+## Phase 3: 🌐 Frontend and Integration (CD Implementation)
 
-This phase focuses on the user interface and connecting it to the backend contract using automated generation.
+This phase focuses on the user interface, connecting it to the backend contract, and finalizing the continuous delivery (CD) process.
 
 | Step | Task | Layer | Specific Operations | Output/Goal |
 | :--- | :--- | :--- | :--- | :--- |
@@ -58,6 +60,8 @@ This phase focuses on the user interface and connecting it to the backend contra
 | **3.3** | **User Authentication UI** | `Frontend` | Implement **Sign Up**, **Log In**, and **Logout** (which removes current cart items). | Secured routes for Admin-only operations. |
 | **3.4** | **Checkout Integration** | `Frontend` | Implement the final review screen and secure submission of checkout data to the API. | Successful end-to-end checkout flow resulting in stock deduction. |
 | **3.5** | **Docker Finalization** | Orchestration | Finalize network settings, port exposure, and build commands for all three services. | All services running and communicating correctly. |
+| **3.6** | **CD Pipeline - Image Build & Push** | Modify the CI pipeline to: **1.** Build the production-ready Docker images for the **Backend API** and **React Frontend**. **2.** Tag and push the images to the configured container registry. | Backend and Frontend images are automatically updated and stored in the registry. |
+| **3.7** | **CD Pipeline - Deployment** | Implement the final CD step to automatically deploy the application using the updated images (e.g., pulling images and running `docker-compose up` on a target server). | Full, automated deployment of the entire system. |
 
 ---
 
