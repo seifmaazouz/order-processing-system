@@ -148,9 +148,9 @@ Apply to **main** (and optionally `dev`):
 Add `.github/CODEOWNERS`:
 
 ```
-src/backend/ seifmaazouz m-shall
-src/frontend/ A-agha2607
-src/database/ MostafaMohamed666
+src/backend/ @seifmaazouz @m-shalll
+src/frontend/ @A-agha2607
+src/database/ @MostafaMohamed666
 ```
 
 - Automatically requests reviews from listed users when files in those paths are modified.  
