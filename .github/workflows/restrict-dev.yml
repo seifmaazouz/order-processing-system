@@ -1,0 +1,27 @@
+name: Restrict Merges Into Dev
+
+on:
+  pull_request:
+    branches: [dev]
+    types: [opened, synchronize, reopened]
+
+jobs:
+  check-source:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate source branch for dev
+        run: |
+          BRANCH="${{ github.head_ref }}"
+
+          if [[ "$BRANCH" =~ ^(backend|database|frontend)/(feature|hotfix|bugfix)/.*$ ]]; then
+            echo "✅ Allowed structured branch: $BRANCH"
+            exit 0
+          fi
+
+          if [[ "$BRANCH" =~ ^misc/.*$ ]]; then
+            echo "✅ Allowed misc branch: $BRANCH"
+            exit 0
+          fi
+
+          echo "❌ Invalid source branch: $BRANCH"
+          exit 1

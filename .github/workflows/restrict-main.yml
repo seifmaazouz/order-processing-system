@@ -1,0 +1,19 @@
+name: Restrict Merges Into Main
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+
+jobs:
+  check-source:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ensure PR source is dev or hotfix/*
+        run: |
+          BRANCH="${{ github.head_ref }}"
+          if [[ "$BRANCH" != "dev" && ! "$BRANCH" =~ ^hotfix/.*$ ]]; then
+            echo "❌ Only 'dev' or 'hotfix/*' branches are allowed to merge into 'main'."
+            exit 1
+          fi
+          echo "✅ Allowed source branch: $BRANCH"
