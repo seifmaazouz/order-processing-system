@@ -118,3 +118,10 @@ order-processing-system/
 * Frontend and backend are containerized for consistent development and deployment
 * Follow the folder structure conventions to maintain the layered architecture integrity
 * Workflows `restrict-main.yml` and `restrict-dev.yml` enforce branch merge restrictions
+
+--- 
+# Branch Structure
+
+**Temporary default branch:** `dev`  
+> During initial development/setup, `dev` is the default branch to encourage feature branches to be created from it. After onboarding and initial setup, the default will switch back to `main`.
+
