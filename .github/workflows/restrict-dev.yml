@@ -1,0 +1,27 @@
+name: Restrict Merges Into Dev
+
+on:
+  pull_request:
+    branches: [dev]
+    types: [opened, synchronize, reopened]
+
+jobs:
+  check-branch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate source branch for dev
+        run: |
+          BRANCH="${{ github.head_ref }}"
+          LOWER=$(echo "$BRANCH" | tr '[:upper:]' '[:lower:]')
+
+          echo "🔎 Source branch: $BRANCH"
+
+          # Fail fast if not lowercase
+          [[ "$BRANCH" == "$LOWER" ]] || { echo "❌ Branch must be lowercase. Suggested: $LOWER"; exit 1; }
+
+          # Allowed patterns for dev
+          [[ "$BRANCH" =~ ^(backend|frontend|database)/(feature|bugfix|hotfix)/.*$ ]] && exit 0
+          [[ "$BRANCH" =~ ^misc/.*$ ]] && exit 0
+
+          echo "❌ Invalid branch structure for dev"
+          exit 1

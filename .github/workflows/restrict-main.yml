@@ -1,0 +1,26 @@
+name: Restrict Merges Into Main
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+
+jobs:
+  check-branch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate source branch for main
+        run: |
+          BRANCH="${{ github.head_ref }}"
+          LOWER=$(echo "$BRANCH" | tr '[:upper:]' '[:lower:]')
+
+          echo "🔎 Source branch: $BRANCH"
+
+          # Fail fast if not lowercase
+          [[ "$BRANCH" == "$LOWER" ]] || { echo "❌ Branch must be lowercase. Suggested: $LOWER"; exit 1; }
+
+          # Only 'dev' or hotfix/* allowed
+          [[ "$BRANCH" == "dev" || "$BRANCH" =~ ^hotfix/.*$ ]] && exit 0
+
+          echo "❌ Only 'dev' or 'hotfix/*' branches can merge into main"
+          exit 1
