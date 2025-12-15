@@ -2,17 +2,23 @@
 
 This project implements a simplified online bookstore system using a modern full-stack architecture. The repository is structured as a **Monorepo** containing the React frontend, the layered ASP.NET Core 10 backend, and all necessary database scripts, orchestrated via Docker. CI/CD pipelines are managed with **GitHub Actions**.
 
+---
+
 ## 1. 🚀 Tech Stack & Core Architecture
 
-| Component         | Technology              | Role in Architecture                                          |
-| :---------------- | :---------------------- | :------------------------------------------------------------ |
-| **Frontend**      | React                   | Presentation Layer (User Interface)                           |
-| **Backend**       | ASP.NET Core 10 (C#)    | Layered Architecture (API, Application, Core, Infrastructure) |
-| **Database**      | PostgreSQL              | Persistence Layer (Enforcing constraints & triggers)          |
-| **Orchestration** | Docker / Docker Compose | Containerization for consistent setup                         |
-| **CI/CD**         | GitHub Actions          | Build, test, and deployment pipelines                         |
+| Component         | Technology              | Role in Architecture                                            |
+| :---------------- | :---------------------- | :-------------------------------------------------------------- |
+| **Frontend**      | React                   | Presentation Layer (User Interface)                             |
+| **Backend**       | ASP.NET Core 10 (C#)    | Layered Architecture (API, Application, Domain, Infrastructure) |
+| **Database**      | PostgreSQL              | Persistence Layer (Enforcing constraints & triggers)            |
+| **Data Access**   | Dapper + Pure SQL       | High-performance, explicit SQL-based data access                |
+| **Orchestration** | Docker / Docker Compose | Containerization for consistent setup                           |
+| **CI/CD**         | GitHub Actions          | Build, test, and deployment pipelines                           |
 
-The backend adheres to a strict **Clean/Onion Layered Architecture**
+> ❗ **No Entity Framework Core is used.**  
+> All database access is implemented using **pure SQL queries executed via Dapper**.
+
+The backend adheres to a strict **Clean / Onion Architecture**.
 
 <p align="center">
 <img src="https://raw.githubusercontent.com/NilavPatel/dotnet-onion-architecture/main/docs/dotnet-onion-architecture.png">
@@ -33,15 +39,28 @@ The backend is split into four distinct projects (layers) that govern the flow o
 | **Domain**         | `OrderProcessing.Domain`         | **Domain Contracts** (Entities, Interfaces)   | **Entities** (`Book.cs`, `Customer.cs`), **Interfaces** (`IBookRepository.cs`, `IReportService.cs`).                  | None                |
 | **Infrastructure** | `OrderProcessing.Infrastructure` | **Data Access**, External I/O                 | Repository **Implementations** (`BookRepository.cs`), `SqlFiles/` (complex queries), DB Context setup for PostgreSQL. | Domain              |
 
+### Composition Root Rule
+
+The **API project references Infrastructure** strictly to register
+dependencies at startup:
+
+``` csharp
+builder.Services.AddInfrastructure(connectionString);
+```
+
+This does **not** violate Clean Architecture rules because: - API is the
+**composition root** - Infrastructure is never referenced by Application
+or Domain - Business logic depends only on abstractions
+
 ### B. Workflow: How a Request is Processed (Example: Customer Checkout)
 
-1. **Api Layer:** The `ShoppingCartController` receives the request and calls the **Application Layer interface** (`_checkoutService.ExecuteCheckout(...)`).
+1. **Api Layer:** The `ShoppingCartController` receives the request and calls the **Application service interface** (`_checkoutService.ExecuteCheckout(...)`).
 2. **Application Layer:** The `CheckoutService.cs` executes the **Business Logic**, orchestrating the steps:
 
    * It checks stock levels (using `IBookRepository`).
    * It enforces business rules (e.g., checking for negative stock).
    * It calls `IOrderRepository` to record the sale transaction.
-3. **Infrastructure Layer:** The concrete `BookRepository.cs` and `OrderRepository.cs` contain the actual code to connect to the **PostgreSQL database** and execute parameterized SQL commands.
+3. **Infrastructure Layer:** The concrete `BookRepository.cs` and `OrderRepository.cs` contain the actual code to connect to the **PostgreSQL database** and execute  execute **pure SQL via Dapper**.
 4. **Database Layer:** PostgreSQL executes the transaction, utilizing the defined **Triggers** to automatically deduct stock and potentially place a replenishment order if the stock falls below the threshold.
 
 ---
@@ -111,6 +130,7 @@ order-processing-system/
 
 * Backend is developed using **.NET 10** with a **Clean/Onion Architecture**
 * Database is **PostgreSQL** (instead of MySQL)
+* Data access uses **Pure SQL + Dapper**
 * CI/CD is managed with **GitHub Actions**
 * Docker ensures consistent setup across environments
 * All SQL scripts are designed for PostgreSQL compatibility
