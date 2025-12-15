@@ -2,8 +2,8 @@ namespace OrderProcessing.Domain.Entities
 {
      public class Book
     {
-        public string ISBN { private set; get; } // Primary key
-        public string Title { private set; get; }
+        public string ISBN { private set; get; } = null!; // Primary key
+        public string Title { private set; get; } = null!;
         public int PublicationYear { private set; get; }
         public decimal SellingPrice { private set; get; }
         public int Quantity { private set; get; }
@@ -11,11 +11,11 @@ namespace OrderProcessing.Domain.Entities
 
         // (book:category => many-to-one relationship)
         public int CatID { private set; get; } // Foreign key 
-        public Category Category { set; get; }// Navigation property (mandatory)
+        public Category Category { set; get; } = null!; // Navigation property (mandatory)
 
         // (book:publisher => many-to-one relationship)
         public int PubID { private set; get; } // Foreign key
-        public Publisher Publisher { private set; get; } // Navigation property (mandatory)
+        public Publisher Publisher { private set; get; } = null!; // Navigation property (mandatory)
 
         // Multi-valued attribute author
         public ICollection<Author> Authors { get; } = new List<Author>();

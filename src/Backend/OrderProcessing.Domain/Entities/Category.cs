@@ -6,7 +6,7 @@ namespace OrderProcessing.Domain.Entities
     public class Category
     {
         public int CatID { private set; get; } // Primary key
-        public string CatName { private set; get; }
+        public string CatName { private set; get; } = null!;
 
         // Navigation property (category:book => one-to-many relationship)
         public ICollection<Book> Books { get; } = new List<Book>(); // Initialize the collection to avoid null reference issues
