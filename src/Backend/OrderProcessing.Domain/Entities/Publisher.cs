@@ -10,6 +10,7 @@ namespace OrderProcessing.Domain.Entities
         // Navigation property (publisher:book => one-to-many relationship)
         public ICollection<Book> Books { get; } = new List<Book>();
 
+        private Publisher() { } // For Dapper
         public Publisher(int pubID, string name, string address, string phoneNumber)
         {
             if (string.IsNullOrWhiteSpace(name))
