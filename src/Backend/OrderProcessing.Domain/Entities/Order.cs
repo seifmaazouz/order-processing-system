@@ -7,6 +7,7 @@ namespace OrderProcessing.Domain.Entities
         public string Status{private set; get;}
         public DateOnly OrderDate{private set; get;}
         public int UserId{private set; get;}
+        public ICollection<OrderItem> Items{private set; get;}
 
     }
 }
