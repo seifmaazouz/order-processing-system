@@ -56,12 +56,21 @@ namespace OrderProcessing.Domain.Entities
             PubID = publisher.PubID;
         }
 
+        // Methods to manage multi-valued attribute Authors
         public void AddAuthor(string authorName)
         {
             if (Authors.Any(a => a.AuthorName == authorName))
                 throw new InvalidOperationException("Duplicate author for this book");
 
             Authors.Add(new Author(this, authorName));
+        }
+        public void RemoveAuthor(string authorName)
+        {
+            var author = Authors.FirstOrDefault(a => a.AuthorName == authorName);
+            if (author == null)
+                throw new InvalidOperationException("Author not found for this book");
+
+            Authors.Remove(author);
         }
 
         // Core Business Behavior
