@@ -8,6 +8,7 @@ namespace OrderProcessing.Domain.Entities
         // Navigation property (many-to-many)
         public Book Book { private set; get; }
 
+        private Author() { } // For Dapper
         internal Author(Book book, string authorName)
         {
             Book = book ?? throw new ArgumentNullException(nameof(book));

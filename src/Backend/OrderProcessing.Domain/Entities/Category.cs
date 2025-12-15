@@ -10,7 +10,8 @@ namespace OrderProcessing.Domain.Entities
 
         // Navigation property (category:book => one-to-many relationship)
         public ICollection<Book> Books { get; } = new List<Book>(); // Initialize the collection to avoid null reference issues
-        
+
+        private Category() { } // For Dapper
         private Category (int catID, string catName)
         {
             if (string.IsNullOrWhiteSpace(catName))
