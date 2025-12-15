@@ -17,6 +17,10 @@ namespace OrderProcessing.Domain.Entities
         public int PubID { private set; get; } // Foreign key
         public Publisher Publisher { private set; get; } // Navigation property (mandatory)
 
+        // Multi-valued attribute author
+        public ICollection<Author> Authors { get; } = new List<Author>();
+
+        private Book() { } // For Dapper
         public Book(
             string isbn, 
             string title, 
@@ -24,38 +28,22 @@ namespace OrderProcessing.Domain.Entities
             decimal sellingPrice, 
             int quantity, 
             int threshold, 
-            int catID, 
             Category category, 
-            int pubID, 
             Publisher publisher)
         {
             // 1. Validate input parameters
-            if (string.IsNullOrWhiteSpace(isbn) || sellingPrice <= 0 || quantity < 0 || threshold < 0)
-            {
-                throw new ArgumentException("Invalid data provided for Book creation (ISBN, Title, Price, Quantity, or Threshold).");
-            }
+            if (string.IsNullOrWhiteSpace(isbn))
+                throw new ArgumentException("ISBN ia required");
+            if (sellingPrice <= 0)
+                throw new ArgumentException("Price must be positive");
+            if (quantity < 0 || threshold < 0)
+                throw new ArgumentException("Quantity and threshold cannot be negative");
 
             // 2. Validate mandatory relationships
-            if (category == null)
-            {
-                throw new ArgumentNullException(nameof(category), "Category cannot be null.");
-            }
-            if (publisher == null)
-            {
-                throw new ArgumentNullException(nameof(publisher), "Publisher cannot be null.");
-            }
+            Category = category ?? throw new ArgumentNullException(nameof(category), "Category cannot be null");
+            Publisher = publisher ?? throw new ArgumentNullException(nameof(publisher), "Publisher cannot be null");
 
-            // 3. Consistency checks (fk values should match the navigation properties)
-            if (category.CatID != CatID)
-            {
-                throw new ArgumentException("Category ID does not match the provided Category entity.");
-            }
-            if (publisher.PubID != PubID)
-            {
-                throw new ArgumentException("Publisher ID does not match the provided Publisher entity.");
-            }
-
-            // 4. Assign values to properties
+            // 3. Assign values to properties
             ISBN = isbn;
             Title = title;
             PublicationYear = publicationYear;
@@ -63,11 +51,17 @@ namespace OrderProcessing.Domain.Entities
             Quantity = quantity;
             Threshold = threshold;
 
-            // Set foreign keys and navigation properties
-            CatID = catID;
-            Category = category;
-            PubID = pubID;
-            Publisher = publisher;
+            // Set foreign keys
+            CatID = category.CatID;
+            PubID = publisher.PubID;
+        }
+
+        public void AddAuthor(string authorName)
+        {
+            if (Authors.Any(a => a.AuthorName == authorName))
+                throw new InvalidOperationException("Duplicate author for this book");
+
+            Authors.Add(new Author(this, authorName));
         }
 
         // Core Business Behavior

@@ -7,8 +7,6 @@ namespace OrderProcessing.Domain.Entities
     {
         public int CatID { private set; get; } // Primary key
         public string CatName { private set; get; }
-        public CategoryType CategoryType { private set; get; } // Domain property
-
 
         // Navigation property (category:book => one-to-many relationship)
         public ICollection<Book> Books { get; } = new List<Book>(); // Initialize the collection to avoid null reference issues
@@ -16,9 +14,7 @@ namespace OrderProcessing.Domain.Entities
         private Category (int catID, string catName)
         {
             if (string.IsNullOrWhiteSpace(catName))
-            {
                 throw new ArgumentException("Category name cannot be empty");
-            }
 
             CatID = catID;
             CatName = catName;
