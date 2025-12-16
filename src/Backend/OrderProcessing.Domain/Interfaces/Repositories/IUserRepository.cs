@@ -1,6 +1,6 @@
 using OrderProcessing.Domain.Entities;
 
-namespace OrderProcessing.Domain.Repositories
+namespace OrderProcessing.Domain.Interfaces.Repositories
 {
     public interface IUserRepository{   
         Task<User?> GetByUserIdAsync(string UserId);
