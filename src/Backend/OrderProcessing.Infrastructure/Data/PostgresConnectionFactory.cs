@@ -13,9 +13,11 @@ namespace OrderProcessing.Infrastructure.Data
             _connectionString = connectionString;
         }
 
-        public IDbConnection CreateConnection()
+        public async Task<IDbConnection> CreateConnectionAsync()
         {
-            return new NpgsqlConnection(_connectionString);
+            var connection = new NpgsqlConnection(_connectionString);
+            await connection.OpenAsync();
+            return connection;
         }
     }
 }
