@@ -17,7 +17,7 @@ CREATE TABLE Publisher (
     PhoneNumber VARCHAR(15)
 );
 
-CREATE TABLE Books (
+CREATE TABLE Book (
     ISBN SERIAL PRIMARY KEY,
     Title VARCHAR(100) NOT NULL,
     PubYear INT,
@@ -30,7 +30,7 @@ CREATE TABLE Books (
     FOREIGN KEY (PubID) REFERENCES Publisher(PubID)
 );
 
-CREATE TABLE BookAuthors (
+CREATE TABLE BookAuthor (
     ISBN INT NOT NULL,
     AuthorName VARCHAR(50) NOT NULL,
     PRIMARY KEY (ISBN, AuthorName),
