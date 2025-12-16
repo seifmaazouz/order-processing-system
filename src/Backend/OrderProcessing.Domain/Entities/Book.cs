@@ -17,8 +17,10 @@ namespace OrderProcessing.Domain.Entities
         public int PubID { private set; get; } // Foreign key
         public Publisher Publisher { private set; get; } = null!; // Navigation property (mandatory)
 
-        // Multi-valued attribute author
-        public ICollection<Author> Authors { get; } = new List<Author>();
+        // Multi-valued attribute author (book:author => one-to-many relationship)
+        // Private collection and public read-only wrapper
+        private readonly List<Author> _authors = new List<Author>();
+        public IReadOnlyCollection<Author> Authors => _authors.AsReadOnly();
 
         private Book() { } // For Dapper
         public Book(
