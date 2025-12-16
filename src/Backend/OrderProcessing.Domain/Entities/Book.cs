@@ -17,8 +17,10 @@ namespace OrderProcessing.Domain.Entities
         public int PubID { private set; get; } // Foreign key
         public Publisher Publisher { private set; get; } = null!; // Navigation property (mandatory)
 
-        // Multi-valued attribute author
-        public ICollection<Author> Authors { get; } = new List<Author>();
+        // Multi-valued attribute author (book:author => one-to-many relationship)
+        // Private collection and public read-only wrapper
+        private readonly List<Author> _authors = new List<Author>();
+        public IReadOnlyCollection<Author> Authors => _authors.AsReadOnly();
 
         private Book() { } // For Dapper
         public Book(
@@ -59,18 +61,18 @@ namespace OrderProcessing.Domain.Entities
         // Methods to manage multi-valued attribute Authors
         public void AddAuthor(string authorName)
         {
-            if (Authors.Any(a => a.AuthorName == authorName))
+            if (_authors.Any(a => a.AuthorName == authorName))
                 throw new InvalidOperationException("Duplicate author for this book");
 
-            Authors.Add(new Author(this, authorName));
+            _authors.Add(new Author(this, authorName));
         }
         public void RemoveAuthor(string authorName)
         {
-            var author = Authors.FirstOrDefault(a => a.AuthorName == authorName);
+            var author = _authors.FirstOrDefault(a => a.AuthorName == authorName);
             if (author == null)
                 throw new InvalidOperationException("Author not found for this book");
 
-            Authors.Remove(author);
+            _authors.Remove(author);
         }
 
         // Core Business Behavior
