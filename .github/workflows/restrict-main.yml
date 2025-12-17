@@ -6,14 +6,21 @@ on:
     types: [opened, synchronize, reopened]
 
 jobs:
-  check-source:
+  check-branch:
     runs-on: ubuntu-latest
     steps:
-      - name: Ensure PR source is dev or hotfix/*
+      - name: Validate source branch for main
         run: |
           BRANCH="${{ github.head_ref }}"
-          if [[ "$BRANCH" != "dev" && ! "$BRANCH" =~ ^hotfix/.*$ ]]; then
-            echo "❌ Only 'dev' or 'hotfix/*' branches are allowed to merge into 'main'."
-            exit 1
-          fi
-          echo "✅ Allowed source branch: $BRANCH"
+          LOWER=$(echo "$BRANCH" | tr '[:upper:]' '[:lower:]')
+
+          echo "🔎 Source branch: $BRANCH"
+
+          # Fail fast if not lowercase
+          [[ "$BRANCH" == "$LOWER" ]] || { echo "❌ Branch must be lowercase. Suggested: $LOWER"; exit 1; }
+
+          # Only 'dev' or hotfix/* allowed
+          [[ "$BRANCH" == "dev" || "$BRANCH" =~ ^hotfix/.*$ ]] && exit 0
+
+          echo "❌ Only 'dev' or 'hotfix/*' branches can merge into main"
+          exit 1
