@@ -1,3 +1,4 @@
+using Dapper;
 using OrderProcessing.Domain.Entities;
 using OrderProcessing.Domain.Interfaces;
 using OrderProcessing.Domain.Interfaces.Repositories;
@@ -13,34 +14,97 @@ public class BookRepository : IBookRepository
         _connectionFactory = connectionFactory;
     }
 
-    // TODO: Implement repository methods
-    public Task AddAsync(Book book)
+    public async Task<Book?> GetByISBNAsync(string isbn)
     {
-        throw new NotImplementedException();
+        using var connection = await _connectionFactory.CreateConnectionAsync();
+        
+        var sql = @"SELECT * FROM Book WHERE ISBN = @ISBN";
+
+        var book = await connection.QuerySingleOrDefaultAsync<Book>(sql, new { ISBN = isbn }); // Dapper will use the parameterless private constructor
+        return book;
     }
 
-    public Task DeleteAsync(string isbn)
+    public async Task AddAsync(Book book)
     {
-        throw new NotImplementedException();
+        using var connection = await _connectionFactory.CreateConnectionAsync();
+        
+        var sql =
+        """
+            INSERT INTO Book (ISBN, Title, PublicationYear, SellingPrice, Quantity, Threshold, CatID, PubID)
+            VALUES (@ISBN, @Title, @PublicationYear, @SellingPrice, @Quantity, @Threshold, @CatID, @PubID)
+        """;
+
+        await connection.ExecuteAsync(sql,
+            new
+            {
+                book.ISBN,
+                book.Title,
+                book.PublicationYear,
+                book.SellingPrice,
+                book.Quantity,
+                book.Threshold,
+                book.CatID,
+                book.PubID
+            });
     }
 
-    public Task<bool> ExistsAsync(string isbn)
+    public async Task UpdateAsync(Book book)
     {
-        throw new NotImplementedException();
+        using var connection = await _connectionFactory.CreateConnectionAsync();
+
+        var sql =
+        """
+            UPDATE Book
+            SET Title = @Title,
+                PublicationYear = @PublicationYear,
+                SellingPrice = @SellingPrice,
+                Quantity = @Quantity,
+                Threshold = @Threshold,
+                CatID = @CatID,
+                PubID = @PubID
+            WHERE ISBN = @ISBN
+        """;
+
+        await connection.ExecuteAsync(sql,
+            new
+            {
+                book.Title,
+                book.PublicationYear,
+                book.SellingPrice,
+                book.Quantity,
+                book.Threshold,
+                book.CatID,
+                book.PubID,
+                book.ISBN
+            });
     }
 
-    public Task<IEnumerable<Book>> GetBooksBelowStockThresholdAsync()
+    public async Task DeleteAsync(string isbn)
     {
-        throw new NotImplementedException();
+        using var connection = await _connectionFactory.CreateConnectionAsync();
+
+        var sql = "DELETE FROM Book WHERE ISBN = @ISBN";
+
+        await connection.ExecuteAsync(sql, new { ISBN = isbn });
     }
 
-    public Task<Book?> GetByISBNAsync(string isbn)
+    public async Task<bool> ExistsAsync(string isbn)
     {
-        throw new NotImplementedException();
+        using var connection = await _connectionFactory.CreateConnectionAsync();
+
+        var sql = "SELECT 1 FROM Book WHERE ISBN = @ISBN";
+        
+        var result = await connection.QuerySingleOrDefaultAsync<int?>(sql, new { ISBN = isbn });
+        return result.HasValue;
     }
 
-    public Task UpdateAsync(Book book)
+    public async Task<IEnumerable<Book>> GetBooksBelowStockThresholdAsync()
     {
-        throw new NotImplementedException();
+        using var connection = await _connectionFactory.CreateConnectionAsync();
+
+        var sql = "SELECT * FROM Book WHERE Quantity < Threshold";
+
+        var books = await connection.QueryAsync<Book>(sql);
+        return books;
     }
 }
