@@ -20,7 +20,10 @@ namespace OrderProcessing.Domain.Entities
         // Multi-valued attribute author
         public ICollection<Author> Authors { get; } = new List<Author>();
 
-        private Book() { } // For Dapper
+        // For Dapper
+        private Book() { } 
+        
+        // Full constructor (when relations are loaded)
         public Book(
             string isbn, 
             string title, 
@@ -31,19 +34,14 @@ namespace OrderProcessing.Domain.Entities
             Category category, 
             Publisher publisher)
         {
-            // 1. Validate input parameters
-            if (string.IsNullOrWhiteSpace(isbn))
-                throw new ArgumentException("ISBN ia required");
-            if (sellingPrice <= 0)
-                throw new ArgumentException("Price must be positive");
-            if (quantity < 0 || threshold < 0)
-                throw new ArgumentException("Quantity and threshold cannot be negative");
+            // Validate inputs
+            ValidateInputs(isbn, sellingPrice, quantity, threshold);
 
-            // 2. Validate mandatory relationships
+            // Validate mandatory relationships
             Category = category ?? throw new ArgumentNullException(nameof(category), "Category cannot be null");
             Publisher = publisher ?? throw new ArgumentNullException(nameof(publisher), "Publisher cannot be null");
 
-            // 3. Assign values to properties
+            // Assign values to properties
             ISBN = isbn;
             Title = title;
             PublicationYear = publicationYear;
@@ -54,6 +52,33 @@ namespace OrderProcessing.Domain.Entities
             // Set foreign keys
             CatID = category.CatID;
             PubID = publisher.PubID;
+        }
+
+        // Lightweight constructor (used for inserts / Dapper)
+        public Book(
+            string isbn,
+            string title,
+            int publicationYear,
+            decimal sellingPrice,
+            int quantity,
+            int threshold,
+            int catID,
+            int pubID)
+        {
+            // Validate inputs
+            ValidateInputs(isbn, sellingPrice, quantity, threshold);
+
+            // Assign values to properties
+            ISBN = isbn;
+            Title = title;
+            PublicationYear = publicationYear;
+            SellingPrice = sellingPrice;
+            Quantity = quantity;
+            Threshold = threshold;
+
+            // Set foreign keys
+            CatID = catID;
+            PubID = pubID;
         }
 
         // Methods to manage multi-valued attribute Authors
@@ -91,6 +116,17 @@ namespace OrderProcessing.Domain.Entities
                 throw new InvalidOperationException("Insufficient stock");
 
             Quantity -= amount;
+        }
+
+        // Helper method to validate inputs
+        private static void ValidateInputs(string isbn, decimal sellingPrice, int quantity, int threshold)
+        {
+            if (string.IsNullOrWhiteSpace(isbn))
+                throw new ArgumentException("ISBN ia required");
+            if (sellingPrice <= 0)
+                throw new ArgumentException("Price must be positive");
+            if (quantity < 0 || threshold < 0)
+                throw new ArgumentException("Quantity and threshold cannot be negative");
         }
     }
 }
