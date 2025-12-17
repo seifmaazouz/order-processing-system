@@ -2,6 +2,8 @@
 
 This project implements a simplified online bookstore system using a modern full-stack architecture. The repository is structured as a **Monorepo** containing the React frontend, the layered ASP.NET Core 10 backend, and all necessary database scripts, orchestrated via Docker. CI/CD pipelines are managed with **GitHub Actions**.
 
+> ❗ **No Entity Framework Core is used.** All database access is implemented using **pure SQL queries executed via Dapper**.
+
 ---
 
 ## 1. 🚀 Tech Stack & Core Architecture
@@ -15,9 +17,6 @@ This project implements a simplified online bookstore system using a modern full
 | **Orchestration** | Docker / Docker Compose | Containerization for consistent setup                           |
 | **CI/CD**         | GitHub Actions          | Build, test, and deployment pipelines                           |
 
-> ❗ **No Entity Framework Core is used.**  
-> All database access is implemented using **pure SQL queries executed via Dapper**.
-
 The backend adheres to a strict **Clean / Onion Architecture**.
 
 <p align="center">
@@ -26,46 +25,52 @@ The backend adheres to a strict **Clean / Onion Architecture**.
 
 ---
 
-## 2. 🏛️ Backend Workflow & Separation of Folders
+## 2. 🏛️ Backend Workflow & Layer Responsibilities
 
-The backend is split into four distinct projects (layers) that govern the flow of control and data. This structure strictly enforces the **Dependency Rule**: **Domain** is the innermost layer (no dependencies), and **Infrastructure** and **Application** depend only on **Domain**.
+The backend is split into four distinct projects (layers) that govern control flow and data. Dependencies **always point inward** toward the Domain layer.
 
 ### A. Project Layers & Contents
 
 | Layer              | Project Name                     | Type of Logic                                 | Key Contents                                                                                                          | Dependencies        |
 | :----------------- | :------------------------------- | :-------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------- | :------------------ |
-| **Presentation**   | `OrderProcessing.Api`            | API Endpoints, Configuration                  | **Controllers** (e.g., `ShoppingCartController`), `appsettings.json`, Program Startup.                                | Application, Domain |
-| **Application**    | `OrderProcessing.Application`    | **Business Logic** (Orchestration, Use Cases) | Service **Implementations** (`BookService.cs`, `ReportService.cs`), **DTOs** (Input/Output Models).                   | Domain              |
-| **Domain**         | `OrderProcessing.Domain`         | **Domain Contracts** (Entities, Interfaces)   | **Entities** (`Book.cs`, `Customer.cs`), **Interfaces** (`IBookRepository.cs`, `IReportService.cs`).                  | None                |
-| **Infrastructure** | `OrderProcessing.Infrastructure` | **Data Access**, External I/O                 | Repository **Implementations** (`BookRepository.cs`), `SqlFiles/` (complex queries), DB Context setup for PostgreSQL. | Domain              |
+| **Presentation**   | `OrderProcessing.Api`            | API Endpoints, HTTP handling                  | **Controllers** (`BooksController`, `ShoppingCartController`), `Program.cs`, `appsettings.json`.                     | Application, Domain |
+| **Application**    | `OrderProcessing.Application`    | Orchestration & Business Logic                | **Service Interfaces & Implementations** (`IBookService.cs`, `BookService.cs`), **DTOs** (Input/Output Models).      | Domain              |
+| **Domain**         | `OrderProcessing.Domain`         | Core Business Logic & Contracts               | **Entities** (`Book.cs`, `Customer.cs`), **Repository Interfaces** (`IBookRepository.cs`).                            | None                |
+| **Infrastructure** | `OrderProcessing.Infrastructure` | Data Access / External I/O                     | **Repository Implementations** (`BookRepository.cs`), `SqlFiles/` (complex queries), PostgreSQL connection factories. | Domain              |
 
-### Composition Root Rule
+### Notes on Layer Design
 
-The **API project references Infrastructure** strictly to register
-dependencies at startup:
+- **Domain Layer**: Pure business logic. No DTOs, no database references. Only entities and repository interfaces.
+- **Application Layer**: Contains **service interfaces** and **DTOs**, because services orchestrate operations and convert entities to DTOs for the API.
+- **Infrastructure Layer**: Concrete repository implementations, database access, and external integrations.
+- **Presentation Layer**: Controllers and API endpoints only. Should not contain business logic or database access.
 
-``` csharp
+### B. Dependency Injection (Composition Root)
+
+The **API project** wires dependencies at startup:
+
+```csharp
 builder.Services.AddInfrastructure(connectionString);
+builder.Services.AddApplication();
 ```
 
-This does **not** violate Clean Architecture rules because: - API is the
-**composition root** - Infrastructure is never referenced by Application
-or Domain - Business logic depends only on abstractions
-
-### B. Workflow: How a Request is Processed (Example: Customer Checkout)
-
-1. **Api Layer:** The `ShoppingCartController` receives the request and calls the **Application service interface** (`_checkoutService.ExecuteCheckout(...)`).
-2. **Application Layer:** The `CheckoutService.cs` executes the **Business Logic**, orchestrating the steps:
-
-   * It checks stock levels (using `IBookRepository`).
-   * It enforces business rules (e.g., checking for negative stock).
-   * It calls `IOrderRepository` to record the sale transaction.
-3. **Infrastructure Layer:** The concrete `BookRepository.cs` and `OrderRepository.cs` contain the actual code to connect to the **PostgreSQL database** and execute  execute **pure SQL via Dapper**.
-4. **Database Layer:** PostgreSQL executes the transaction, utilizing the defined **Triggers** to automatically deduct stock and potentially place a replenishment order if the stock falls below the threshold.
+- Only the API references Infrastructure and Application to register services.
+- Application and Domain remain decoupled from concrete implementations.
 
 ---
 
-## 3. 📁 Repository Folder Structure
+## 3. 🏗️ Request Workflow Example (Get Book by ISBN)
+
+1. **Controller:** Receives HTTP request `/api/books/{isbn}` and calls `IBookService.GetByISBNAsync(isbn)`.
+2. **Application Service:** `BookService` calls `IBookRepository.GetByISBNAsync(isbn)`, applies business rules, and converts the `Book` entity into `BookDetailsDto`.
+3. **Repository:** `BookRepository` executes SQL via Dapper and returns the entity.
+4. **Controller Response:** Returns `BookDetailsDto` as JSON to the client.
+
+> ✅ Note: Entity → DTO conversion happens in the **Application layer**, not the controller.
+
+---
+
+## 4. 📁 Repository Folder Structure
 
 ```
 order-processing-system/
@@ -102,46 +107,30 @@ order-processing-system/
 
 ---
 
-## 4. ⚡ CI/CD Pipelines (GitHub Actions)
+## 5. ⚡ CI/CD Pipelines (GitHub Actions)
 
-* **Backend pipeline (`build-backend.yml`)**
-
-  * Runs `dotnet build`, `dotnet test`
-  * Publishes artifacts for deployment
-
-* **Frontend pipeline (`build-frontend.yml`)**
-
-  * Installs dependencies, runs `npm build` and tests
-
-* **Deployment pipeline (`deploy.yml`)**
-
-  * Builds Docker images for frontend, backend, and PostgreSQL
-  * Pushes images to registry (optional)
-  * Updates staging/production environment via Docker Compose
-
-* **Merge restriction workflows:**
-
-  * **`restrict-main.yml`**: Allows PRs only from `dev` or `hotfix/*` to `main`
-  * **`restrict-dev.yml`**: Allows PRs only from `backend/feature|hotfix|bugfix/*`, `database/feature|hotfix|bugfix/*`, `frontend/feature|hotfix|bugfix/*`, or `misc/*` to `dev`
+- **Backend (`build-backend.yml`)**: `dotnet build`, `dotnet test`, publish artifacts
+- **Frontend (`build-frontend.yml`)**: `npm install`, `npm test`, `npm build`
+- **Deployment (`deploy.yml`)**: Build Docker images and update environment via Docker Compose
+- **Branch Restrictions**: `restrict-main.yml` and `restrict-dev.yml` enforce safe merges
 
 ---
 
-## 5. 📌 Notes
+## 6. 📝 Layer-Specific Notes
 
-* Backend is developed using **.NET 10** with a **Clean/Onion Architecture**
-* Database is **PostgreSQL** (instead of MySQL)
-* Data access uses **Pure SQL + Dapper**
-* CI/CD is managed with **GitHub Actions**
-* Docker ensures consistent setup across environments
-* All SQL scripts are designed for PostgreSQL compatibility
-* GitHub Actions enforce branch protection, automated tests, and deployment
-* Frontend and backend are containerized for consistent development and deployment
-* Follow the folder structure conventions to maintain the layered architecture integrity
-* Workflows `restrict-main.yml` and `restrict-dev.yml` enforce branch merge restrictions
+- **Service Interfaces in Application Layer:** Allows service to return **DTOs** without exposing the Domain layer to API models.
+- **Repository Interfaces in Domain Layer:** Domain defines contracts without database knowledge.
+- **Controller:** Calls Application services and returns **ActionResult<DTO>**. No mapping happens in controller.
+- **Mapping:** Entity → DTO conversion happens **inside Application service implementations**.
 
---- 
-# Branch Structure
+---
+
+## 7. 🌿 Branch Structure
+
+- **Default Dev Branch:** `dev` (used for feature branches)
+- **Feature Branches:** `backend/feature/*`, `frontend/feature/*`, `database/feature/*`
+- **Hotfix / Bugfix:** `hotfix/*` or `bugfix/*` as needed
+- After onboarding, the default branch will be switched back to `main`.
 
 **Temporary default branch:** `dev`  
 > During initial development/setup, `dev` is the default branch to encourage feature branches to be created from it. After onboarding and initial setup, the default will switch back to `main`.
-
