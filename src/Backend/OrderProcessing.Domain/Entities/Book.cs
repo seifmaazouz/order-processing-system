@@ -18,7 +18,8 @@ namespace OrderProcessing.Domain.Entities
         public Publisher Publisher { private set; get; } = null!; // Navigation property (mandatory)
 
         // Multi-valued attribute author
-        public ICollection<Author> Authors { get; } = new List<Author>();
+        private readonly List<Author> _authors = new List<Author>();
+        public IReadOnlyCollection<Author> Authors => _authors.AsReadOnly(); // Wrapper to expose as read-only
 
         // For Dapper
         private Book() { } 
@@ -66,7 +67,7 @@ namespace OrderProcessing.Domain.Entities
             int pubID)
         {
             // Validate inputs
-            ValidateInputs(isbn, sellingPrice, quantity, threshold);
+            ValidateInputs(isbn, sellingPrice, quantity, threshold, pubID, catID);
 
             // Assign values to properties
             ISBN = isbn;
@@ -81,21 +82,37 @@ namespace OrderProcessing.Domain.Entities
             PubID = pubID;
         }
 
+        // Update method
+        public void UpdateDetails (string title, int publicationYear, decimal sellingPrice, int quantity, int threshold, int catID, int pubID)
+        {
+            // Validate inputs
+            ValidateInputs(ISBN, sellingPrice, quantity, threshold, pubID, catID);
+
+            // Update properties
+            Title = title;
+            PublicationYear = publicationYear;
+            SellingPrice = sellingPrice;
+            Quantity = quantity;
+            Threshold = threshold;
+            CatID = catID;
+            PubID = pubID;
+        }
+
         // Methods to manage multi-valued attribute Authors
         public void AddAuthor(string authorName)
         {
-            if (Authors.Any(a => a.AuthorName == authorName))
+            if (_authors.Any(a => a.AuthorName == authorName))
                 throw new InvalidOperationException("Duplicate author for this book");
 
-            Authors.Add(new Author(this, authorName));
+            _authors.Add(new Author(this, authorName));
         }
         public void RemoveAuthor(string authorName)
         {
-            var author = Authors.FirstOrDefault(a => a.AuthorName == authorName);
+            var author = _authors.FirstOrDefault(a => a.AuthorName == authorName);
             if (author == null)
                 throw new InvalidOperationException("Author not found for this book");
 
-            Authors.Remove(author);
+            _authors.Remove(author);
         }
 
         // Core Business Behavior
@@ -119,14 +136,14 @@ namespace OrderProcessing.Domain.Entities
         }
 
         // Helper method to validate inputs
-        private static void ValidateInputs(string isbn, decimal sellingPrice, int quantity, int threshold)
+        private static void ValidateInputs(string isbn, decimal sellingPrice, int quantity, int threshold, int pubID = 0, int catID = 0)
         {
-            if (string.IsNullOrWhiteSpace(isbn))
-                throw new ArgumentException("ISBN ia required");
-            if (sellingPrice <= 0)
-                throw new ArgumentException("Price must be positive");
-            if (quantity < 0 || threshold < 0)
-                throw new ArgumentException("Quantity and threshold cannot be negative");
+            if (string.IsNullOrWhiteSpace(isbn)) throw new ArgumentException("ISBN ia required");
+            if (sellingPrice <= 0) throw new ArgumentException("Price must be positive");
+            if (quantity < 0) throw new ArgumentException("Quantity cannot be negative");
+            if (threshold < 0) throw new ArgumentException("Threshold cannot be negative");
+            if (pubID < 0) throw new ArgumentException("Invalid Publisher ID");
+            if (catID < 0) throw new ArgumentException("Invalid Category ID");
         }
     }
 }
