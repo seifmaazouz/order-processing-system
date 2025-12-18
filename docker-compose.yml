@@ -3,7 +3,7 @@ version: "3.8"
 services:
   db:
     build:
-      context: ./src/database
+      context: ./src/Database/
     image: ordprosys/database
     environment:
       POSTGRES_USER: postgres
