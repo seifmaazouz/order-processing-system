@@ -8,5 +8,20 @@ namespace OrderProcessing.Domain.Entities
         public DateOnly OrderDate { private set; get; }
         public int UserId { private set; get; }
         public ICollection<OrderItem> Items { private set; get; } = null!;
+        public Order(
+            int orderNumber,
+            float totalPrice,
+            string status,
+            DateOnly orderDate,
+            int userId)
+        {
+            OrderNumber = orderNumber;
+            TotalPrice = totalPrice;
+            Status = status;
+            OrderDate = orderDate;
+            UserId = userId;
+            Items = new List<OrderItem>();
+        }
+
     }
 }
