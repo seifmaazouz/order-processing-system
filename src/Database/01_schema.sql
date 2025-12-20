@@ -47,9 +47,14 @@ CREATE TABLE "Order" (
 );
 
 CREATE TABLE CreditCard (
-    CardNum BIGINT PRIMARY KEY,
-    ExpiryDate DATE NOT NULL,
-    CustName VARCHAR(50) NOT NULL REFERENCES "User"(Username)
+    CardNumber BIGINT PRIMARY KEY,
+    ExpiryDate DATE NOT NULL
+);
+
+CREATE TABLE CardHolder (
+    CardNumber BIGINT REFERENCES CreditCard(CardNumber),
+    Username VARCHAR(50) REFERENCES "User"(Username),
+    PRIMARY KEY (CardNumber, Username)
 );
 
 CREATE TABLE ShoppingCart (

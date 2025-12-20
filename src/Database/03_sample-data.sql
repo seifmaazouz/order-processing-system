@@ -29,9 +29,13 @@ INSERT INTO OrderItem (ISBN, OrderNum, Quantity, UnitPrice) VALUES
 ('978-3-16-148410-0', 1, 2, 59.99),
 ('978-1-23-456789-7', 2, 1, 39.50);
 
-INSERT INTO CreditCard (CardNum, ExpiryDate, CustName) VALUES
-(4111111111111111, '2027-12-31', 'alice'),
-(4222222222222222, '2026-06-30', 'bob');
+INSERT INTO CreditCard (CardNumber, ExpiryDate) VALUES
+(4111111111111111, '2027-12-31'),
+(4222222222222222, '2026-06-30');
+
+INSERT INTO CardHolder (CardNumber, Username) VALUES
+(4111111111111111, 'alice'),
+(4222222222222222, 'bob');
 
 INSERT INTO ShoppingCart (CustName) VALUES
 ('alice'),
