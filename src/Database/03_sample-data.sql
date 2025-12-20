@@ -1,19 +1,12 @@
-INSERT INTO Category (CatName) VALUES
-('Science'),
-('Art'),
-('Religion'),
-('History'),
-('Geography');
-
 INSERT INTO Publisher (PubName, "Address", PhoneNumber) VALUES
 ('Pearson', '221B Baker Street, London', '1234567890'),
 ('OReilly Media', '1005 Gravenstein Highway N, Sebastopol', '0987654321'),
 ('Penguin Books', '80 Strand, London', '1122334455');
 
-INSERT INTO Book (ISBN, Title, PublicationYear, SellingPrice, Quantity, Threshold, CatID, PubID) VALUES
-('978-3-16-148410-0', 'Physics Fundamentals', 2020, 59.99, 100, 20, 1, 1),
-('978-1-23-456789-7', 'Modern Art Guide', 2018, 39.50, 50, 10, 2, 2),
-('978-0-12-345678-9', 'World Religions', 2019, 49.00, 30, 5, 3, 3);
+INSERT INTO Book (ISBN, Title, PublicationYear, SellingPrice, Quantity, Threshold, Category, PubID) VALUES
+('978-3-16-148410-0', 'Physics Fundamentals', 2020, 59.99, 100, 20, 'Science', 1),
+('978-1-23-456789-7', 'Modern Art Guide', 2018, 39.50, 50, 10, 'Art', 2),
+('978-0-12-345678-9', 'World Religions', 2019, 49.00, 30, 5, 'Religion', 3);
 
 INSERT INTO BookAuthor (ISBN, AuthorName) VALUES
 ('978-3-16-148410-0', 'John Smith'),

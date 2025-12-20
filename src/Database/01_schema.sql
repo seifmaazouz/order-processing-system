@@ -2,11 +2,6 @@ CREATE TYPE category_enum AS ENUM ('Science','Art','Religion','History','Geograp
 CREATE TYPE order_status_enum AS ENUM ('Confirmed','Pending','Canceled');
 CREATE TYPE role_enum AS ENUM ('Customer', 'Admin');
 
-CREATE TABLE Category (
-    CatID SERIAL PRIMARY KEY,
-    CatName category_enum NOT NULL
-);
-
 CREATE TABLE Publisher (
     PubID SERIAL PRIMARY KEY,
     PubName VARCHAR(50) NOT NULL,
@@ -21,7 +16,7 @@ CREATE TABLE Book (
     SellingPrice DECIMAL(10,2),
     Quantity INT NOT NULL,
     Threshold INT NOT NULL,
-    CatID INT NOT NULL REFERENCES Category(CatID),
+    Category category_enum,
     PubID INT NOT NULL REFERENCES Publisher(PubID)
 );
 
