@@ -1,14 +1,15 @@
 import React from "react";
 import bg from "../../assets/images/lgn-bg.png";
-import {useForm} from "react-hook-form";
-import { loginUsers } from "../../api/authApi";
-import LoginForm from "../../components/login-form/LoginForm.jsx";
+import { useState } from "react";
+import { loginUsers } from "../../api/login.api.js";
+import LoginForm from "../../components/login-form/LoginForm";
 import { useNavigate } from "react-router-dom";
+import Header from "../../components/shared/Header.jsx";
 
 export default function Login() {
-  const navigate = useNavigate();
+  
   const [loading, setLoading] = useState(false);
-  const [incorrect, setIncorrect] = useState(false);
+  const [resetForm, setResetForm] = useState(false);
 
   const onSubmit = async (data) => {
     setLoading(true);
@@ -20,50 +21,20 @@ export default function Login() {
       localStorage.setItem("access", res.data.access);
       localStorage.setItem("refresh", res.data.refresh);
       localStorage.setItem("userId", data.username);
-      setIncorrect(false);
+      setResetForm(false);
 
       alert("login success");
-      navigate("/dashboard");
     } catch (err) {
-      setIncorrect(true);
+      setResetForm(prev => !prev);
       alert("login failed");
     } finally {
-
+       
     }
   };
   return (
     <div className="light min-h-screen">
-      <header className="flex items-center justify-between whitespace-nowrap 
-      border-b border-solid border-border-color dark:border-[#3a392a] px-6 py-4 lg:px-10 lg:py-5 
-      bg-background-light/90 dark:bg-background-dark/90 backdrop-blur-sm sticky top-0 z-50">
-        <div className="flex items-center gap-3">
-          <div className="size-8 flex items-center justify-center text-primary">
 
-          </div>
-          <h2 className="text-xl font-bold tracking-[-0.015em]">
-            Bookstore
-          </h2>
-        </div>
-
-        <div className="hidden sm:flex flex-1 justify-end gap-8">
-          <a className="text-sm font-medium hover:text-primary transition-colors" href="#">
-            Home
-          </a>
-          <a className="text-sm font-medium hover:text-primary transition-colors" href="#">
-            About Us
-          </a>
-          <a className="text-sm font-medium hover:text-primary transition-colors" href="#">
-            Contact
-          </a>
-        </div>
-
-        <div className="flex sm:hidden">
-          <span className="material-symbols-outlined cursor-pointer">
-            menu
-          </span>
-        </div>
-      </header>
-
+    <Header />
       <main className="flex flex-1 flex-col lg:flex-row">
         {/* Left Image */}
         <div className="hidden lg:block lg:w-1/2 relative overflow-hidden bg-gray-100">
@@ -85,7 +56,7 @@ export default function Login() {
 
         {/* Right Form */}
         <div className="w-full lg:w-1/2 flex items-center justify-center px-6 py-12 lg:p-24 bg-background-light dark:bg-background-dark">
-            <LoginForm onSubmit={onSubmit} incorrect={incorrect} setIncorrect={setIncorrect} />
+            <LoginForm onSubmit={onSubmit} resetForm={resetForm} loading={loading} />
         </div>
       </main>
     </div>
