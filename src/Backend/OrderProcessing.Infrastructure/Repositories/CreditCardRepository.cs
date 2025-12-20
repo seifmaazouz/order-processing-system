@@ -39,10 +39,37 @@ namespace OrderProcessing.Infrastructure.Repositories
                 DateOnly.FromDateTime(row.expiry_date)
             );
         }
-
-        public async Task AddAsync(CreditCard card)
+        public async Task<IEnumerable<CreditCard>> GetUserCardsAsync(string username)
         {
             const string sql = """
+                SELECT
+                    cc.card_number,
+                    cc.expiry_date
+                FROM credit_cards cc
+                INNER JOIN card_holders ch
+                    ON ch.card_number = cc.card_number
+                WHERE ch.username = @Username
+            """;
+
+            using var connection = _connectionFactory.CreateConnection();
+
+            var rows = await connection.QueryAsync<dynamic>(
+                sql,
+                new { Username = username }
+            );
+
+            return rows.Select(row =>
+                new CreditCard(
+                    row.card_number,
+                    DateOnly.FromDateTime(row.expiry_date)
+                )
+            );
+        }
+
+
+        public async Task AddAsync(CreditCard card, string username)
+        {
+            const string insertCardSql = """
                 INSERT INTO credit_cards (
                     card_number,
                     expiry_date
@@ -53,43 +80,88 @@ namespace OrderProcessing.Infrastructure.Repositories
                 )
             """;
 
-            using var connection = _connectionFactory.CreateConnection();
-
-            await connection.ExecuteAsync(sql, new
-            {
-                card.CardNumber,
-                ExpiryDate = card.ExpiryDate.ToDateTime(TimeOnly.MinValue),
-            });
-        }
-
-        public async Task UpdateAsync(CreditCard card)
-        {
-            const string sql = """
-                UPDATE credit_cards
-                SET
-                    expiry_date = @ExpiryDate,
-                WHERE card_number = @CardNumber
+            const string insertHolderSql = """
+                INSERT INTO card_holders (
+                    card_number,
+                    username
+                )
+                VALUES (
+                    @CardNumber,
+                    @Username
+                )
             """;
 
             using var connection = _connectionFactory.CreateConnection();
+            using var transaction = connection.BeginTransaction();
 
-            await connection.ExecuteAsync(sql, new
+            try
             {
-                card.CardNumber,
-                ExpiryDate = card.ExpiryDate.ToDateTime(TimeOnly.MinValue),
-            });
+                await connection.ExecuteAsync(
+                    insertCardSql,
+                    new
+                    {
+                        card.CardNumber,
+                        ExpiryDate = card.ExpiryDate.ToDateTime(TimeOnly.MinValue)
+                    },
+                    transaction
+                );
+
+                await connection.ExecuteAsync(
+                    insertHolderSql,
+                    new
+                    {
+                        card.CardNumber,
+                        Username = username
+                    },
+                    transaction
+                );
+
+                transaction.Commit();
+            }
+            catch
+            {
+                transaction.Rollback();
+                throw;
+            }
         }
+
 
         public async Task DeleteAsync(string cardNumber)
         {
-            const string sql = """
+            const string deleteHolderSql = """
+                DELETE FROM card_holders
+                WHERE card_number = @CardNumber
+            """;
+
+            const string deleteCardSql = """
                 DELETE FROM credit_cards
                 WHERE card_number = @CardNumber
             """;
 
             using var connection = _connectionFactory.CreateConnection();
+            using var transaction = connection.BeginTransaction();
 
-            await connection.ExecuteAsync(sql, new { CardNumber = cardNumber });
+            try
+            {
+                await connection.ExecuteAsync(
+                    deleteHolderSql,
+                    new { CardNumber = cardNumber },
+                    transaction
+                );
+
+                await connection.ExecuteAsync(
+                    deleteCardSql,
+                    new { CardNumber = cardNumber },
+                    transaction
+                );
+
+                transaction.Commit();
+            }
+            catch
+            {
+                transaction.Rollback();
+                throw;
+            }
         }
     }
 }
