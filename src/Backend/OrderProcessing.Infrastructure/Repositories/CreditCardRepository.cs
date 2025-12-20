@@ -19,8 +19,7 @@ namespace OrderProcessing.Infrastructure.Repositories
             const string sql = """
                 SELECT
                     card_number,
-                    expiry_date,
-                    username
+                    expiry_date
                 FROM credit_cards
                 WHERE card_number = @CardNumber
             """;
@@ -37,8 +36,7 @@ namespace OrderProcessing.Infrastructure.Repositories
 
             return new CreditCard(
                 row.card_number,
-                DateOnly.FromDateTime(row.expiry_date),
-                row.username
+                DateOnly.FromDateTime(row.expiry_date)
             );
         }
 
@@ -47,13 +45,11 @@ namespace OrderProcessing.Infrastructure.Repositories
             const string sql = """
                 INSERT INTO credit_cards (
                     card_number,
-                    expiry_date,
-                    username
+                    expiry_date
                 )
                 VALUES (
                     @CardNumber,
-                    @ExpiryDate,
-                    @UserName
+                    @ExpiryDate
                 )
             """;
 
@@ -63,7 +59,6 @@ namespace OrderProcessing.Infrastructure.Repositories
             {
                 card.CardNumber,
                 ExpiryDate = card.ExpiryDate.ToDateTime(TimeOnly.MinValue),
-                card.UserName
             });
         }
 
@@ -73,7 +68,6 @@ namespace OrderProcessing.Infrastructure.Repositories
                 UPDATE credit_cards
                 SET
                     expiry_date = @ExpiryDate,
-                    username = @UserName
                 WHERE card_number = @CardNumber
             """;
 
@@ -83,7 +77,6 @@ namespace OrderProcessing.Infrastructure.Repositories
             {
                 card.CardNumber,
                 ExpiryDate = card.ExpiryDate.ToDateTime(TimeOnly.MinValue),
-                card.UserName
             });
         }
 

@@ -61,7 +61,7 @@ namespace OrderProcessing.Infrastructure.Repositories
                     @TotalPrice,
                     @Status,
                     @OrderDate,
-                    @UserId
+                    @Username
                 )
             """;
 
@@ -73,7 +73,7 @@ namespace OrderProcessing.Infrastructure.Repositories
                 order.TotalPrice,
                 order.Status,
                 OrderDate = order.OrderDate.ToDateTime(TimeOnly.MinValue),
-                order.UserId
+                order.Username
             });
         }
 
