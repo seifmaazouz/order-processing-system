@@ -12,9 +12,6 @@ namespace OrderProcessing.Domain.Entities
         public string Address { get; private set; }
         public string PasswordHash { get; private set; }
         public UserTypes Role { get; private set; } // Roles defined in ValueObjects
-        //Navigation properties done according to relational schema
-        public ICollection<CreditCard> Cards { get; private set; } 
-        public ICollection<Order> Orders {private set; get;}
         public User(
             string username,
             string email,
@@ -32,10 +29,7 @@ namespace OrderProcessing.Domain.Entities
             LastName = lastName;
             Address = address;
             PasswordHash = passwordHash;
-            Role = role;
-            Cards = new List<CreditCard>();
-            Orders=new List<Order>();
-            
+            Role = role;        
         }
     }
 }
