@@ -24,7 +24,7 @@ namespace OrderProcessing.Infrastructure.Repositories
                 WHERE card_number = @CardNumber
             """;
 
-            using var connection = _connectionFactory.CreateConnection();
+            using var connection = await _connectionFactory.CreateConnectionAsync();
 
             var row = await connection.QuerySingleOrDefaultAsync<dynamic>(
                 sql,
@@ -51,7 +51,7 @@ namespace OrderProcessing.Infrastructure.Repositories
                 WHERE ch.username = @Username
             """;
 
-            using var connection = _connectionFactory.CreateConnection();
+            using var connection =await  _connectionFactory.CreateConnectionAsync();
 
             var rows = await connection.QueryAsync<dynamic>(
                 sql,
@@ -91,7 +91,7 @@ namespace OrderProcessing.Infrastructure.Repositories
                 )
             """;
 
-            using var connection = _connectionFactory.CreateConnection();
+            using var connection =await  _connectionFactory.CreateConnectionAsync();
             using var transaction = connection.BeginTransaction();
 
             try
@@ -138,7 +138,7 @@ namespace OrderProcessing.Infrastructure.Repositories
                 WHERE card_number = @CardNumber
             """;
 
-            using var connection = _connectionFactory.CreateConnection();
+            using var connection = await _connectionFactory.CreateConnectionAsync();
             using var transaction = connection.BeginTransaction();
 
             try

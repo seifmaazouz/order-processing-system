@@ -31,7 +31,7 @@ namespace OrderProcessing.Infrastructure.Repositories
                 WHERE username = @Username
             """;
 
-            using var connection = _connectionFactory.CreateConnection();
+            using var connection = await _connectionFactory.CreateConnectionAsync();
 
             var result = await connection.QuerySingleOrDefaultAsync<dynamic>(
                 sql,
@@ -78,7 +78,7 @@ namespace OrderProcessing.Infrastructure.Repositories
                 )
             """;
 
-            using var connection = _connectionFactory.CreateConnection();
+            using var connection = await _connectionFactory.CreateConnectionAsync();
 
             await connection.ExecuteAsync(sql, new
             {
@@ -108,7 +108,7 @@ namespace OrderProcessing.Infrastructure.Repositories
                 WHERE username = @Username
             """;
 
-            using var connection = _connectionFactory.CreateConnection();
+            using var connection = await _connectionFactory.CreateConnectionAsync();
 
             await connection.ExecuteAsync(sql, new
             {
@@ -130,7 +130,7 @@ namespace OrderProcessing.Infrastructure.Repositories
                 WHERE username = @Username
             """;
 
-            using var connection = _connectionFactory.CreateConnection();
+            using var connection = await _connectionFactory.CreateConnectionAsync();
 
             await connection.ExecuteAsync(sql, new { Username = username });
         }

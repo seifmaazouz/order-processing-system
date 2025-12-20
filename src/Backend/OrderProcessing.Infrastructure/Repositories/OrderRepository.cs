@@ -27,7 +27,7 @@ namespace OrderProcessing.Infrastructure.Repositories
                 WHERE order_number = @OrderNumber
             """;
 
-            using var connection = _connectionFactory.CreateConnection();
+            using var connection =await _connectionFactory.CreateConnectionAsync();
 
             var row = await connection.QuerySingleOrDefaultAsync<dynamic>(
                 sql,
@@ -65,7 +65,7 @@ namespace OrderProcessing.Infrastructure.Repositories
                 )
             """;
 
-            using var connection = _connectionFactory.CreateConnection();
+            using var connection =await  _connectionFactory.CreateConnectionAsync();
 
             await connection.ExecuteAsync(sql, new
             {
@@ -87,7 +87,7 @@ namespace OrderProcessing.Infrastructure.Repositories
                 WHERE order_number = @OrderNumber
             """;
 
-            using var connection = _connectionFactory.CreateConnection();
+            using var connection = await _connectionFactory.CreateConnectionAsync();
 
             await connection.ExecuteAsync(sql, new
             {
@@ -104,7 +104,7 @@ namespace OrderProcessing.Infrastructure.Repositories
                 WHERE order_number = @OrderNumber
             """;
 
-            using var connection = _connectionFactory.CreateConnection();
+            using var connection =await  _connectionFactory.CreateConnectionAsync();
 
             await connection.ExecuteAsync(sql, new { OrderNumber = orderNumber });
         }
