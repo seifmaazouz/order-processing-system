@@ -12,7 +12,6 @@ namespace OrderProcessing.Domain.Entities
         public string Address { get; private set; }
         public string PasswordHash { get; private set; }
         public UserTypes Role { get; private set; } // Roles defined in ValueObjects
-        //Navigation properties done according to relational schema
         public User(
             string username,
             string email,
