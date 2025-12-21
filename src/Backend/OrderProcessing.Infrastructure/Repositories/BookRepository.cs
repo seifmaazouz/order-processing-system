@@ -20,7 +20,7 @@ public class BookRepository : IBookRepository
         using var connection = await _connectionFactory.CreateConnectionAsync();
         
         var sql = "SELECT * FROM Book WHERE ISBN = @ISBN";
-
+ 
         var book = await connection.QuerySingleOrDefaultAsync<Book>(sql, new { ISBN = isbn }); // Dapper will use the parameterless private constructor
         return book;
     }
@@ -28,56 +28,81 @@ public class BookRepository : IBookRepository
     public async Task AddAsync(Book book)
     {
         using var connection = await _connectionFactory.CreateConnectionAsync();
-        
-        var sql =
-        """
-            INSERT INTO Book (ISBN, Title, PublicationYear, SellingPrice, Quantity, Threshold, CatID, PubID)
-            VALUES (@ISBN, @Title, @PublicationYear, @SellingPrice, @Quantity, @Threshold, @CatID, @PubID)
-        """;
+        using var transaction = connection.BeginTransaction();
 
-        await connection.ExecuteAsync(sql,
-            new
-            {
-                book.ISBN,
-                book.Title,
-                book.PublicationYear,
-                book.SellingPrice,
-                book.Quantity,
-                book.Threshold,
-                book.CatID,
-                book.PubID
-            });
+        try {
+            var bookSql =
+            """
+                INSERT INTO Book (ISBN, Title, PublicationYear, SellingPrice, Quantity, Threshold, Category, PubID)
+                VALUES (@ISBN, @Title, @PublicationYear, @SellingPrice, @Quantity, @Threshold, @Category, @PubID)
+            """;
+
+            await connection.ExecuteAsync(bookSql, book, transaction);
+
+            // Insert authors into BookAuthor junction table
+            var authorSql =
+            """
+                INSERT INTO BookAuthor (ISBN, AuthorName)
+                VALUES (@ISBN, @AuthorName)
+            """;
+
+            var authors = book.Authors.Select(a => new { book.ISBN, a.AuthorName });
+            await connection.ExecuteAsync(authorSql, authors, transaction);
+
+            transaction.Commit();
+        } catch {
+            transaction.Rollback();
+            throw; // Rethrow the exception to be handled by the calling code (Middleware at the end)
+        }
     }
 
     public async Task UpdateAsync(Book book)
     {
         using var connection = await _connectionFactory.CreateConnectionAsync();
+        using var transaction = connection.BeginTransaction();
 
-        var sql =
-        """
-            UPDATE Book
-            SET Title = @Title,
-                PublicationYear = @PublicationYear,
-                SellingPrice = @SellingPrice,
-                Quantity = @Quantity,
-                Threshold = @Threshold,
-                CatID = @CatID,
-                PubID = @PubID
-            WHERE ISBN = @ISBN
-        """;
+        try {
 
-        await connection.ExecuteAsync(sql,
-            new
+            // update book details (excluding authors)
+            var bookSql =
+            """
+                UPDATE Book
+                SET Title = @Title,
+                    PublicationYear = @PublicationYear,
+                    SellingPrice = @SellingPrice,
+                    Quantity = @Quantity,
+                    Threshold = @Threshold,
+                    Category = @Category,
+                    PubID = @PubID
+                WHERE ISBN = @ISBN
+            """;
+
+            await connection.ExecuteAsync(bookSql, book, transaction);
+
+            // Only update authors if there are changes
+            if (book.Authors != null && book.Authors.Any())
             {
-                book.Title,
-                book.PublicationYear,
-                book.SellingPrice,
-                book.Quantity,
-                book.Threshold,
-                book.CatID,
-                book.PubID,
-                book.ISBN
-            });
+                // Delete existing authors
+                var deleteAuthorSql = "DELETE FROM BookAuthor WHERE ISBN = @ISBN";
+                await connection.ExecuteAsync(deleteAuthorSql, new { book.ISBN }, transaction);
+
+                // Insert new authors
+                var insertAuthorSql =
+                """
+                    INSERT INTO BookAuthor (ISBN, AuthorName)
+                    VALUES (@ISBN, @AuthorName)
+                """;
+
+                var authors = book.Authors.Select(a => new { book.ISBN, a.AuthorName });
+                await connection.ExecuteAsync(insertAuthorSql, authors, transaction);
+
+
+            }
+            transaction.Commit();
+        } catch {
+            transaction.Rollback();
+            throw; // Rethrow the exception to be handled by the calling code (Middleware at the end)
+        }
     }
 
     public async Task DeleteAsync(string isbn)
@@ -105,14 +130,13 @@ public class BookRepository : IBookRepository
 
         var sql = 
         """
-            SELECT b.Title, b.PublicationYear, b.SellingPrice, b.Quantity, b. Threshold
-                c.CatName, p.Name AS PubName, STRING_AGG(a.Name, ', ') AS AuthorNames
+            SELECT b.ISBN, b.Title, b.PublicationYear, b.SellingPrice, b.Quantity, b.Threshold,
+                b.Category AS CategoryName, p.PubName AS PublisherName, STRING_AGG(ba.AuthorName, ', ') AS AuthorNames
             FROM Book b
-            JOIN Category c ON b.CatID = c.CatID
             JOIN Publisher p ON b.PubID = p.PubID
             JOIN BookAuthor ba ON b.ISBN = ba.ISBN
             WHERE b.ISBN = @ISBN
-            GROUP BY b.ISBN, c.CatName, p.Name
+            GROUP BY b.ISBN, b.Category, p.PubName
         """;
 
         var bookDetails = await connection.QuerySingleOrDefaultAsync<BookDetailsReadModel>(sql, new { ISBN = isbn });
@@ -125,26 +149,33 @@ public class BookRepository : IBookRepository
 
         var sql = 
         """
-            SELECT b.ISBN, b.Title, b.PublicationYear, b.SellingPrice, b.Quantity, b. Threshold,
-                c.CatName, p.Name AS PubName, STRING_AGG(a.Name, ', ') AS AuthorNames
+            SELECT b.ISBN, b.Title, b.PublicationYear, b.SellingPrice, b.Quantity, b.Threshold,
+                b.Category AS CategoryName, p.PubName AS PublisherName, STRING_AGG(ba.AuthorName, ', ') AS AuthorNames
             FROM Book b
-            JOIN Category c ON b.CatID = c.CatID
             JOIN Publisher p ON b.PubID = p.PubID
             JOIN BookAuthor ba ON b.ISBN = ba.ISBN
-            JOIN Author a ON ba.AuthorID = a.AuthorID
-            GROUP BY b.ISBN, c.CatName, p.Name
+            GROUP BY b.ISBN, b.Category, p.PubName
         """;
 
         var bookDetailsList = await connection.QueryAsync<BookDetailsReadModel>(sql);
         return bookDetailsList;
     }
-    public async Task<IEnumerable<Book>> GetBooksBelowStockThresholdAsync()
+    public async Task<IEnumerable<BookDetailsReadModel>> GetBooksBelowStockThresholdAsync()
     {
         using var connection = await _connectionFactory.CreateConnectionAsync();
 
-        var sql = "SELECT * FROM Book WHERE Quantity < Threshold";
+        var sql = 
+        """
+            SELECT b.ISBN, b.Title, b.PublicationYear, b.SellingPrice, b.Quantity, b.Threshold,
+                b.Category AS CategoryName, p.PubName AS PublisherName, STRING_AGG(ba.AuthorName, ', ') AS AuthorNames
+            FROM Book b
+            JOIN Publisher p ON b.PubID = p.PubID
+            JOIN BookAuthor ba ON b.ISBN = ba.ISBN
+            WHERE b.Quantity < b.Threshold
+            GROUP BY b.ISBN, b.Category, p.PubName
+        """;
 
-        var books = await connection.QueryAsync<Book>(sql);
-        return books;
+        var booksBelowThreshold = await connection.QueryAsync<BookDetailsReadModel>(sql);
+        return booksBelowThreshold;
     }
 }

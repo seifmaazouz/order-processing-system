@@ -10,5 +10,5 @@ public record BookDetailsReadModel
     int Threshold,
     string CategoryName,
     string PublisherName,
-    IEnumerable<string> AuthorNames
+    string AuthorNames
 );

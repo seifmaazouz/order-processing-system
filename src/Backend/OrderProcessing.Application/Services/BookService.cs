@@ -24,7 +24,7 @@ namespace OrderProcessing.Application.Services
             await _bookRepository.AddAsync(book);
 
             var readModel = await _bookRepository.GetBookDetailsAsync(dto.ISBN);
-            return readModel?.ToDto() ?? throw new Exception("Book details not found"); // TODO: also throw exception if null (Middleware should catch all exceptions)
+            return readModel?.ToDto() ?? throw new Exception("Book creation failed"); // TODO: also throw exception if null (Middleware should catch all exceptions)
         }
 
         public async Task<BookDetailsDto?> GetBookByISBNAsync(string isbn)
@@ -32,17 +32,10 @@ namespace OrderProcessing.Application.Services
             var readModel = await _bookRepository.GetBookDetailsAsync(isbn);
             return readModel?.ToDto();
         }
-
-        public async Task<IEnumerable<BookDetailsDto>> GetAllBooksAsync()
-        {
-            var readModels = await _bookRepository.GetAllBookDetailsAsync();
-            return readModels.ToDtoList();
-        }
-
         public async Task UpdateBookAsync(string isbn, UpdateBookDto dto)
         {
             var book = await _bookRepository.GetByISBNAsync(isbn);
-            if (book == null) throw new Exception($"Book with ISBN {isbn} was not found."); // TODO: make custom exception later
+            if (book == null) throw new Exception($"Book with ISBN {isbn} was not found"); // TODO: make custom exception later
 
             // Update fields
             book.UpdateDetails(
@@ -51,19 +44,31 @@ namespace OrderProcessing.Application.Services
                 sellingPrice: dto.SellingPrice,
                 quantity: dto.Quantity,
                 threshold: dto.Threshold,
-                catID: dto.CatID,
+                category: dto.Category,
                 pubID: dto.PubID
             );
 
-            // I did not update authors here, as it requires more complex logic (add/remove). Can be added later.
-            // Need to check with frontend how they want to handle authors update. (If it's needed at all)
+            // Update authors if needed
+            if (dto.Authors != null)
+            {
+                if (dto.Authors.Count == 0)
+                {
+                    throw new Exception("A book must have at least one author");
+                }
+
+                book.UpdateAuthors(dto.Authors);
+            }
 
             await _bookRepository.UpdateAsync(book);
         }
-
-        public Task DeleteBookAsync(string isbn)
+        
+        public async Task DeleteBookAsync(string isbn)
         {
-            throw new NotImplementedException();
+            var exists = await _bookRepository.ExistsAsync(isbn);
+
+            if (!exists) throw new Exception($"Book with ISBN: {isbn} doesn't exist");
+
+            await _bookRepository.DeleteAsync(isbn);
         }
 
         public Task<IEnumerable<BookDetailsDto>> SearchBooksAsync(string query)
@@ -71,9 +76,10 @@ namespace OrderProcessing.Application.Services
             throw new NotImplementedException();
         }
 
-        public Task<IEnumerable<BookDetailsDto>> GetBooksBelowStockThresholdAsync()
+        public async Task<IEnumerable<BookDetailsDto>> GetBooksBelowStockThresholdAsync()
         {
-            throw new NotImplementedException();
+            var readModels = await _bookRepository.GetBooksBelowStockThresholdAsync();
+            return readModels.ToDtoList();
         }
     }
 }

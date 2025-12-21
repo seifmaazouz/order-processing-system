@@ -3,7 +3,7 @@ namespace OrderProcessing.Domain.Entities
     public class Publisher
     {
         public int PubID { private set; get; } // Primary key
-        public string Name { private set; get; } = null!;
+        public string PubName { private set; get; } = null!;
         public string Address { private set; get; } = null!;
         public string PhoneNumber { private set; get; } = null!;
 
@@ -19,7 +19,7 @@ namespace OrderProcessing.Domain.Entities
             }
 
             PubID = pubID;
-            Name = name;
+            PubName = name;
             Address = address;
             PhoneNumber = phoneNumber;
         }

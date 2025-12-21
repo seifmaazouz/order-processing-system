@@ -13,8 +13,7 @@ namespace OrderProcessing.Domain.Interfaces.Repositories;
 
         // Additional methods
         Task<BookDetailsReadModel?> GetBookDetailsAsync(string isbn);
-        Task<IEnumerable<BookDetailsReadModel>> GetAllBookDetailsAsync();
-        Task<IEnumerable<Book>> GetBooksBelowStockThresholdAsync();
+        Task<IEnumerable<BookDetailsReadModel>> GetBooksBelowStockThresholdAsync();
 
         // Uitility method to check existence before adding a new book
         Task<bool> ExistsAsync(string isbn);

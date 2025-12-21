@@ -9,7 +9,7 @@ public static class BookMappingExtensions
     // CreateDto -> Entity
     public static Book ToEntity(this CreateBookDto dto)
     {
-        return new Book
+        var book = new Book
         (
             isbn: dto.ISBN,
             title: dto.Title,
@@ -17,9 +17,17 @@ public static class BookMappingExtensions
             sellingPrice: dto.SellingPrice,
             quantity: dto.Quantity,
             threshold: dto.Threshold,
-            catID: dto.CatID,
+            category: dto.Category,
             pubID: dto.PubID
         );
+
+        // Add authors
+        foreach (var author in dto.Authors)
+        {
+            book.AddAuthor(author.Trim());
+        }
+
+        return book;
     }
 
 
@@ -35,7 +43,7 @@ public static class BookMappingExtensions
             Stock: model.Quantity,
             Category: model.CategoryName,
             Publisher: model.PublisherName,
-            Authors: model.AuthorNames
+            Authors: model.AuthorNames?.Split(",").Select(a => a.Trim()).ToList() ?? new List<string>() // Handle null case
         );
     }
 
