@@ -37,7 +37,18 @@ public class BookRepository : IBookRepository
                 VALUES (@ISBN, @Title, @PublicationYear, @SellingPrice, @Quantity, @Threshold, @Category, @PubID)
             """;
 
-            await connection.ExecuteAsync(bookSql, book, transaction);
+            await connection.ExecuteAsync(bookSql,
+            new
+            {
+                book.ISBN,
+                book.Title,
+                book.PublicationYear,
+                book.SellingPrice,
+                book.Quantity,
+                book.Threshold,
+                Category = book.Category.ToString(),
+                book.PubID
+            }, transaction);
 
             // Insert authors into BookAuthor junction table
             var authorSql =
@@ -77,7 +88,17 @@ public class BookRepository : IBookRepository
                 WHERE ISBN = @ISBN
             """;
 
-            await connection.ExecuteAsync(bookSql, book, transaction);
+            await connection.ExecuteAsync(bookSql, new
+            {
+                book.ISBN,
+                book.Title,
+                book.PublicationYear,
+                book.SellingPrice,
+                book.Quantity,
+                book.Threshold,
+                Category = book.Category.ToString(),
+                book.PubID
+            }, transaction);
 
             // Only update authors if there are changes
             if (book.Authors != null && book.Authors.Any())
@@ -136,7 +157,7 @@ public class BookRepository : IBookRepository
             JOIN Publisher p ON b.PubID = p.PubID
             JOIN BookAuthor ba ON b.ISBN = ba.ISBN
             WHERE b.ISBN = @ISBN
-            GROUP BY b.ISBN, b.Category, p.PubName
+            GROUP BY b.ISBN, b.Title, b.PublicationYear, b.SellingPrice, b.Quantity, b.Threshold, b.Category, p.PubName
         """;
 
         var bookDetails = await connection.QuerySingleOrDefaultAsync<BookDetailsReadModel>(sql, new { ISBN = isbn });
@@ -154,7 +175,7 @@ public class BookRepository : IBookRepository
             FROM Book b
             JOIN Publisher p ON b.PubID = p.PubID
             JOIN BookAuthor ba ON b.ISBN = ba.ISBN
-            GROUP BY b.ISBN, b.Category, p.PubName
+            GROUP BY b.ISBN, b.Title, b.PublicationYear, b.SellingPrice, b.Quantity, b.Threshold, b.Category, p.PubName
         """;
 
         var bookDetailsList = await connection.QueryAsync<BookDetailsReadModel>(sql);
@@ -172,7 +193,7 @@ public class BookRepository : IBookRepository
             JOIN Publisher p ON b.PubID = p.PubID
             JOIN BookAuthor ba ON b.ISBN = ba.ISBN
             WHERE b.Quantity < b.Threshold
-            GROUP BY b.ISBN, b.Category, p.PubName
+            GROUP BY b.ISBN, b.Title, b.PublicationYear, b.SellingPrice, b.Quantity, b.Threshold, b.Category, p.PubName
         """;
 
         var booksBelowThreshold = await connection.QueryAsync<BookDetailsReadModel>(sql);

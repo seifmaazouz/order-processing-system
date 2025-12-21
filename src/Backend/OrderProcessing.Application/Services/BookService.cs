@@ -30,8 +30,15 @@ namespace OrderProcessing.Application.Services
         public async Task<BookDetailsDto?> GetBookByISBNAsync(string isbn)
         {
             var readModel = await _bookRepository.GetBookDetailsAsync(isbn);
-            return readModel?.ToDto();
+            return readModel?.ToDto() ?? throw new Exception($"Book with ISBN {isbn} was not found");
         }
+
+        public async Task<IEnumerable<BookDetailsDto>> GetAllBooksAsync()
+        {
+            var readModels = await _bookRepository.GetAllBookDetailsAsync();
+            return readModels.ToDtoList() ?? throw new Exception("No books found");
+        }
+
         public async Task UpdateBookAsync(string isbn, UpdateBookDto dto)
         {
             var book = await _bookRepository.GetByISBNAsync(isbn);

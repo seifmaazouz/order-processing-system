@@ -16,6 +16,7 @@ public class BooksController : ControllerBase
         _bookService = bookService;
     }
 
+    // Errors thrown in service layer will be caught by Middleware (GlobalExceptionHandlingMiddleware)
     [HttpGet("{isbn}")]
     public async Task<Results<Ok<BookDetailsDto>, NotFound<string>>> GetBookDetails(string isbn)
     {
@@ -23,6 +24,15 @@ public class BooksController : ControllerBase
         if (bookDetails == null) return TypedResults.NotFound($"Book with ISBN {isbn} not found.");
         
         return TypedResults.Ok(bookDetails);
+    }
+
+    [HttpGet]
+    public async Task<Results<Ok<IEnumerable<BookDetailsDto>>, NotFound<string>>> GetAllBooks()
+    {
+        var books = await _bookService.GetAllBooksAsync();
+        if (books == null || !books.Any()) return TypedResults.NotFound("No books found.");
+        
+        return TypedResults.Ok(books);
     }
 
     [HttpPost]
@@ -35,11 +45,16 @@ public class BooksController : ControllerBase
     }
 
     [HttpPut("{isbn}")]
-    // NoContent: on success, NotFound: book not found, BadRequest: invalid data
-    // Errors thrown in service layer will be caught by Middleware (GlobalExceptionHandlingMiddleware)
-    public async Task<Results<NoContent, NotFound, BadRequest>> UpdateBook(string isbn, [FromBody] UpdateBookDto dto)
+    public async Task<Results<NoContent, NotFound>> UpdateBook(string isbn, [FromBody] UpdateBookDto dto)
     {
         await _bookService.UpdateBookAsync(isbn, dto);
+        return TypedResults.NoContent();
+    }
+
+    [HttpDelete("{isbn}")]
+    public async Task<Results<NoContent, NotFound>> DeleteBook(string isbn)
+    {
+        await _bookService.DeleteBookAsync(isbn);
         return TypedResults.NoContent();
     }
 }

@@ -16,7 +16,12 @@ builder.Services.AddInfrastructure(connectionString!);
 // Register application services
 builder.Services.AddScoped<IBookService, BookService>();
 
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.Converters.Add(
+            new System.Text.Json.Serialization.JsonStringEnumConverter());
+    });
 
 // 1. Generate the OpenAPI document (The "Data")
 builder.Services.AddOpenApi(options =>

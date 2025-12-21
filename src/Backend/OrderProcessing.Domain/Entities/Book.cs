@@ -80,19 +80,37 @@ namespace OrderProcessing.Domain.Entities
         }
 
         // Update method
-        public void UpdateDetails (string title, int publicationYear, decimal sellingPrice, int quantity, int threshold, CategoryType category, int pubID)
+        public void UpdateDetails(string? title = null, int? publicationYear = null, decimal? sellingPrice = null, 
+            int? quantity = null, int? threshold = null, CategoryType? category = null, int? pubID = null)
         {
-            // Validate inputs
-            ValidateInputs(ISBN, title, publicationYear, sellingPrice, quantity, threshold, category, pubID);
-
-            // Update properties
-            Title = title;
-            PublicationYear = publicationYear;
-            SellingPrice = sellingPrice;
-            Quantity = quantity;
-            Threshold = threshold;
-            Category = category;
-            PubID = pubID;
+            if (title != null) {
+                if (string.IsNullOrWhiteSpace(title)) throw new ArgumentException("Title is required");
+                Title = title;
+            }
+            if (publicationYear.HasValue) {
+                if (publicationYear.Value < 0 || publicationYear.Value > DateTime.Now.Year) throw new ArgumentException("Invalid publication year");
+                PublicationYear = publicationYear.Value;
+            }
+            if (sellingPrice.HasValue) {
+                if (sellingPrice <= 0) throw new ArgumentException("Price must be positive");
+                SellingPrice = sellingPrice.Value;
+            }
+            if (quantity.HasValue) {
+                if (quantity < 0) throw new ArgumentException("Quantity cannot be negative");
+                Quantity = quantity.Value;
+            }
+            if (threshold.HasValue) {
+                if (threshold < 0) throw new ArgumentException("Threshold cannot be negative");
+                Threshold = threshold.Value;
+            }
+            if (category.HasValue) {
+                if (!Enum.IsDefined(typeof(CategoryType), category.Value)) throw new ArgumentException("Invalid Category");
+                Category = category.Value;
+            }
+            if (pubID.HasValue) {
+                if (pubID < 0) throw new ArgumentException("Invalid Publisher ID");
+                PubID = pubID.Value;
+            }
         }
 
         // Methods to manage multi-valued attribute Authors
@@ -106,6 +124,9 @@ namespace OrderProcessing.Domain.Entities
 
         public void UpdateAuthors(List<string> newAuthors)
         {
+            if (newAuthors == null || newAuthors.Count == 0)
+                throw new ArgumentException("A book must have at least one author");
+
             // Clear existing authors
             _authors.Clear();
 

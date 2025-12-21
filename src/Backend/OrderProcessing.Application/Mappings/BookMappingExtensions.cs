@@ -1,6 +1,7 @@
 using OrderProcessing.Application.DTOs.Book;
 using OrderProcessing.Domain.Models;
 using OrderProcessing.Domain.Entities;
+using OrderProcessing.Domain.ValueObjects;
 
 namespace OrderProcessing.Application.Mappings;
 
@@ -22,9 +23,11 @@ public static class BookMappingExtensions
         );
 
         // Add authors
-        foreach (var author in dto.Authors)
-        {
-            book.AddAuthor(author.Trim());
+        if (dto.Authors != null) {
+            foreach (var author in dto.Authors)
+            {
+                book.AddAuthor(author.Trim());
+            }
         }
 
         return book;
@@ -33,7 +36,7 @@ public static class BookMappingExtensions
 
     // ReadModel -> DetailsDto
     public static BookDetailsDto ToDto(this BookDetailsReadModel model)
-    {
+    {            
         return new BookDetailsDto
         (
             ISBN: model.ISBN,
@@ -41,9 +44,11 @@ public static class BookMappingExtensions
             Year: model.PublicationYear,
             Price: model.SellingPrice,
             Stock: model.Quantity,
-            Category: model.CategoryName,
+            Category: Enum.Parse<CategoryType>(model.CategoryName),
             Publisher: model.PublisherName,
-            Authors: model.AuthorNames?.Split(",").Select(a => a.Trim()).ToList() ?? new List<string>() // Handle null case
+            Authors: model.AuthorNames?.Split(",", StringSplitOptions.RemoveEmptyEntries)
+                                        .Select(a => a.Trim())
+                                        .ToList() ?? new List<string>() // Handle null case
         );
     }
 

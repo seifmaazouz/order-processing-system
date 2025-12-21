@@ -16,7 +16,7 @@ CREATE TABLE Book (
     SellingPrice DECIMAL(10,2),
     Quantity INT NOT NULL,
     Threshold INT NOT NULL,
-    Category category_enum,
+    Category VARCHAR(20) NOT NULL CHECK (Category IN ('Science','Art','Religion','History','Geography')),
     PubID INT NOT NULL REFERENCES Publisher(PubID)
 );
 
