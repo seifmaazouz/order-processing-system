@@ -124,7 +124,8 @@ namespace OrderProcessing.Domain.Entities
 
         public void UpdateAuthors(List<string> newAuthors)
         {
-            if (newAuthors == null || newAuthors.Count == 0)
+            if (newAuthors == null) return; // No changes
+            if (newAuthors.Count == 0) // Enforce at least one author
                 throw new ArgumentException("A book must have at least one author");
 
             // Clear existing authors

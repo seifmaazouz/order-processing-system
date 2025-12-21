@@ -1,5 +1,7 @@
 using Dapper;
+using Npgsql;
 using OrderProcessing.Domain.Entities;
+using OrderProcessing.Domain.Exceptions;
 using OrderProcessing.Domain.Interfaces;
 using OrderProcessing.Domain.Interfaces.Repositories;
 using OrderProcessing.Domain.Models;
@@ -61,9 +63,14 @@ public class BookRepository : IBookRepository
             await connection.ExecuteAsync(authorSql, authors, transaction);
 
             transaction.Commit();
-        } catch {
+        }
+        catch (PostgresException ex) {
             transaction.Rollback();
-            throw; // Rethrow the exception to be handled by the calling code (Middleware at the end)
+            HandlePostgresException(ex);
+        }
+        catch {
+            transaction.Rollback();
+            throw; // rethrow other exceptions (caught by global exception middleware)
         }
     }
 
@@ -103,11 +110,8 @@ public class BookRepository : IBookRepository
             // Only update authors if there are changes
             if (book.Authors != null && book.Authors.Any())
             {
-                // Delete existing authors
-                var deleteAuthorSql = "DELETE FROM BookAuthor WHERE ISBN = @ISBN";
-                await connection.ExecuteAsync(deleteAuthorSql, new { book.ISBN }, transaction);
-
-                // Insert new authors
+                await connection.ExecuteAsync("DELETE FROM BookAuthor WHERE ISBN = @ISBN", new { book.ISBN }, transaction);
+                
                 var insertAuthorSql =
                 """
                     INSERT INTO BookAuthor (ISBN, AuthorName)
@@ -116,13 +120,17 @@ public class BookRepository : IBookRepository
 
                 var authors = book.Authors.Select(a => new { book.ISBN, a.AuthorName });
                 await connection.ExecuteAsync(insertAuthorSql, authors, transaction);
-
-
             }
+
             transaction.Commit();
-        } catch {
+        }
+        catch (PostgresException ex) {
             transaction.Rollback();
-            throw; // Rethrow the exception to be handled by the calling code (Middleware at the end)
+            HandlePostgresException(ex);
+        }
+        catch {
+            transaction.Rollback();
+            throw; // rethrow other exceptions (caught by global exception middleware)
         }
     }
 
@@ -130,9 +138,16 @@ public class BookRepository : IBookRepository
     {
         using var connection = await _connectionFactory.CreateConnectionAsync();
 
-        var sql = "DELETE FROM Book WHERE ISBN = @ISBN";
-
-        await connection.ExecuteAsync(sql, new { ISBN = isbn });
+        try {
+            var sql = "DELETE FROM Book WHERE ISBN = @ISBN";
+            await connection.ExecuteAsync(sql, new { ISBN = isbn });
+        }
+        catch (PostgresException ex) {
+            HandlePostgresException(ex);
+        } 
+        catch {
+            throw; // rethrow other exceptions (caught by global exception middleware)
+        }
     }
 
     public async Task<bool> ExistsAsync(string isbn)
@@ -198,5 +213,23 @@ public class BookRepository : IBookRepository
 
         var booksBelowThreshold = await connection.QueryAsync<BookDetailsReadModel>(sql);
         return booksBelowThreshold;
+    }
+
+    private static void HandlePostgresException(PostgresException ex)
+    {
+        var message = ex.SqlState switch
+        {
+            "23505" => "A book with this ISBN already exists.",
+            "23503" => ex.ConstraintName switch
+            {
+                "book_pubid_fkey" => "Publisher does not exist.",
+                "orderitem_isbn_fkey" => "Cannot delete book: It exists in one or more orders.",
+                "cartitem_isbn_fkey" => "Cannot delete book: It exists in one or more shopping carts.",
+                _ => "Referenced record does not exist or record is still in use."
+            },
+            _ => "A database constraint was violated."
+        };
+        
+        throw new DataConstraintException(message);
     }
 }

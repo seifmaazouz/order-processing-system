@@ -18,7 +18,7 @@ public class BooksController : ControllerBase
 
     // Errors thrown in service layer will be caught by Middleware (GlobalExceptionHandlingMiddleware)
     [HttpGet("{isbn}")]
-    public async Task<Results<Ok<BookDetailsDto>, NotFound<string>>> GetBookDetails(string isbn)
+    public async Task<Results<Ok<BookDetailsDto>, NotFound<string>>> GetBookByISBN(string isbn)
     {
         var bookDetails = await _bookService.GetBookByISBNAsync(isbn);
         if (bookDetails == null) return TypedResults.NotFound($"Book with ISBN {isbn} not found.");
@@ -27,20 +27,16 @@ public class BooksController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<Results<Ok<IEnumerable<BookDetailsDto>>, NotFound<string>>> GetAllBooks()
+    public async Task<Ok<IEnumerable<BookDetailsDto>>> GetAllBooks()
     {
         var books = await _bookService.GetAllBooksAsync();
-        if (books == null || !books.Any()) return TypedResults.NotFound("No books found.");
-        
         return TypedResults.Ok(books);
     }
 
     [HttpPost]
-    public async Task<Results<Ok<BookDetailsDto>, BadRequest<string>>> AddBook([FromBody] CreateBookDto dto)
+    public async Task<Ok<BookDetailsDto>> AddBook([FromBody] CreateBookDto dto)
     {
         var createdBook = await _bookService.CreateBookAsync(dto);
-        if (createdBook == null) return TypedResults.BadRequest("Failed to add the book.");
-        
         return TypedResults.Ok(createdBook);
     }
 

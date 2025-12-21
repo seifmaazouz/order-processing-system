@@ -1,7 +1,8 @@
 using OrderProcessing.Application.DTOs.Book;
+using OrderProcessing.Application.Exceptions;
 using OrderProcessing.Application.Interfaces;
-using OrderProcessing.Domain.Interfaces.Repositories;
 using OrderProcessing.Application.Mappings;
+using OrderProcessing.Domain.Interfaces.Repositories;
 
 namespace OrderProcessing.Application.Services
 {
@@ -14,35 +15,35 @@ namespace OrderProcessing.Application.Services
             _bookRepository = bookRepository;
         }
 
-        public async Task<BookDetailsDto?> CreateBookAsync(CreateBookDto dto)
+        public async Task<BookDetailsDto> CreateBookAsync(CreateBookDto dto)
         {
             var exists = await _bookRepository.ExistsAsync(dto.ISBN);
-            if (exists) throw new Exception($"Book with ISBN {dto.ISBN} already exists"); // TODO: make throw exception better later (do for all methods)
+            if (exists) throw new DuplicateResourceException("Book", dto.ISBN);
 
             var book = dto.ToEntity();
 
             await _bookRepository.AddAsync(book);
 
             var readModel = await _bookRepository.GetBookDetailsAsync(dto.ISBN);
-            return readModel?.ToDto() ?? throw new Exception("Book creation failed"); // TODO: also throw exception if null (Middleware should catch all exceptions)
+            return readModel?.ToDto() ?? throw new BusinessRuleViolationException("Failed to create book record.");
         }
 
         public async Task<BookDetailsDto?> GetBookByISBNAsync(string isbn)
         {
             var readModel = await _bookRepository.GetBookDetailsAsync(isbn);
-            return readModel?.ToDto() ?? throw new Exception($"Book with ISBN {isbn} was not found");
+            return readModel?.ToDto(); // Return null if not found
         }
 
         public async Task<IEnumerable<BookDetailsDto>> GetAllBooksAsync()
         {
             var readModels = await _bookRepository.GetAllBookDetailsAsync();
-            return readModels.ToDtoList() ?? throw new Exception("No books found");
+            return readModels.ToDtoList(); // Return empty collection if no books found
         }
 
         public async Task UpdateBookAsync(string isbn, UpdateBookDto dto)
         {
             var book = await _bookRepository.GetByISBNAsync(isbn);
-            if (book == null) throw new Exception($"Book with ISBN {isbn} was not found"); // TODO: make custom exception later
+            if (book == null) throw new NotFoundException("Book", isbn);
 
             // Update fields
             book.UpdateDetails(
@@ -58,12 +59,7 @@ namespace OrderProcessing.Application.Services
             // Update authors if needed
             if (dto.Authors != null)
             {
-                if (dto.Authors.Count == 0)
-                {
-                    throw new Exception("A book must have at least one author");
-                }
-
-                book.UpdateAuthors(dto.Authors);
+                book.UpdateAuthors(dto.Authors); // Entity will throw if empty list
             }
 
             await _bookRepository.UpdateAsync(book);
@@ -73,7 +69,7 @@ namespace OrderProcessing.Application.Services
         {
             var exists = await _bookRepository.ExistsAsync(isbn);
 
-            if (!exists) throw new Exception($"Book with ISBN: {isbn} doesn't exist");
+            if (!exists) throw new NotFoundException("Book", isbn);
 
             await _bookRepository.DeleteAsync(isbn);
         }

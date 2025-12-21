@@ -1,5 +1,6 @@
 // Infrastructure is referenced here only at the composition root
 // to wire concrete implementations to domain interfaces at startup. (No violations of layered architecture)
+using OrderProcessing.Api.Middleware;
 using OrderProcessing.Application.Interfaces;
 using OrderProcessing.Application.Services;
 using OrderProcessing.Infrastructure;
@@ -39,6 +40,9 @@ builder.Services.AddOpenApi(options =>
 });
 
 var app = builder.Build();
+
+// Register global exception handling middleware
+app.UseMiddleware<GlobalExceptionHandlingMiddleware>();
 
 if (app.Environment.IsDevelopment())
 {

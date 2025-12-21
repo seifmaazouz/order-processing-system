@@ -5,7 +5,7 @@ namespace OrderProcessing.Application.Interfaces
     public interface IBookService
     {
         // CRUD operations
-        Task<BookDetailsDto?> CreateBookAsync(CreateBookDto createBookDto);
+        Task<BookDetailsDto> CreateBookAsync(CreateBookDto createBookDto);
         Task<BookDetailsDto?> GetBookByISBNAsync(string isbn);
         Task<IEnumerable<BookDetailsDto>> GetAllBooksAsync();
         Task UpdateBookAsync(string isbn, UpdateBookDto updateBookDto); // isbn passed in url /{isbn} and dto in body
