@@ -1,6 +1,8 @@
+using OrderProcessing.Domain.ValueObjects;
+
 namespace OrderProcessing.Domain.Entities
 {
-     public class Book
+    public class Book
     {
         public string ISBN { private set; get; } = null!; // Primary key
         public string Title { private set; get; } = null!;
@@ -8,11 +10,7 @@ namespace OrderProcessing.Domain.Entities
         public decimal SellingPrice { private set; get; }
         public int Quantity { private set; get; }
         public int Threshold { private set; get; }
-
-        // (book:category => many-to-one relationship)
-        public int CatID { private set; get; } // Foreign key 
-        public Category Category { set; get; } = null!; // Navigation property (mandatory)
-
+        public CategoryType Category { private set; get; } // Refactored to use CategoryType value object
         // (book:publisher => many-to-one relationship)
         public int PubID { private set; get; } // Foreign key
         public Publisher Publisher { private set; get; } = null!; // Navigation property (mandatory)
@@ -25,21 +23,20 @@ namespace OrderProcessing.Domain.Entities
         private Book() { } 
         
         // Full constructor (when relations are loaded)
-        public Book(
+        public Book (
             string isbn, 
             string title, 
             int publicationYear, 
             decimal sellingPrice, 
             int quantity, 
             int threshold, 
-            Category category, 
+            CategoryType category,
             Publisher publisher)
         {
             // Validate inputs
-            ValidateInputs(isbn, sellingPrice, quantity, threshold);
+            ValidateInputs(isbn, title, publicationYear, sellingPrice, quantity, threshold, category);
 
             // Validate mandatory relationships
-            Category = category ?? throw new ArgumentNullException(nameof(category), "Category cannot be null");
             Publisher = publisher ?? throw new ArgumentNullException(nameof(publisher), "Publisher cannot be null");
 
             // Assign values to properties
@@ -49,9 +46,9 @@ namespace OrderProcessing.Domain.Entities
             SellingPrice = sellingPrice;
             Quantity = quantity;
             Threshold = threshold;
+            Category = category;
 
             // Set foreign keys
-            CatID = category.CatID;
             PubID = publisher.PubID;
         }
 
@@ -63,11 +60,11 @@ namespace OrderProcessing.Domain.Entities
             decimal sellingPrice,
             int quantity,
             int threshold,
-            int catID,
+            CategoryType category,
             int pubID)
         {
             // Validate inputs
-            ValidateInputs(isbn, sellingPrice, quantity, threshold, pubID, catID);
+            ValidateInputs(isbn, title, publicationYear, sellingPrice, quantity, threshold, category, pubID);
 
             // Assign values to properties
             ISBN = isbn;
@@ -76,17 +73,17 @@ namespace OrderProcessing.Domain.Entities
             SellingPrice = sellingPrice;
             Quantity = quantity;
             Threshold = threshold;
+            Category = category;
 
             // Set foreign keys
-            CatID = catID;
             PubID = pubID;
         }
 
         // Update method
-        public void UpdateDetails (string title, int publicationYear, decimal sellingPrice, int quantity, int threshold, int catID, int pubID)
+        public void UpdateDetails (string title, int publicationYear, decimal sellingPrice, int quantity, int threshold, CategoryType category, int pubID)
         {
             // Validate inputs
-            ValidateInputs(ISBN, sellingPrice, quantity, threshold, pubID, catID);
+            ValidateInputs(ISBN, title, publicationYear, sellingPrice, quantity, threshold, category, pubID);
 
             // Update properties
             Title = title;
@@ -94,7 +91,7 @@ namespace OrderProcessing.Domain.Entities
             SellingPrice = sellingPrice;
             Quantity = quantity;
             Threshold = threshold;
-            CatID = catID;
+            Category = category;
             PubID = pubID;
         }
 
@@ -105,6 +102,18 @@ namespace OrderProcessing.Domain.Entities
                 throw new InvalidOperationException("Duplicate author for this book");
 
             _authors.Add(new Author(this, authorName));
+        }
+
+        public void UpdateAuthors(List<string> newAuthors)
+        {
+            // Clear existing authors
+            _authors.Clear();
+
+            // Add new authors
+            foreach (var authorName in newAuthors)
+            {
+                AddAuthor(authorName);
+            }
         }
         public void RemoveAuthor(string authorName)
         {
@@ -136,14 +145,16 @@ namespace OrderProcessing.Domain.Entities
         }
 
         // Helper method to validate inputs
-        private static void ValidateInputs(string isbn, decimal sellingPrice, int quantity, int threshold, int pubID = 0, int catID = 0)
+        private static void ValidateInputs(string isbn, string title, int publicationYear, decimal sellingPrice, int quantity, int threshold, CategoryType category, int pubID = 0)
         {
             if (string.IsNullOrWhiteSpace(isbn)) throw new ArgumentException("ISBN ia required");
+            if (string.IsNullOrWhiteSpace(title)) throw new ArgumentException("Title is required");
+            if (publicationYear < 0 || publicationYear > DateTime.Now.Year) throw new ArgumentException("Invalid publication year");
             if (sellingPrice <= 0) throw new ArgumentException("Price must be positive");
             if (quantity < 0) throw new ArgumentException("Quantity cannot be negative");
             if (threshold < 0) throw new ArgumentException("Threshold cannot be negative");
+            if (!Enum.IsDefined(typeof(CategoryType), category)) throw new ArgumentException("Invalid Category");
             if (pubID < 0) throw new ArgumentException("Invalid Publisher ID");
-            if (catID < 0) throw new ArgumentException("Invalid Category ID");
         }
     }
 }

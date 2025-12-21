@@ -9,6 +9,6 @@ namespace OrderProcessing.Application.DTOs.Book
         int Stock,
         string Category,
         string Publisher,
-        IEnumerable<string> Authors
+        List<string> Authors
     );
 }

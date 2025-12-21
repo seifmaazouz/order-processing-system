@@ -1,3 +1,5 @@
+using OrderProcessing.Domain.ValueObjects;
+
 namespace OrderProcessing.Application.DTOs.Book
 {
     public record UpdateBookDto
@@ -7,7 +9,8 @@ namespace OrderProcessing.Application.DTOs.Book
         decimal SellingPrice,
         int Quantity,
         int Threshold,
-        int CatID,
-        int PubID
+        CategoryType Category,
+        int PubID,
+        List<string>? Authors // Null: no change, Empty: error (book must have at least one author), Non-empty list: set these authors
     );
 }

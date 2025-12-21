@@ -1,3 +1,5 @@
+using OrderProcessing.Domain.ValueObjects;
+
 namespace OrderProcessing.Application.DTOs.Book
 {
     public record CreateBookDto
@@ -8,7 +10,8 @@ namespace OrderProcessing.Application.DTOs.Book
         decimal SellingPrice,
         int Quantity,
         int Threshold,
-        int CatID,
-        int PubID
+        CategoryType Category,
+        int PubID,
+        List<string> Authors
     );
 }
