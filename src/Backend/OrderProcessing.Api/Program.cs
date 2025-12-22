@@ -6,6 +6,7 @@ using OrderProcessing.Application.Services;
 using OrderProcessing.Infrastructure;
 using Scalar.AspNetCore;
 
+
 var builder = WebApplication.CreateBuilder(args);
 
 // PostgreSQL connection string from appsettings.json
@@ -13,6 +14,13 @@ var connectionString = builder.Configuration.GetConnectionString("PostgresConnec
 
 // Register infrastructure services
 builder.Services.AddInfrastructure(connectionString!);
+builder.Services.AddControllers();
+
+// Add Swagger/OpenAPI
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+
+
 
 // Register application services
 builder.Services.AddScoped<IBookService, BookService>();

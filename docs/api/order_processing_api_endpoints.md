@@ -11,7 +11,7 @@ The API supports **Administrators** and **Customers** and follows a layered arch
 
 ### Register (Customer)
 ```
-POST /api/auth/register
+POST /api/user/register
 ```
 **Input (DTO)**
 - username
@@ -20,7 +20,6 @@ POST /api/auth/register
 - lastName
 - email
 - phone
-- shippingAddress
 
 **Output**
 - 201 Created
@@ -29,7 +28,7 @@ POST /api/auth/register
 
 ### Login (Admin / Customer)
 ```
-POST /api/auth/login
+POST /api/user/login
 ```
 **Input**
 - username
@@ -53,13 +52,11 @@ POST /api/auth/logout
 
 ### Edit Personal Information
 ```
-PUT /api/customers/me
+PUT /api/user/me
 ```
 **Input (DTO)**
-- password (optional)
-- email
-- phone
-- shippingAddress
+- password 
+- username
 
 ---
 

@@ -9,7 +9,7 @@ namespace OrderProcessing.Domain.Entities
         public string PhoneNumber { get; private set; }
         public string FirstName { get; private set; }
         public string LastName { get; private set; }
-        public string Address { get; private set; }
+        public string? Address { get; private set; }
         public string PasswordHash { get; private set; }
         public UserTypes Role { get; private set; } // Roles defined in ValueObjects
         public User(
@@ -18,9 +18,9 @@ namespace OrderProcessing.Domain.Entities
             string phoneNumber,
             string firstName,
             string lastName,
-            string address,
             string passwordHash,
-            UserTypes role)
+            UserTypes role,
+            string? address=null)
         {
             Username = username;
             Email = email;
