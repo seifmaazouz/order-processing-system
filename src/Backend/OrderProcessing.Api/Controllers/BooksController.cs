@@ -61,4 +61,11 @@ public class BooksController : ControllerBase
         var books = await _bookService.SearchBooksAsync(query);
         return TypedResults.Ok(books);
     }
+
+    [HttpGet("below-threshold")]
+    public async Task<Ok<IEnumerable<BookDetailsDto>>> GetBooksBelowStockThreshold()
+    {
+        var books = await _bookService.GetBooksBelowStockThresholdAsync();
+        return TypedResults.Ok(books);
+    }
 }
