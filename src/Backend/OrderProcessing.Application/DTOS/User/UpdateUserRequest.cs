@@ -1,4 +1,4 @@
-namespace OrderProcessing.Application.DTOS;
+namespace OrderProcessing.Application.DTOS.User;
 
 public record UpdateUserRequest(
     string Email,

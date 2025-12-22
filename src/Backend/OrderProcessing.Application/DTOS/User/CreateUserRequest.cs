@@ -1,5 +1,5 @@
 using OrderProcessing.Domain.ValueObjects;
-namespace OrderProcessing.Application.DTOS;
+namespace OrderProcessing.Application.DTOS.User;
 
 public record CreateUserRequest(
     string Username,

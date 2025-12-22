@@ -1,5 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
-using OrderProcessing.Application.DTOS;
+using OrderProcessing.Application.DTOS.User;
 using OrderProcessing.Application.Interfaces;
 
 namespace OrderProcessing.Api.Controllers
@@ -14,7 +14,7 @@ namespace OrderProcessing.Api.Controllers
         {
             _userService = userService;
         }
-        [HttpPost("/register")]
+        [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] CreateUserRequest request)
         {
             if (!ModelState.IsValid)
