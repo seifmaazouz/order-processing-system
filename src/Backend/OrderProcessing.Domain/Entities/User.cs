@@ -18,9 +18,9 @@ namespace OrderProcessing.Domain.Entities
             string phoneNumber,
             string firstName,
             string lastName,
-            string address,
             string passwordHash,
-            UserTypes role)
+            UserTypes role,
+            string? address=null)
         {
             Username = username;
             Email = email;
