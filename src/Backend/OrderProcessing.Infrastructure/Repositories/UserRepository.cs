@@ -47,9 +47,9 @@ namespace OrderProcessing.Infrastructure.Repositories
                 result.phonenumber,
                 result.firstname,
                 result.lastname,
-                result.address,
                 result.passwordhash,
-                (UserTypes)result.role
+                (UserTypes)result.role,
+                result.address
             );
         }
 
