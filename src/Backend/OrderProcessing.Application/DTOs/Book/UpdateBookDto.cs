@@ -3,14 +3,14 @@ using OrderProcessing.Domain.ValueObjects;
 namespace OrderProcessing.Application.DTOs.Book
 {
     public record UpdateBookDto
-    (
-        string? Title,
-        int? PublicationYear,
-        decimal? SellingPrice,
-        int? Quantity,
-        int? Threshold,
-        CategoryType? Category,
-        int? PubID,
-        List<string>? Authors // Null: no change, Empty: error, Non-empty: set these authors
-    );
+    {
+        public string? Title { get; init; }
+        public int? PublicationYear { get; init; }
+        public decimal? SellingPrice { get; init; }
+        public int? Quantity { get; init; }
+        public int? Threshold { get; init; }
+        public CategoryType? Category { get; init; }
+        public int? PubID { get; init; }
+        public List<string>? Authors { get; init; } // Null: no change, Empty: error, Non-empty: set these authors
+    }
 }

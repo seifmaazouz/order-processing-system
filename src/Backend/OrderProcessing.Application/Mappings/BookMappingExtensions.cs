@@ -38,23 +38,35 @@ public static class BookMappingExtensions
     public static BookDetailsDto ToDto(this BookDetailsReadModel model)
     {            
         return new BookDetailsDto
-        (
-            ISBN: model.ISBN,
-            Title: model.Title,
-            Year: model.PublicationYear,
-            Price: model.SellingPrice,
-            Stock: model.Quantity,
-            Category: Enum.Parse<CategoryType>(model.CategoryName),
-            Publisher: model.PublisherName,
-            Authors: model.AuthorNames?.Split(",", StringSplitOptions.RemoveEmptyEntries)
+        {
+            ISBN = model.ISBN,
+            Title = model.Title,
+            Year = model.PublicationYear,
+            Price = model.SellingPrice,
+            Stock = model.Quantity,
+            Category = Enum.Parse<CategoryType>(model.CategoryName),
+            Publisher = model.PublisherName,
+            Authors = model.AuthorNames?.Split(",", StringSplitOptions.RemoveEmptyEntries)
                                         .Select(a => a.Trim())
                                         .ToList() ?? new List<string>() // Handle null case
-        );
+        };
     }
 
     // ReadModel List -> Dto List
     public static IEnumerable<BookDetailsDto> ToDtoList(this IEnumerable<BookDetailsReadModel> models)
     {
         return models.Where(m => m != null).Select(m => m.ToDto()).ToList();
+    }
+
+    public static BookSearchFilter ToDomainFilter(this SearchBooksQueryDto dto)
+    {
+        return new BookSearchFilter
+        (
+            ISBN: dto.ISBN,
+            Title: dto.Title,
+            Category: dto.Category?.ToString(),
+            Author: dto.Author,
+            Publisher: dto.Publisher
+        );
     }
 }
