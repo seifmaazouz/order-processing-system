@@ -12,6 +12,6 @@ namespace OrderProcessing.Application.Interfaces
         Task DeleteBookAsync(string isbn);
 
         Task<IEnumerable<BookDetailsDto>> GetBooksBelowStockThresholdAsync();
-        Task<IEnumerable<BookDetailsDto>> SearchBooksAsync(string query);
+        Task<IEnumerable<BookDetailsDto>> SearchBooksAsync(SearchBooksQueryDto query);
     }
 }

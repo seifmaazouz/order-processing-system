@@ -6,8 +6,8 @@ public class NotFoundException : Exception
     {
     }
 
-    public NotFoundException(string resourceName, string identifier) 
-        : base($"{resourceName} with identifier '{identifier}' not found.")
+    public NotFoundException(string resourceName, string identifierName, string identifierValue) 
+        : base($"{resourceName} with {identifierName} '{identifierValue}' not found.")
     {
     }
 }

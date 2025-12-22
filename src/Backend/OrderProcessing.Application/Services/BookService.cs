@@ -18,7 +18,7 @@ namespace OrderProcessing.Application.Services
         public async Task<BookDetailsDto> CreateBookAsync(CreateBookDto dto)
         {
             var exists = await _bookRepository.ExistsAsync(dto.ISBN);
-            if (exists) throw new DuplicateResourceException("Book", dto.ISBN);
+            if (exists) throw new DuplicateResourceException("Book", "ISBN", dto.ISBN);
 
             var book = dto.ToEntity();
 
@@ -43,7 +43,7 @@ namespace OrderProcessing.Application.Services
         public async Task UpdateBookAsync(string isbn, UpdateBookDto dto)
         {
             var book = await _bookRepository.GetByISBNAsync(isbn);
-            if (book == null) throw new NotFoundException("Book", isbn);
+            if (book == null) throw new NotFoundException("Book", "ISBN", isbn);
 
             // Update fields
             book.UpdateDetails(
@@ -69,14 +69,16 @@ namespace OrderProcessing.Application.Services
         {
             var exists = await _bookRepository.ExistsAsync(isbn);
 
-            if (!exists) throw new NotFoundException("Book", isbn);
+            if (!exists) throw new NotFoundException("Book", "ISBN", isbn);
 
             await _bookRepository.DeleteAsync(isbn);
         }
 
-        public Task<IEnumerable<BookDetailsDto>> SearchBooksAsync(string query)
+        public Task<IEnumerable<BookDetailsDto>> SearchBooksAsync(SearchBooksQueryDto query)
         {
-            throw new NotImplementedException();
+            var filter = query.ToDomainFilter();
+            var searchResults = _bookRepository.SearchBooksAsync(filter);
+            return searchResults.ContinueWith(t => t.Result.ToDtoList());
         }
 
         public async Task<IEnumerable<BookDetailsDto>> GetBooksBelowStockThresholdAsync()

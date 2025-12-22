@@ -6,8 +6,8 @@ public class DuplicateResourceException : Exception
     {
     }
 
-    public DuplicateResourceException(string resourceName, string identifier) 
-        : base($"{resourceName} with identifier '{identifier}' already exists.")
+    public DuplicateResourceException(string resourceName, string identifierName, string identifierValue) 
+        : base($"{resourceName} with {identifierName} '{identifierValue}' already exists.")
     {
     }
 }

@@ -36,7 +36,7 @@ public class BookRepository : IBookRepository
             var bookSql =
             """
                 INSERT INTO Book (ISBN, Title, PublicationYear, SellingPrice, Quantity, Threshold, Category, PubID)
-                VALUES (@ISBN, @Title, @PublicationYear, @SellingPrice, @Quantity, @Threshold, @Category, @PubID)
+                VALUES (@ISBN, @Title, @PublicationYear, @SellingPrice, @Quantity, @Threshold, @Category::category_enum, @PubID)
             """;
 
             await connection.ExecuteAsync(bookSql,
@@ -66,7 +66,7 @@ public class BookRepository : IBookRepository
         }
         catch (PostgresException ex) {
             transaction.Rollback();
-            HandlePostgresException(ex);
+            throw PostgresExceptionTranslator.Translate(ex);
         }
         catch {
             transaction.Rollback();
@@ -90,7 +90,7 @@ public class BookRepository : IBookRepository
                     SellingPrice = @SellingPrice,
                     Quantity = @Quantity,
                     Threshold = @Threshold,
-                    Category = @Category,
+                    Category = @Category::category_enum,
                     PubID = @PubID
                 WHERE ISBN = @ISBN
             """;
@@ -126,7 +126,7 @@ public class BookRepository : IBookRepository
         }
         catch (PostgresException ex) {
             transaction.Rollback();
-            HandlePostgresException(ex);
+            throw PostgresExceptionTranslator.Translate(ex);
         }
         catch {
             transaction.Rollback();
@@ -143,7 +143,7 @@ public class BookRepository : IBookRepository
             await connection.ExecuteAsync(sql, new { ISBN = isbn });
         }
         catch (PostgresException ex) {
-            HandlePostgresException(ex);
+            throw PostgresExceptionTranslator.Translate(ex);
         } 
         catch {
             throw; // rethrow other exceptions (caught by global exception middleware)
@@ -215,21 +215,57 @@ public class BookRepository : IBookRepository
         return booksBelowThreshold;
     }
 
-    private static void HandlePostgresException(PostgresException ex)
+    public async Task<IEnumerable<BookDetailsReadModel>> SearchBooksAsync(BookSearchFilter filter)
     {
-        var message = ex.SqlState switch
+        using var connection = await _connectionFactory.CreateConnectionAsync();
+
+        var searchSql =
+        """
+            SELECT b.ISBN, b.Title, b.PublicationYear, b.SellingPrice, b.Quantity, b.Threshold,
+                b.Category AS CategoryName, p.PubName AS PublisherName, STRING_AGG(ba.AuthorName, ', ') AS AuthorNames
+            FROM Book b
+            JOIN Publisher p ON b.PubID = p.PubID
+            JOIN BookAuthor ba ON b.ISBN = ba.ISBN
+            WHERE 1 = 1
+        """;
+
+        // dynamic filters 
+        if (!string.IsNullOrWhiteSpace(filter.ISBN))
         {
-            "23505" => "A book with this ISBN already exists.",
-            "23503" => ex.ConstraintName switch
-            {
-                "book_pubid_fkey" => "Publisher does not exist.",
-                "orderitem_isbn_fkey" => "Cannot delete book: It exists in one or more orders.",
-                "cartitem_isbn_fkey" => "Cannot delete book: It exists in one or more shopping carts.",
-                _ => "Referenced record does not exist or record is still in use."
-            },
-            _ => "A database constraint was violated."
-        };
+            // ignore dashes and find all similar ISBNs
+            searchSql += " AND REPLACE(b.ISBN, '-', '') ILIKE '%' || REPLACE(@ISBN, '-', '') || '%'";
+        }
+        if (!string.IsNullOrWhiteSpace(filter.Title))
+        {
+            searchSql += " AND b.Title ILIKE '%' || @Title || '%'";
+        }
+        if (!string.IsNullOrWhiteSpace(filter.Category))
+        {
+            searchSql += " AND b.Category = @Category::category_enum";
+        }
+        if (!string.IsNullOrWhiteSpace(filter.Author))
+        {
+            searchSql += " AND ba.AuthorName ILIKE '%' || @Author || '%'";
+        }
+        if (!string.IsNullOrWhiteSpace(filter.Publisher))
+        {
+            searchSql += " AND p.PubName ILIKE '%' || @Publisher || '%'";
+        }
         
-        throw new DataConstraintException(message);
+        searchSql +=
+        """
+            GROUP BY b.ISBN, b.Title, b.PublicationYear, b.SellingPrice, b.Quantity, b.Threshold, b.Category, p.PubName
+        """;
+
+        var searchResults = await connection.QueryAsync<BookDetailsReadModel>(searchSql, new
+        {
+            filter.ISBN,
+            filter.Title,
+            Category = filter.Category?.ToString(),
+            filter.Author,
+            filter.Publisher
+        });
+
+        return searchResults;
     }
 }

@@ -15,6 +15,7 @@ namespace OrderProcessing.Domain.Interfaces.Repositories;
         Task<BookDetailsReadModel?> GetBookDetailsAsync(string isbn);
         Task<IEnumerable<BookDetailsReadModel>> GetAllBookDetailsAsync();
         Task<IEnumerable<BookDetailsReadModel>> GetBooksBelowStockThresholdAsync();
+        Task<IEnumerable<BookDetailsReadModel>> SearchBooksAsync(BookSearchFilter filter);
 
         // Uitility method to check existence before adding a new book
         Task<bool> ExistsAsync(string isbn);

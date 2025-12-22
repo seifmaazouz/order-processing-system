@@ -17,12 +17,22 @@ builder.Services.AddInfrastructure(connectionString!);
 // Register application services
 builder.Services.AddScoped<IBookService, BookService>();
 
+// Configure JSON options globally
+builder.Services.ConfigureHttpJsonOptions(options =>
+{
+    options.SerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
+    options.SerializerOptions.NumberHandling = System.Text.Json.Serialization.JsonNumberHandling.Strict;
+});
+
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
         options.JsonSerializerOptions.Converters.Add(
             new System.Text.Json.Serialization.JsonStringEnumConverter());
+        options.JsonSerializerOptions.NumberHandling = System.Text.Json.Serialization.JsonNumberHandling.Strict;
     });
+
+builder.Services.AddRouting(options => options.LowercaseUrls = true); // make URLs lowercase
 
 // 1. Generate the OpenAPI document (The "Data")
 builder.Services.AddOpenApi(options =>
@@ -35,6 +45,16 @@ builder.Services.AddOpenApi(options =>
             Version = "v1",
             Description = "Modern API for Book Management"
         };
+        return Task.CompletedTask;
+    });
+    
+    options.AddSchemaTransformer((schema, context, cancellationToken) =>
+    {
+        // Remove 'null' from enum lists for nullable enums to prevent Swagger from sending "null" string
+        if (schema.Enum?.Count > 0 && schema.Enum.Any(e => e == null))
+        {
+            schema.Enum = schema.Enum.Where(e => e != null).ToList();
+        }
         return Task.CompletedTask;
     });
 });
