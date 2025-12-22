@@ -16,12 +16,12 @@ CREATE TABLE Book (
     SellingPrice DECIMAL(10,2),
     Quantity INT NOT NULL,
     Threshold INT NOT NULL,
-    Category category_enum,
+    Category category_enum NOT NULL,
     PubID INT NOT NULL REFERENCES Publisher(PubID)
 );
 
 CREATE TABLE BookAuthor (
-    ISBN VARCHAR(17) NOT NULL REFERENCES Book(ISBN),
+    ISBN VARCHAR(17) NOT NULL REFERENCES Book(ISBN) ON DELETE CASCADE,
     AuthorName VARCHAR(50) NOT NULL,
     PRIMARY KEY (ISBN, AuthorName)
 );

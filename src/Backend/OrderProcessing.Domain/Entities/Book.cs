@@ -1,6 +1,8 @@
+using OrderProcessing.Domain.ValueObjects;
+
 namespace OrderProcessing.Domain.Entities
 {
-     public class Book
+    public class Book
     {
         public string ISBN { private set; get; } = null!; // Primary key
         public string Title { private set; get; } = null!;
@@ -8,69 +10,140 @@ namespace OrderProcessing.Domain.Entities
         public decimal SellingPrice { private set; get; }
         public int Quantity { private set; get; }
         public int Threshold { private set; get; }
-
-        // (book:category => many-to-one relationship)
-        public int CatID { private set; get; } // Foreign key 
-        public Category Category { set; get; } = null!; // Navigation property (mandatory)
-
+        public CategoryType Category { private set; get; } // Refactored to use CategoryType value object
         // (book:publisher => many-to-one relationship)
         public int PubID { private set; get; } // Foreign key
         public Publisher Publisher { private set; get; } = null!; // Navigation property (mandatory)
 
         // Multi-valued attribute author
-        public ICollection<Author> Authors { get; } = new List<Author>();
+        private readonly List<Author> _authors = new List<Author>();
+        public IReadOnlyCollection<Author> Authors => _authors.AsReadOnly(); // Wrapper to expose as read-only
 
-        private Book() { } // For Dapper
-        public Book(
+        // For Dapper
+        private Book() { } 
+        
+        // Full constructor (when relations are loaded)
+        public Book (
             string isbn, 
             string title, 
             int publicationYear, 
             decimal sellingPrice, 
             int quantity, 
             int threshold, 
-            Category category, 
+            CategoryType category,
             Publisher publisher)
         {
-            // 1. Validate input parameters
-            if (string.IsNullOrWhiteSpace(isbn))
-                throw new ArgumentException("ISBN ia required");
-            if (sellingPrice <= 0)
-                throw new ArgumentException("Price must be positive");
-            if (quantity < 0 || threshold < 0)
-                throw new ArgumentException("Quantity and threshold cannot be negative");
+            // Validate inputs
+            ValidateInputs(isbn, title, publicationYear, sellingPrice, quantity, threshold, category);
 
-            // 2. Validate mandatory relationships
-            Category = category ?? throw new ArgumentNullException(nameof(category), "Category cannot be null");
+            // Validate mandatory relationships
             Publisher = publisher ?? throw new ArgumentNullException(nameof(publisher), "Publisher cannot be null");
 
-            // 3. Assign values to properties
+            // Assign values to properties
             ISBN = isbn;
             Title = title;
             PublicationYear = publicationYear;
             SellingPrice = sellingPrice;
             Quantity = quantity;
             Threshold = threshold;
+            Category = category;
 
             // Set foreign keys
-            CatID = category.CatID;
             PubID = publisher.PubID;
+        }
+
+        // Lightweight constructor (used for inserts / Dapper)
+        public Book(
+            string isbn,
+            string title,
+            int publicationYear,
+            decimal sellingPrice,
+            int quantity,
+            int threshold,
+            CategoryType category,
+            int pubID)
+        {
+            // Validate inputs
+            ValidateInputs(isbn, title, publicationYear, sellingPrice, quantity, threshold, category, pubID);
+
+            // Assign values to properties
+            ISBN = isbn;
+            Title = title;
+            PublicationYear = publicationYear;
+            SellingPrice = sellingPrice;
+            Quantity = quantity;
+            Threshold = threshold;
+            Category = category;
+
+            // Set foreign keys
+            PubID = pubID;
+        }
+
+        // Update method
+        public void UpdateDetails(string? title = null, int? publicationYear = null, decimal? sellingPrice = null, 
+            int? quantity = null, int? threshold = null, CategoryType? category = null, int? pubID = null)
+        {
+            if (title != null) {
+                if (string.IsNullOrWhiteSpace(title)) throw new ArgumentException("Title is required");
+                Title = title;
+            }
+            if (publicationYear.HasValue) {
+                if (publicationYear.Value < 0 || publicationYear.Value > DateTime.Now.Year) throw new ArgumentException("Invalid publication year");
+                PublicationYear = publicationYear.Value;
+            }
+            if (sellingPrice.HasValue) {
+                if (sellingPrice <= 0) throw new ArgumentException("Price must be positive");
+                SellingPrice = sellingPrice.Value;
+            }
+            if (quantity.HasValue) {
+                if (quantity < 0) throw new ArgumentException("Quantity cannot be negative");
+                Quantity = quantity.Value;
+            }
+            if (threshold.HasValue) {
+                if (threshold < 0) throw new ArgumentException("Threshold cannot be negative");
+                Threshold = threshold.Value;
+            }
+            if (category.HasValue) {
+                if (!Enum.IsDefined(typeof(CategoryType), category.Value)) throw new ArgumentException("Invalid Category");
+                Category = category.Value;
+            }
+            if (pubID.HasValue) {
+                if (pubID < 0) throw new ArgumentException("Invalid Publisher ID");
+                PubID = pubID.Value;
+            }
         }
 
         // Methods to manage multi-valued attribute Authors
         public void AddAuthor(string authorName)
         {
-            if (Authors.Any(a => a.AuthorName == authorName))
+            if (_authors.Any(a => a.AuthorName == authorName))
                 throw new InvalidOperationException("Duplicate author for this book");
 
-            Authors.Add(new Author(this, authorName));
+            _authors.Add(new Author(this, authorName));
+        }
+
+        public void UpdateAuthors(List<string> newAuthors)
+        {
+            if (newAuthors == null) return; // No changes
+            if (newAuthors.Count == 0) // Enforce at least one author
+                throw new ArgumentException("A book must have at least one author");
+
+            // Clear existing authors
+            _authors.Clear();
+
+            // Add new authors
+            foreach (var authorName in newAuthors)
+            {
+                AddAuthor(authorName);
+            }
         }
         public void RemoveAuthor(string authorName)
         {
-            var author = Authors.FirstOrDefault(a => a.AuthorName == authorName);
+            var author = _authors.FirstOrDefault(a => a.AuthorName == authorName);
             if (author == null)
                 throw new InvalidOperationException("Author not found for this book");
 
-            Authors.Remove(author);
+            _authors.Remove(author);
         }
 
         // Core Business Behavior
@@ -91,6 +164,19 @@ namespace OrderProcessing.Domain.Entities
                 throw new InvalidOperationException("Insufficient stock");
 
             Quantity -= amount;
+        }
+
+        // Helper method to validate inputs
+        private static void ValidateInputs(string isbn, string title, int publicationYear, decimal sellingPrice, int quantity, int threshold, CategoryType category, int pubID = 0)
+        {
+            if (string.IsNullOrWhiteSpace(isbn)) throw new ArgumentException("ISBN ia required");
+            if (string.IsNullOrWhiteSpace(title)) throw new ArgumentException("Title is required");
+            if (publicationYear < 0 || publicationYear > DateTime.Now.Year) throw new ArgumentException("Invalid publication year");
+            if (sellingPrice <= 0) throw new ArgumentException("Price must be positive");
+            if (quantity < 0) throw new ArgumentException("Quantity cannot be negative");
+            if (threshold < 0) throw new ArgumentException("Threshold cannot be negative");
+            if (!Enum.IsDefined(typeof(CategoryType), category)) throw new ArgumentException("Invalid Category");
+            if (pubID < 0) throw new ArgumentException("Invalid Publisher ID");
         }
     }
 }

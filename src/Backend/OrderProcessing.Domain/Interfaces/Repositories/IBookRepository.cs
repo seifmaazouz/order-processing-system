@@ -1,4 +1,5 @@
 using OrderProcessing.Domain.Entities;
+using OrderProcessing.Domain.Models;
 
 namespace OrderProcessing.Domain.Interfaces.Repositories;
 
@@ -10,9 +11,11 @@ namespace OrderProcessing.Domain.Interfaces.Repositories;
         Task UpdateAsync(Book book);
         Task DeleteAsync(string isbn);
 
-        // 3. Confirm Orders (Admin Only) 
-        // Admin can place order even if quatity < threshold
-        Task<IEnumerable<Book>> GetBooksBelowStockThresholdAsync();
+        // Additional methods
+        Task<BookDetailsReadModel?> GetBookDetailsAsync(string isbn);
+        Task<IEnumerable<BookDetailsReadModel>> GetAllBookDetailsAsync();
+        Task<IEnumerable<BookDetailsReadModel>> GetBooksBelowStockThresholdAsync();
+        Task<IEnumerable<BookDetailsReadModel>> SearchBooksAsync(BookSearchFilter filter);
 
         // Uitility method to check existence before adding a new book
         Task<bool> ExistsAsync(string isbn);

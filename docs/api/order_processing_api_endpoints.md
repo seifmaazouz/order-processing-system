@@ -62,28 +62,61 @@ PUT /api/user/me
 
 ## 📚 Books
 
+### Get Book by ISBN (Admin & Customer)
+```
+GET /api/books/{isbn}
+```
+**Output (BookDetailsDto)**
+- isbn
+- title
+- year
+- price
+- stock
+- category (enum: Science, Art, Religion, History, Geography)
+- publisher
+- authors
+- isAvailable (boolean)
+
+**Responses**
+- 200 OK - Book found
+- 404 Not Found - Book not found
+
+---
+
+### Get All Books (Admin & Customer)
+```
+GET /api/books
+```
+**Output**
+- Array of BookDetailsDto
+
+**Response**
+- 200 OK
+
+---
+
 ### Add New Book (Admin Only)
 ```
 POST /api/books
 ```
-**Input (BookCreateDto)**
-- isbn
-- title
-- publicationYear
-- sellingPrice
-- quantity
-- threshold
-- catId
-- pubId
+**Input (CreateBookDto)**
+- isbn (required)
+- title (required)
+- publicationYear (required)
+- sellingPrice (required)
+- quantity (required)
+- threshold (required)
+- category (required, enum: Science, Art, Religion, History, Geography)
+- pubID (required)
+- authors (required, array of strings)
 
 **Output (BookDetailsDto)**
-- isbn
-- title
-- authors
-- category
-- publisher
-- sellingPrice
-- quantity
+- Full book details with location header
+
+**Responses**
+- 201 Created - Book created successfully
+- 400 Bad Request - Validation errors
+- 409 Conflict - Book with ISBN already exists
 
 📌 DTOs are returned — entities are never exposed
 
@@ -93,23 +126,32 @@ POST /api/books
 ```
 PUT /api/books/{isbn}
 ```
-**Input (BookUpdateDto)**
+**Input (UpdateBookDto)** - All fields optional
 - title
+- publicationYear
 - sellingPrice
+- quantity
 - threshold
-- catId
-- pubId
+- category (enum)
+- pubID
+- authors (null = no change, empty = error, list = update)
+
+**Responses**
+- 204 No Content - Update successful
+- 400 Bad Request - Validation errors (e.g., negative stock blocked by trigger)
+- 404 Not Found - Book not found
+
+📌 Stock cannot become negative (DB trigger enforced)
 
 ---
 
-### Update Stock After Sale
+### Delete Book (Admin Only)
 ```
-PATCH /api/books/{isbn}/stock
+DELETE /api/books/{isbn}
 ```
-**Input**
-- quantitySold
-
-📌 Stock cannot become negative (DB trigger enforced)
+**Responses**
+- 204 No Content - Delete successful
+- 404 Not Found - Book not found
 
 ---
 
@@ -117,16 +159,37 @@ PATCH /api/books/{isbn}/stock
 ```
 GET /api/books/search
 ```
-**Query Parameters**
-- isbn
-- title
-- category
-- author
-- publisher
+**Query Parameters** - All optional
+- isbn (string) - Partial match, ignores dashes
+- title (string) - Case-insensitive partial match
+- category (string) - Exact match: Science, Art, Religion, History, Geography
+- author (string) - Case-insensitive partial match
+- publisher (string) - Case-insensitive partial match
 
-**Output (BookDetailsDto[])**
-- book details
-- availability (quantity)
+**Output**
+- Array of BookDetailsDto with availability
+
+**Response**
+- 200 OK
+
+**Example**
+```
+GET /api/books/search?category=Science&publisher=Oxford
+```
+
+---
+
+### Get Books Below Threshold (Admin Only)
+```
+GET /api/books/below-threshold
+```
+**Output**
+- Array of BookDetailsDto for books where quantity < threshold
+
+**Response**
+- 200 OK
+
+📌 Useful for monitoring inventory and verifying automatic order triggers
 
 ---
 
