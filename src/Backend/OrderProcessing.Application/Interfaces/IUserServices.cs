@@ -1,4 +1,4 @@
-using OrderProcessing.Application.DTOS.User;
+using OrderProcessing.Application.DTOs.User;
 
 namespace OrderProcessing.Application.Interfaces;
 

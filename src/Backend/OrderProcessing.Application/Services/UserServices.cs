@@ -1,4 +1,4 @@
-using OrderProcessing.Application.DTOS.User;
+using OrderProcessing.Application.DTOs.User;
 using OrderProcessing.Domain.Interfaces.Repositories;
 using OrderProcessing.Application.Interfaces;
 using OrderProcessing.Application.Security;
