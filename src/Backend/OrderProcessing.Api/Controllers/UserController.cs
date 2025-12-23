@@ -1,5 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
-using OrderProcessing.Application.DTOS.User;
+using OrderProcessing.Application.DTOs.User;
 using OrderProcessing.Application.Interfaces;
 
 namespace OrderProcessing.Api.Controllers

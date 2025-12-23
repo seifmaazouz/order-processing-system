@@ -1,4 +1,4 @@
-namespace OrderProcessing.Application.DTOS.User;
+namespace OrderProcessing.Application.DTOs.User;
 
 public record AuthResultDto(
     string AccessToken,
