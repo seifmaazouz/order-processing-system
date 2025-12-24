@@ -2,6 +2,7 @@
 // to wire concrete implementations to domain interfaces at startup. (No violations of layered architecture)
 using OrderProcessing.Api.Middleware;
 using OrderProcessing.Application.Interfaces;
+using OrderProcessing.Application.Security;
 using OrderProcessing.Application.Services;
 using OrderProcessing.Infrastructure;
 using Scalar.AspNetCore;
@@ -23,6 +24,8 @@ builder.Services.AddSwaggerGen();
 
 
 // Register application services
+builder.Services.AddScoped<IUserService, UserServices>();
+builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
 builder.Services.AddScoped<IBookService, BookService>();
 
 // Configure JSON options globally
