@@ -1,8 +1,29 @@
+name: order-processing-system
+
 services:
+  backend:
+    container_name: dotnet-backend
+    build:
+      context: ./src/Backend/
+    image: ordprosys/backend
+    pull_policy: never
+    depends_on:
+      - db
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development # or Production (set accordingly)
+      ASPNETCORE_URLS: "http://+:8080"
+      ConnectionStrings__PostgresConnection: "Host=postgres-db;Port=5432;Database=ordprosys;Username=postgres;Password=postgres"
+    ports:
+      - "8080:8080"
+    networks:
+      - net
+      
   db:
+    container_name: postgres-db
     build:
       context: ./src/Database/
     image: ordprosys/database
+    pull_policy: never
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
