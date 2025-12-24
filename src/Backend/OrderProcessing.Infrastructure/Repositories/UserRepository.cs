@@ -112,7 +112,6 @@ namespace OrderProcessing.Infrastructure.Repositories
 
             await connection.ExecuteAsync(sql, new
             {
-                user.Username,
                 user.Email,
                 user.PhoneNumber,
                 user.FirstName,
