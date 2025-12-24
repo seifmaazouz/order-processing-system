@@ -28,12 +28,12 @@ CREATE TABLE BookAuthor (
 
 CREATE TABLE "User" (
     Username VARCHAR(50) PRIMARY KEY,
-    "Password" VARCHAR(50) NOT NULL,
+    "Password" VARCHAR(150) NOT NULL,
     FirstName VARCHAR(50) NOT NULL,
     LastName VARCHAR(50) NOT NULL,
     ShipAddress VARCHAR(100) NOT NULL,
     Email VARCHAR(50),
-    PhoneNumber VARCHAR(15),
+    PhoneNumber VARCHAR(150),
     "Role" role_enum NOT NULL
 );
 

@@ -1,4 +1,4 @@
-@OrderProcessingApi_HostAddress = http://localhost:5094
+@OrderProcessingApi_HostAddress = http://localhost:8080
 
 POST {{OrderProcessingApi_HostAddress}}/api/user/register
 Content-Type: application/json
