@@ -31,7 +31,7 @@ CREATE TABLE "User" (
     "Password" VARCHAR(150) NOT NULL,
     FirstName VARCHAR(50) NOT NULL,
     LastName VARCHAR(50) NOT NULL,
-    ShipAddress VARCHAR(100) NOT NULL,
+    ShipAddress VARCHAR(100),
     Email VARCHAR(50),
     PhoneNumber VARCHAR(150),
     "Role" role_enum NOT NULL

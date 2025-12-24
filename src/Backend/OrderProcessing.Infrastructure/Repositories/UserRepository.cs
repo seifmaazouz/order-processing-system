@@ -68,12 +68,12 @@ namespace OrderProcessing.Infrastructure.Repositories
                 )
                 VALUES (
                     @Username,
-                    @Email,
-                    @PhoneNumber,
+                    @PasswordHash,
                     @FirstName,
                     @LastName,
                     @Address,
-                    @PasswordHash,
+                    @Email,
+                    @PhoneNumber,
                     @Role::role_enum
                 )
             """;
