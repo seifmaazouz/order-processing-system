@@ -21,7 +21,7 @@ DECLARE
 BEGIN
     IF NEW.Quantity < NEW.Threshold AND OLD.Quantity >= OLD.Threshold THEN
         INSERT INTO "Order"(OrderDate,"Status",TotalPrice,PubID,CustName)
-        VALUES (CURRENT_DATE,'Pending',order_quantity * NEW.SellingPrice,NEW.PubID, current_setting('postgres.current_user'));
+        VALUES (CURRENT_DATE,'Pending',order_quantity * NEW.SellingPrice,NEW.PubID, current_setting('myapp.current_user'));
 
         INSERT INTO OrderItem(ISBN,OrderNum,Quantity,UnitPrice)
         VALUES (
