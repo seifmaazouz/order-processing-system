@@ -18,12 +18,13 @@ namespace OrderProcessing.Infrastructure.Repositories
         {
             const string sql = """
                 SELECT
-                    order_number,
-                    total_price,
-                    status,
-                    order_date,
-                    user_id
-                FROM orders
+                    OrderID,
+                    OrderDate,
+                    "Status",
+                    TotalPrice,
+                    PubID,
+                    CustName
+                FROM "Order"
                 WHERE order_number = @OrderNumber
             """;
 
@@ -38,8 +39,8 @@ namespace OrderProcessing.Infrastructure.Repositories
                 return null;
 
             return new Order(
-                row.order_number,
-                (float)row.total_price,
+                row.OrderID,
+                (float)row.TotalPrice,
                 row.status,
                 DateOnly.FromDateTime(row.order_date),
                 row.user_id
@@ -49,7 +50,7 @@ namespace OrderProcessing.Infrastructure.Repositories
         public async Task AddAsync(Order order)
         {
             const string sql = """
-                INSERT INTO orders (
+                INSERT INTO "Order" (
                     order_number,
                     total_price,
                     status,
@@ -80,11 +81,11 @@ namespace OrderProcessing.Infrastructure.Repositories
         public async Task UpdateAsync(Order order)
         {
             const string sql = """
-                UPDATE orders
+                UPDATE "Order"
                 SET
-                    total_price = @TotalPrice,
-                    status = @Status
-                WHERE order_number = @OrderNumber
+                    TotalPrice = @TotalPrice,
+                    "Status" = @Status
+                WHERE OrderID = @OrderNumber
             """;
 
             using var connection = await _connectionFactory.CreateConnectionAsync();
@@ -100,8 +101,8 @@ namespace OrderProcessing.Infrastructure.Repositories
         public async Task DeleteAsync(int orderNumber)
         {
             const string sql = """
-                DELETE FROM orders
-                WHERE order_number = @OrderNumber
+                DELETE FROM "Order"
+                WHERE OrderID = @OrderNumber
             """;
 
             using var connection =await  _connectionFactory.CreateConnectionAsync();

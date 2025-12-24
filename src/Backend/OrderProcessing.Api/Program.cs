@@ -2,8 +2,13 @@
 // to wire concrete implementations to domain interfaces at startup. (No violations of layered architecture)
 using OrderProcessing.Api.Middleware;
 using OrderProcessing.Application.Interfaces;
+using OrderProcessing.Application.Security;
 using OrderProcessing.Application.Services;
+using OrderProcessing.Domain.Interfaces;
+using OrderProcessing.Domain.Interfaces.Repositories;
 using OrderProcessing.Infrastructure;
+using OrderProcessing.Infrastructure.Data;
+using OrderProcessing.Infrastructure.Repositories;
 using Scalar.AspNetCore;
 
 
@@ -24,6 +29,16 @@ builder.Services.AddSwaggerGen();
 
 // Register application services
 builder.Services.AddScoped<IBookService, BookService>();
+builder.Services.AddScoped<IUserService, UserServices>();
+builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
+// Register the IDbConnectionFactory with the connection string
+builder.Services.AddScoped<IDbConnectionFactory>(_ => new PostgresConnectionFactory(connectionString!));
+
+
+
+
+
 
 // Configure JSON options globally
 builder.Services.ConfigureHttpJsonOptions(options =>
