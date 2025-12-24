@@ -18,10 +18,10 @@ namespace OrderProcessing.Infrastructure.Repositories
         {
             const string sql = """
                 SELECT
-                    card_number,
-                    expiry_date
-                FROM credit_cards
-                WHERE card_number = @CardNumber
+                    CardNumber,
+                    ExpiryDate
+                FROM CreditCard
+                WHERE CardNumber = @CardNumber
             """;
 
             using var connection = await _connectionFactory.CreateConnectionAsync();
@@ -43,12 +43,12 @@ namespace OrderProcessing.Infrastructure.Repositories
         {
             const string sql = """
                 SELECT
-                    cc.card_number,
-                    cc.expiry_date
-                FROM credit_cards cc
-                INNER JOIN card_holders ch
-                    ON ch.card_number = cc.card_number
-                WHERE ch.username = @Username
+                    cc.CardNumber,
+                    cc.ExpiryDate
+                FROM CreditCard cc
+                INNER JOIN CardHolder ch
+                    ON ch.CardNumber = cc.CardNumber
+                WHERE ch.Username = @Username
             """;
 
             using var connection =await  _connectionFactory.CreateConnectionAsync();
@@ -70,9 +70,9 @@ namespace OrderProcessing.Infrastructure.Repositories
         public async Task AddAsync(CreditCard card, string username)
         {
             const string insertCardSql = """
-                INSERT INTO credit_cards (
-                    card_number,
-                    expiry_date
+                INSERT INTO CreditCard (
+                    CardNumber,
+                    ExpiryDate
                 )
                 VALUES (
                     @CardNumber,
@@ -81,9 +81,9 @@ namespace OrderProcessing.Infrastructure.Repositories
             """;
 
             const string insertHolderSql = """
-                INSERT INTO card_holders (
-                    card_number,
-                    username
+                INSERT INTO CardHolder (
+                    CardNumber,
+                    Username
                 )
                 VALUES (
                     @CardNumber,
@@ -129,13 +129,13 @@ namespace OrderProcessing.Infrastructure.Repositories
         public async Task DeleteAsync(string cardNumber)
         {
             const string deleteHolderSql = """
-                DELETE FROM card_holders
-                WHERE card_number = @CardNumber
+                DELETE FROM CardHolder
+                WHERE CardNumber = @CardNumber
             """;
 
             const string deleteCardSql = """
-                DELETE FROM credit_cards
-                WHERE card_number = @CardNumber
+                DELETE FROM CreditCard
+                WHERE CardNumber = @CardNumber
             """;
 
             using var connection = await _connectionFactory.CreateConnectionAsync();
