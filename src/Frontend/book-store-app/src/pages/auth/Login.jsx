@@ -5,31 +5,48 @@ import { loginUsers } from "../../api/login.api.js";
 import LoginForm from "../../components/login-form/LoginForm";
 import { useNavigate } from "react-router-dom";
 import Header from "../../components/shared/Header.jsx";
-
+import { set } from "zod";
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 export default function Login() {
   
   const [loading, setLoading] = useState(false);
+    const [incorrect, setIncorrect] = useState(false);
   const [resetForm, setResetForm] = useState(false);
 
   const onSubmit = async (data) => {
     setLoading(true);
 
     try {
+    setResetForm(false);
       const res = await loginUsers(data);
       console.log(data);
       console.log(res);
       localStorage.setItem("access", res.data.access);
       localStorage.setItem("refresh", res.data.refresh);
       localStorage.setItem("userId", data.username);
-      setResetForm(false);
-
-      alert("login success");
+      
+      setIncorrect(false);
+      setLoading(false);
+      toast.success("Login successful!", {
+        position: "top-center",
+        autoClose: 1500, // 3 seconds
+        hideProgressBar: false,
+        closeOnClick: true,
+        
+        draggable: true,
+      });
+      navigate('/dashboard');
     } catch (err) {
-      setResetForm(prev => !prev);
-      alert("login failed");
-    } finally {
-       
-    }
+      setResetForm(true);
+      setIncorrect(true);
+        setLoading(false);
+         toast.error("Login failed! Please check your credentials.", {
+        position: "bottom-center",
+        autoClose: 1500,
+      });
+      alert('Login failed! Please check your credentials.');
+    } 
   };
   return (
     <div className="light min-h-screen">

@@ -1,4 +1,5 @@
 import React from 'react'
+import { Link } from 'react-router-dom';
 
 export default function Header() {
   return (
@@ -15,15 +16,15 @@ export default function Header() {
         </div>
 
         <div className="hidden sm:flex flex-1 justify-end gap-8">
-          <a className="text-sm font-medium hover:text-primary transition-colors" href="#">
+          <Link className="text-sm font-medium hover:text-primary transition-colors" to="/">
             Home
-          </a>
-          <a className="text-sm font-medium hover:text-primary transition-colors" href="#">
+          </Link>
+          <Link className="text-sm font-medium hover:text-primary transition-colors" to="/about">
             About Us
-          </a>
-          <a className="text-sm font-medium hover:text-primary transition-colors" href="#">
+          </Link>
+          <Link className="text-sm font-medium hover:text-primary transition-colors" to="/contact">
             Contact
-          </a>
+          </Link>
         </div>
 
         <div className="flex sm:hidden">
