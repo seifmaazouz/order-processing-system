@@ -67,6 +67,18 @@ builder.Services.AddOpenApi(options =>
     });
 });
 
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("FrontendPolicy", policy =>
+    {
+        policy
+            .WithOrigins("http://localhost:5174") // your frontend URL
+            .AllowAnyHeader()
+            .AllowAnyMethod();
+    });
+});
+
 var app = builder.Build();
 
 // Register global exception handling middleware
@@ -95,5 +107,6 @@ if (app.Environment.IsDevelopment())
 app.MapGet("/", () => "This is the Order Processing API Root!");
 
 app.MapControllers();
+app.UseCors("FrontendPolicy");
 
 app.Run();

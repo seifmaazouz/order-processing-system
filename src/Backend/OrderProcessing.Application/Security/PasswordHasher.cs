@@ -6,14 +6,17 @@ namespace OrderProcessing.Application.Security
     {
         private readonly PasswordHasher<object> _hasher = new();
 
-        string IPasswordHasher.HashPassword(string password)
+        // Hash a plain password
+        public string HashPassword(string password)
         {
-            throw new NotImplementedException();
+            return _hasher.HashPassword(null, password);
         }
 
-        bool IPasswordHasher.Verify(string password, string passwordHash)
+        // Verify a password against a stored hash
+        public bool Verify(string password, string passwordHash)
         {
-            throw new NotImplementedException();
+            var result = _hasher.VerifyHashedPassword(null, passwordHash, password);
+            return result == PasswordVerificationResult.Success;
         }
     }
 }

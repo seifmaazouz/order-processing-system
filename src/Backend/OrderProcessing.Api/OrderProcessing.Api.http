@@ -1,6 +1,18 @@
 @OrderProcessingApi_HostAddress = http://localhost:5094
 
-GET {{OrderProcessingApi_HostAddress}}/weatherforecast/
+POST {{OrderProcessingApi_HostAddress}}/api/user/register
+Content-Type: application/json
 Accept: application/json
+
+{
+  "username": "mohamed.test123",
+  "firstName": "Mohamed",
+  "lastName": "Shal",
+  "phoneNumber": "+201001234567",
+  "email": "mohamed.test123@example.com",
+  "password": "StrongPassword123!",
+  "role": "Customer"
+}
+
 
 ###
