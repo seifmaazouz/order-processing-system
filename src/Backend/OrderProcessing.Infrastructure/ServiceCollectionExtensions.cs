@@ -17,6 +17,7 @@ public static class ServiceCollectionExtensions
 
         // Register repositories
         services.AddScoped<IBookRepository, BookRepository>();
+        services.AddScoped<IUserRepository, UserRepository>();
 
         return services;
     }
