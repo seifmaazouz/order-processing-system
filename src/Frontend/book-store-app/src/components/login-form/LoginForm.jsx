@@ -1,13 +1,19 @@
-import React, { useEffect } from 'react'
+import React, { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ThreeCircles } from 'react-loader-spinner';    
 import { loginSchema } from "../../schemas/loginSchema";
+import ErrorMsg from '../shared/ErrorMsg';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faEye, faEyeSlash } from '@fortawesome/free-solid-svg-icons';
 export default function LoginForm({ onSubmit, resetForm , loading}) {
     const { register, handleSubmit, formState: { errors }, reset } = useForm({ resolver: zodResolver(loginSchema) });
+    const [showPassword, setShowPassword] = useState(false);
     useEffect(() => {
         if (resetForm) {
-            reset({ password: '' });
+            reset({ username: '',
+                password: '' });
         }
     }, [resetForm]);
     return (
@@ -30,23 +36,34 @@ export default function LoginForm({ onSubmit, resetForm , loading}) {
                         {...register("username")}
                         className="h-14 rounded-xl border border-border-color px-4 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
                     />
-                    {errors.username && <p className="text-red-500 text-sm">{errors.username.message}</p>}
+                    {errors.username && <ErrorMsg error={errors.username.message} />}
                 </label>
 
                 <label className="flex flex-col gap-2">
                     <div className="flex justify-between">
                         <span className="font-medium">Password</span>
-                        <a className="text-sm text-primary hover:text-primary-hover" href="#">
-                            Forgot Password?
-                        </a>
+                        <Link className="text-sm text-primary hover:text-primary-hover" to="/forgot-password">
+                                Forgot Password?
+                            </Link>
                     </div>
-                    <input
-                        type="password"
-                        placeholder="********"
-                        {...register("password")}
-                        className="h-14 rounded-xl border border-border-color px-4 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
-                    />
-                    {errors.password && <p className="text-red-500 text-sm">{errors.password.message}</p>}
+                    <div className="flex rounded-xl border border-border-color overflow-hidden items-center">
+                        <input
+                            type={showPassword ? 'text' : 'password'}
+                            placeholder="********"
+                            {...register("password")}
+                            className="flex-1 h-14 px-4 outline-none"
+                        />
+                        <button
+                            type="button"
+                            onClick={() => setShowPassword(s => !s)}
+                            className="flex items-center px-4 cursor-pointer"
+                            aria-label={showPassword ? "Hide password" : "Show password"}
+                            title={showPassword ? "Hide password" : "Show password"}
+                        >
+                            <FontAwesomeIcon icon={showPassword ? faEye : faEyeSlash} />
+                        </button>
+                    </div>
+                    {errors.password && <ErrorMsg error={errors.password.message} />}
                 </label>
 
                 <button className="h-14 rounded-full bg-primary hover:bg-primary-hover text-white font-bold transition-all"
@@ -70,9 +87,9 @@ export default function LoginForm({ onSubmit, resetForm , loading}) {
 
             <p className="text-center">
                 New here?{" "}
-                <a className="font-bold hover:underline decoration-primary" href="#">
+                <Link className="font-bold hover:underline decoration-primary" to="/register">
                     Create an Account
-                </a>
+                </Link>
             </p>
         </div>
     )
