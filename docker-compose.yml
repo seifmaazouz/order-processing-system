@@ -17,6 +17,7 @@ services:
       - "8080:8080"
     networks:
       - net
+    
       
   db:
     container_name: postgres-db

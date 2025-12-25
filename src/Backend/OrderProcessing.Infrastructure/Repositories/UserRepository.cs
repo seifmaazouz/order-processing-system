@@ -19,16 +19,16 @@ namespace OrderProcessing.Infrastructure.Repositories
         {
             const string sql = """
                 SELECT
-                    username,
-                    email,
-                    phone_number     AS PhoneNumber,
-                    first_name       AS FirstName,
-                    last_name        AS LastName,
-                    address,
-                    password_hash    AS PasswordHash,
-                    role
-                FROM users
-                WHERE username = @Username
+                    Username,
+                    "Password",    
+                    FirstName,    
+                    LastName,        
+                    ShipAddress,
+                    Email,
+                    PhoneNumber,     
+                    "Role"
+                FROM "User"
+                WHERE Username = @Username
             """;
 
             using var connection = await _connectionFactory.CreateConnectionAsync();
@@ -56,25 +56,25 @@ namespace OrderProcessing.Infrastructure.Repositories
         public async Task AddAsync(User user)
         {
             const string sql = """
-                INSERT INTO users (
-                    username,
-                    email,
-                    phone_number,
-                    first_name,
-                    last_name,
-                    address,
-                    password_hash,
-                    role
+                INSERT INTO "User" (
+                    Username,
+                    "Password",    
+                    FirstName,    
+                    LastName,        
+                    ShipAddress,
+                    Email,
+                    PhoneNumber,     
+                    "Role"
                 )
                 VALUES (
                     @Username,
-                    @Email,
-                    @PhoneNumber,
+                    @PasswordHash,
                     @FirstName,
                     @LastName,
                     @Address,
-                    @PasswordHash,
-                    @Role
+                    @Email,
+                    @PhoneNumber,
+                    @Role::role_enum
                 )
             """;
 
@@ -89,22 +89,22 @@ namespace OrderProcessing.Infrastructure.Repositories
                 user.LastName,
                 user.Address,
                 user.PasswordHash,
-                Role = (int)user.Role
+                Role = user.Role.ToString()
             });
         }
 
         public async Task UpdateAsync(User user)
         {
             const string sql = """
-                UPDATE users
+                UPDATE "User"
                 SET
-                    email = @Email,
-                    phone_number = @PhoneNumber,
-                    first_name = @FirstName,
-                    last_name = @LastName,
-                    address = @Address,
-                    password_hash = @PasswordHash,
-                    role = @Role
+                    Email = @Email,
+                    PhoneNumber = @PhoneNumber,
+                    FirstName = @FirstName,
+                    LastName = @LastName,
+                    ShipAddress = @Address,
+                    "Password" = @PasswordHash,
+                    "Role" = @Role
                 WHERE username = @Username
             """;
 
@@ -119,15 +119,15 @@ namespace OrderProcessing.Infrastructure.Repositories
                 user.LastName,
                 user.Address,
                 user.PasswordHash,
-                Role = (int)user.Role
+                Role = user.Role.ToString()
             });
         }
 
         public async Task DeleteAsync(string username)
         {
             const string sql = """
-                DELETE FROM users
-                WHERE username = @Username
+                DELETE FROM User
+                WHERE Username = @Username
             """;
 
             using var connection = await _connectionFactory.CreateConnectionAsync();

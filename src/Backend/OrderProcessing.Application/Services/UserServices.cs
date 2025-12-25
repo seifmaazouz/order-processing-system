@@ -25,7 +25,7 @@ namespace OrderProcessing.Application.Services
 
         public async Task<UserDto> CreateAsync(CreateUserRequest request)
         {
-            var existedUser= _userRepository.GetByUserNameAsync(request.Username);
+            var existedUser=await  _userRepository.GetByUserNameAsync(request.Username);
             if(existedUser is not null)
             {
                 throw new InvalidOperationException("Username already exists");
