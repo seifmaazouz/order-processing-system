@@ -20,12 +20,12 @@ namespace OrderProcessing.Infrastructure.Repositories
             const string sql = """
                 SELECT
                     Username,
-                    "Password",    
-                    FirstName,    
-                    LastName,        
+                    "Password",
+                    FirstName,
+                    LastName,
                     ShipAddress,
                     Email,
-                    PhoneNumber,     
+                    PhoneNumber,
                     "Role"
                 FROM "User"
                 WHERE Username = @Username
@@ -33,25 +33,33 @@ namespace OrderProcessing.Infrastructure.Repositories
 
             using var connection = await _connectionFactory.CreateConnectionAsync();
 
-            var result = await connection.QuerySingleOrDefaultAsync<dynamic>(
+            var row = await connection.QuerySingleOrDefaultAsync<UserRow>(
                 sql,
                 new { Username = username }
             );
 
-            if (result is null)
+            if (row is null)
                 return null;
 
+            // Safely parse the role, default to Customer if null/empty/invalid
+            UserTypes role = UserTypes.Customer;
+            if (!string.IsNullOrWhiteSpace(row.Role))
+            {
+                Enum.TryParse<UserTypes>(row.Role, true, out role);
+            }
+
             return new User(
-                result.username,
-                result.email,
-                result.phonenumber,
-                result.firstname,
-                result.lastname,
-                result.passwordhash,
-                (UserTypes)result.role,
-                result.address
+                row.Username,
+                row.Email,
+                row.PhoneNumber,
+                row.FirstName,
+                row.LastName,
+                row.Password,
+                role,
+                row.ShipAddress
             );
         }
+
 
         public async Task AddAsync(User user)
         {
@@ -61,7 +69,6 @@ namespace OrderProcessing.Infrastructure.Repositories
                     "Password",    
                     FirstName,    
                     LastName,        
-                    ShipAddress,
                     Email,
                     PhoneNumber,     
                     "Role"
@@ -71,7 +78,6 @@ namespace OrderProcessing.Infrastructure.Repositories
                     @PasswordHash,
                     @FirstName,
                     @LastName,
-                    @Address,
                     @Email,
                     @PhoneNumber,
                     @Role::role_enum
@@ -83,13 +89,13 @@ namespace OrderProcessing.Infrastructure.Repositories
             await connection.ExecuteAsync(sql, new
             {
                 user.Username,
-                user.Email,
-                user.PhoneNumber,
+                user.PasswordHash,
                 user.FirstName,
                 user.LastName,
-                user.Address,
-                user.PasswordHash,
-                Role = user.Role.ToString()
+                user.Email,
+                user.PhoneNumber,
+                Role = user.Role.ToString(),
+                user.Address
             });
         }
 
@@ -112,7 +118,6 @@ namespace OrderProcessing.Infrastructure.Repositories
 
             await connection.ExecuteAsync(sql, new
             {
-                user.Username,
                 user.Email,
                 user.PhoneNumber,
                 user.FirstName,
@@ -134,5 +139,16 @@ namespace OrderProcessing.Infrastructure.Repositories
 
             await connection.ExecuteAsync(sql, new { Username = username });
         }
+        private record UserRow(
+            string Username,
+            string Password,
+            string FirstName,
+            string LastName,
+            string? ShipAddress,
+            string Email,
+            string PhoneNumber,
+            string? Role
+        );
+
     }
 }

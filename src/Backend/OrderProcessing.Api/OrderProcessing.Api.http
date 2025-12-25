@@ -5,7 +5,7 @@ Content-Type: application/json
 Accept: application/json
 
 {
-  "username": "mohamed.test123",
+  "username": "mohamed.test11",
   "firstName": "Mohamed",
   "lastName": "Shal",
   "phoneNumber": "+201001234567",
@@ -14,5 +14,13 @@ Accept: application/json
   "role": "Customer"
 }
 
+####
+POST {{OrderProcessingApi_HostAddress}}/api/user/login
+Content-Type: application/json
+Accept: application/json
 
-###
+{
+  "username": "mohamed.test11",
+  "password": "StrongPassword123!"
+  
+}
