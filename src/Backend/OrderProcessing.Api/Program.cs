@@ -6,6 +6,7 @@ using OrderProcessing.Application.Security;
 using OrderProcessing.Application.Services;
 using OrderProcessing.Infrastructure;
 using Scalar.AspNetCore;
+using System.Text.Json.Serialization;
 
 
 var builder = WebApplication.CreateBuilder(args);
