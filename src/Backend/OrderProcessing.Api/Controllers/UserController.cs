@@ -36,6 +36,29 @@ namespace OrderProcessing.Api.Controllers
                 return StatusCode(500, new { message = ex.Message });
             }
         }
+        [HttpPost("login")]
+        public async Task<IActionResult> Login([FromBody] LoginRequest request)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
+
+        try
+        {
+            // Call the application service to authenticate and generate JWT
+            AuthResultDto authResult = await _userService.LoginAsync(request);
+
+            // Return token and expiry
+            return Ok(authResult);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Unauthorized(new { message = "Invalid username or password" });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "An error occurred", detail = ex.Message });
+        }
+    }
         
     }
 }

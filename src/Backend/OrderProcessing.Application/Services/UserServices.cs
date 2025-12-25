@@ -10,13 +10,16 @@ namespace OrderProcessing.Application.Services
     {
         private readonly IUserRepository _userRepository;
         private readonly IPasswordHasher _passwordHasher;
+        private readonly IJwtService _jwtService;
         public UserServices(
         IUserRepository userRepository,
-        IPasswordHasher passwordHasher
+        IPasswordHasher passwordHasher,
+        IJwtService jwtService
         )
     {
         _userRepository = userRepository;
         _passwordHasher=passwordHasher;
+        _jwtService=jwtService;
     }
         public Task ChangePasswordAsync(ChangePasswordRequest request)
         {
@@ -63,10 +66,22 @@ namespace OrderProcessing.Application.Services
             throw new NotImplementedException();
         }
 
-        public Task<AuthResultDto> LoginAsync(LoginRequest request)
+        public async Task<AuthResultDto> LoginAsync(LoginRequest request)
         {
-            throw new NotImplementedException();
+            var user = await _userRepository.GetByUserNameAsync(request.Username);
+            
+            if (user == null || !_passwordHasher.Verify(request.Password, user.PasswordHash))
+                throw new UnauthorizedAccessException("Invalid credentials");
+
+            // Generate JWT
+            var token = _jwtService.GenerateToken(user.Username, user.Role);
+
+            return new AuthResultDto(
+                AccessToken: token,
+                ExpiresAt: DateTime.UtcNow.AddMinutes(60) // hard coded
+            );
         }
+
 
         public Task<UserDto> UpdateAsync(UpdateUserRequest request)
         {
