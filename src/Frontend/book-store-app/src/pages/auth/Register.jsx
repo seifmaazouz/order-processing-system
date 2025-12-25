@@ -21,9 +21,15 @@ export default function Register() {
 
   const onSubmit = async (data) => {
     setLoading(true);
+    
     try {
       setResetForm(false);
-      const res= await registerUser(data);
+      const payload = {
+        ...data,
+        role: "Customer"
+      };
+      console.log('register data', payload);
+      const res= await registerUser(payload);
       console.log('register data', res);
       setLoading(false);
          
@@ -38,6 +44,7 @@ export default function Register() {
       
       navigate('/login');
     } catch (err) {
+        console.error('Registration error:', err);
       setLoading(false);
       setResetForm(true);
          toast.error("Registration failed! Please check your details.", {

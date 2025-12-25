@@ -1,11 +1,13 @@
+import axios from "axios";
+
 export async function registerUser(data) {
-    const token= await axios.post(`http://localhost:8000/api/register/`,data,{
+    const token= await axios.post(`http://localhost:8080/api/user/register`,data,{
         headers:{
-            "content-type":"application/json",
+            "Content-Type":"application/json",
         },
     });
   
     
-    return token;
+    return token.data;
 
 }
