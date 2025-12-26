@@ -44,7 +44,7 @@ WHERE o."Status" = 'Confirmed'
   AND o.OrderDate >= CURRENT_DATE - INTERVAL '3 months' 
   AND o.OrderDate <= CURRENT_DATE
 GROUP BY b.ISBN, b.Title
-ORDER BY revenue DESC
+ORDER BY Total_No_of_Copies DESC
 LIMIT 10;
 
 --e)
@@ -53,4 +53,5 @@ FROM OrderItem AS oi
 JOIN "Order" AS o ON oi.OrderNum = o.OrderID
 JOIN "User" AS u ON o.CustName = u.Username
 WHERE u."Role" = 'Admin'
-GROUP BY oi.ISBN;
+GROUP BY oi.ISBN
+ORDER BY Total_No_of_Orders DESC;
