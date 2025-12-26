@@ -54,6 +54,7 @@ builder.Services.AddScoped<IUserService, UserServices>();
 builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
 builder.Services.AddScoped<IBookService, BookService>();
 builder.Services.AddScoped<IJwtService, JwtService>();
+builder.Services.AddScoped<IReportService, ReportService>();
 
 
 // Configure JSON options globally
@@ -125,7 +126,7 @@ if (app.Environment.IsDevelopment())
     {
         options.WithTitle("Order System API")
                .WithTheme(ScalarTheme.Moon)
-               .WithDefaultHttpClient(ScalarTarget.JavaScript, ScalarClient.HttpClient);
+               .WithDefaultHttpClient(ScalarTarget.JavaScript, ScalarClient.Axios);
     });
 
     // Swagger UI (optional) - Remove if team is comfortable with Scalar UI
