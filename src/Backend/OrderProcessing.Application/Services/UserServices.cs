@@ -3,6 +3,7 @@ using OrderProcessing.Domain.Interfaces.Repositories;
 using OrderProcessing.Application.Interfaces;
 using OrderProcessing.Application.Security;
 using OrderProcessing.Domain.Entities;
+using OrderProcessing.Domain.ValueObjects;
 
 namespace OrderProcessing.Application.Services
 {
@@ -41,7 +42,7 @@ namespace OrderProcessing.Application.Services
                  request.FirstName,
                  request.LastName,
                  password,
-                 request.Role
+                role: UserTypes.Customer
             );
             await _userRepository.AddAsync(user);
             return new UserDto(
