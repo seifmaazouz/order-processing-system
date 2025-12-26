@@ -1,3 +1,4 @@
+using OrderProcessing.Application.DTOs.Requests;
 using OrderProcessing.Application.DTOs.User;
 
 namespace OrderProcessing.Application.Interfaces;

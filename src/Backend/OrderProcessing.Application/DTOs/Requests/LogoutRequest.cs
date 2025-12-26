@@ -1,4 +1,4 @@
-namespace OrderProcessing.Application.DTOs.User
+namespace OrderProcessing.Application.DTOs.Requests
 {
     public record LogoutRequest
     {
@@ -7,3 +7,5 @@ namespace OrderProcessing.Application.DTOs.User
     }
     
 }
+
+    

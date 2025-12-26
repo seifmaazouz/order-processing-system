@@ -1,9 +1,11 @@
-using OrderProcessing.Application.DTOs.User;
+using OrderProcessing.Application.DTOs.Requests;
 using OrderProcessing.Domain.Interfaces.Repositories;
 using OrderProcessing.Application.Interfaces;
 using OrderProcessing.Application.Security;
 using OrderProcessing.Domain.Entities;
 using OrderProcessing.Domain.ValueObjects;
+using OrderProcessing.Application.DTOs.User;
+
 
 namespace OrderProcessing.Application.Services
 {
@@ -96,7 +98,7 @@ namespace OrderProcessing.Application.Services
         {
             throw new NotImplementedException();
         }
-    }
 
+    }
 
 }

@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using OrderProcessing.Application.DTOs.User;
+using OrderProcessing.Application.DTOs.Requests;
 using OrderProcessing.Application.Interfaces;
 
 namespace OrderProcessing.Api.Controllers
