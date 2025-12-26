@@ -10,9 +10,9 @@ namespace OrderProcessing.Api.Controllers
     [Route("api/[controller]")]
     public class AuthController:ControllerBase
     {
-         private readonly IUserService _userService;
+         private readonly IAuthService _userService;
 
-        public AuthController(IUserService userService)
+        public AuthController(IAuthService userService)
         {
             _userService = userService;
         }
@@ -80,5 +80,10 @@ namespace OrderProcessing.Api.Controllers
                 return StatusCode(500, new { message = ex.Message });
             }
         }
+        // [HttpPost("logout")]
+        // public async Task<IActionResult> Logout(LogoutRequest request)
+        // {
+            
+        // }
     }
 }

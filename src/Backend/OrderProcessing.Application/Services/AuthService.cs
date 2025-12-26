@@ -7,12 +7,12 @@ using OrderProcessing.Domain.ValueObjects;
 
 namespace OrderProcessing.Application.Services
 {
-    public class UserServices : IUserService
+    public class AuthService : IAuthService
     {
         private readonly IUserRepository _userRepository;
         private readonly IPasswordHasher _passwordHasher;
         private readonly IJwtService _jwtService;
-        public UserServices(
+        public AuthService(
         IUserRepository userRepository,
         IPasswordHasher passwordHasher,
         IJwtService jwtService
@@ -92,25 +92,7 @@ namespace OrderProcessing.Application.Services
             );
         }
 
-
-        public Task DeleteAsync(int userId)
-        {
-            throw new NotImplementedException();
-        }
-
-        public Task<IReadOnlyList<UserDto>> GetAllAsync()
-        {
-            throw new NotImplementedException();
-        }
-
-        public Task<UserDto> GetByUsernameAsync(string Username)
-        {
-            throw new NotImplementedException();
-        }
-
-
-
-        public Task<UserDto> UpdateAsync(UpdateUserRequest request)
+        public Task<string> LogoutAsync(LogoutRequest request)
         {
             throw new NotImplementedException();
         }

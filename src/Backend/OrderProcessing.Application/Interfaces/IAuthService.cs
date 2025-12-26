@@ -1,0 +1,12 @@
+using OrderProcessing.Application.DTOs.User;
+
+namespace OrderProcessing.Application.Interfaces;
+
+public interface IAuthService
+{
+    Task<UserDto> CreateAsync(CreateUserRequest request);
+    Task<AuthResultDto> LoginAsync(LoginRequest request);
+    Task<UserDto> CreateAdminAsync(CreateUserRequest request);
+    // needs to be implemented including shopping cart
+    Task<string> LogoutAsync(LogoutRequest request);
+}
