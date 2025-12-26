@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using OrderProcessing.Application.DTOs.Reports;
+using OrderProcessing.Application.DTOs;
 using OrderProcessing.Application.Interfaces;
 
 namespace OrderProcessing.Api.Controllers;
