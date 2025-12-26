@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/dotnet/sdk:10.0 as build
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /Backend
 COPY OrderProcessing.Api/OrderProcessing.Api.csproj OrderProcessing.Api/
 COPY OrderProcessing.Application/OrderProcessing.Application.csproj OrderProcessing.Application/

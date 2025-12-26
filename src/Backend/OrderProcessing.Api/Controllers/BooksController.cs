@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using OrderProcessing.Application.DTOs.Book;
 using OrderProcessing.Application.Interfaces;
 using OrderProcessing.Api.Models;
+using Microsoft.AspNetCore.Authorization;
 
 [ApiController]
 [Route("api/[controller]")]
@@ -22,7 +23,7 @@ public class BooksController : ControllerBase
     public async Task<Results<Ok<BookDetailsDto>, NotFound<ErrorResponse>>> GetBookByISBN(string isbn)
     {
         var bookDetails = await _bookService.GetBookByISBNAsync(isbn);
-        if (bookDetails == null) return TypedResults.NotFound(new ErrorResponse($"Book with ISBN {isbn} not found.", 404));
+        if (bookDetails == null) return TypedResults.NotFound(new ErrorResponse($"Book with ISBN '{isbn}' not found.", 404));
         
         return TypedResults.Ok(bookDetails);
     }
@@ -34,6 +35,7 @@ public class BooksController : ControllerBase
         return TypedResults.Ok(books);
     }
 
+    // [Authorize (Roles = "Admin")]
     [HttpPost]
     public async Task<Results<Created<BookDetailsDto>, BadRequest<ErrorResponse>, Conflict<ErrorResponse>>> AddBook([FromBody] CreateBookDto dto)
     {
@@ -41,6 +43,7 @@ public class BooksController : ControllerBase
         return TypedResults.Created($"/api/books/{createdBook.ISBN}", createdBook);
     }
 
+    // [Authorize (Roles = "Admin")]
     [HttpPut("{isbn}")]
     public async Task<Results<NoContent, NotFound<ErrorResponse>, BadRequest<ErrorResponse>>> UpdateBook(string isbn, [FromBody] UpdateBookDto dto)
     {
@@ -48,6 +51,7 @@ public class BooksController : ControllerBase
         return TypedResults.NoContent();
     }
 
+    // [Authorize (Roles = "Admin")]
     [HttpDelete("{isbn}")]
     public async Task<Results<NoContent, NotFound<ErrorResponse>>> DeleteBook(string isbn)
     {

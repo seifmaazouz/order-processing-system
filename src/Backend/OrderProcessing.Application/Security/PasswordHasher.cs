@@ -9,13 +9,13 @@ namespace OrderProcessing.Application.Security
         // Hash a plain password
         public string HashPassword(string password)
         {
-            return _hasher.HashPassword(null, password);
+            return _hasher.HashPassword(null!, password);
         }
 
         // Verify a password against a stored hash
         public bool Verify(string password, string passwordHash)
         {
-            var result = _hasher.VerifyHashedPassword(null, passwordHash, password);
+            var result = _hasher.VerifyHashedPassword(null!, passwordHash, password);
             return result == PasswordVerificationResult.Success;
         }
     }

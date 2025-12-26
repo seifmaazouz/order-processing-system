@@ -26,9 +26,8 @@ public class ReportsController : ControllerBase
     }
 
     // b) The total sales for books on a certain day
-    // Usage: GET /api/reports/total-sales/by-date?date=2025-01-01
     [HttpGet("total-sales/by-date")]
-    public async Task<ActionResult<SalesReportDto>> GetTotalSalesByDate([FromQuery] DateTime date)
+    public async Task<ActionResult<SalesReportDto>> GetTotalSalesByDate([FromQuery] DateOnly? date) // nullable because if no input, model would have defaulted to 0001-01-01
     {
         var result = await _reportService.GetTotalSalesByDateAsync(date);
         return Ok(result);
@@ -51,7 +50,6 @@ public class ReportsController : ControllerBase
     }
 
     // e) Total Number of Times a Specific Book Has Been Ordered (Replenishment)
-    // Usage: GET /api/reports/book-order-count?isbn=978-3-16-148410-0
     [HttpGet("book-order-count")]
     public async Task<ActionResult<BookReplenishmentCountDto>> GetBookOrderCount([FromQuery] string isbn)
     {

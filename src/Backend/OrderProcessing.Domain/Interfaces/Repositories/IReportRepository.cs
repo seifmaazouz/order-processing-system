@@ -1,6 +1,6 @@
 using OrderProcessing.Domain.Models;
 
-namespace OrderProcessing.Domain.Repositories
+namespace OrderProcessing.Domain.Interfaces.Repositories
 {
     public interface IReportRepository
     {
@@ -8,7 +8,7 @@ namespace OrderProcessing.Domain.Repositories
         Task<SalesReportReadModel> GetTotalSalesPreviousMonthAsync();
 
         // b) The total sales for books on a certain day
-        Task<SalesReportReadModel> GetTotalSalesByDateAsync(DateTime date);
+        Task<SalesReportReadModel> GetTotalSalesByDateAsync(DateOnly date);
 
         // c) Top 5 Customers (Last 3 Months)
         Task<IEnumerable<TopCustomerReadModel>> GetTop5CustomersAsync();

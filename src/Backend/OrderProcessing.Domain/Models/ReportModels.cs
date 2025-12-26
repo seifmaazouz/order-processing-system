@@ -4,13 +4,12 @@ public record SalesReportReadModel
 (
     string Period,
     decimal TotalSalesAmount,
-    int TotalTransactionCount
+    long TotalTransactionCount
 );
 
 public record TopCustomerReadModel
 (
     string CustomerName,
-    string Email,
     decimal TotalSpent
 );
 
@@ -18,12 +17,12 @@ public record TopSellingBookReadModel
 (
     string ISBN,
     string Title,
-    int TotalCopiesSold
+    long TotalCopiesSold
 );
 
 public record BookReplenishmentCountReadModel
 (
     string ISBN,
     string Title,
-    int TimesOrderedFromPublisher
+    long TimesOrderedFromPublisher
 );
