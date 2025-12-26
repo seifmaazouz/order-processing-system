@@ -28,7 +28,8 @@ namespace OrderProcessing.Application.Services
             new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
         };
 
-        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings["Secret"]));
+        var secret = jwtSettings["Secret"] ?? throw new ArgumentNullException("JwtSettings:Secret", "JWT secret key is not configured.");
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret));
         var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
         var token = new JwtSecurityToken(
