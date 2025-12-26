@@ -62,8 +62,7 @@ public static class BookMappingExtensions
     {
         return new BookSearchFilter
         (
-            ISBN: dto.ISBN,
-            Title: dto.Title,
+            Search: dto.Search,
             Category: dto.Category?.ToString(),
             Author: dto.Author,
             Publisher: dto.Publisher
