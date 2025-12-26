@@ -67,7 +67,7 @@ namespace OrderProcessing.Api.Controllers
 
             try
             {
-                var user = await _userService.CreateAsync(request);
+                var user = await _userService.CreateAdminAsync(request);
                 return CreatedAtAction(nameof(Register), new { username = user.Username }, user);
             }
             catch (InvalidOperationException ex)
@@ -79,7 +79,6 @@ namespace OrderProcessing.Api.Controllers
             {
                 return StatusCode(500, new { message = ex.Message });
             }
-        
         }
     }
 }

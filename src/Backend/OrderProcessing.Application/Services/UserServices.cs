@@ -67,23 +67,28 @@ namespace OrderProcessing.Application.Services
                 Role: user.Role.ToString() 
             );
         }
-        public async Task<AuthResultDto> LoginAdminAsync(LoginRequest request)
+        public async Task<UserDto> CreateAdminAsync(CreateUserRequest request)
         {
-            var user = await _userRepository.GetByUserNameAsync(request.Username);
-
-            if (user == null || !_passwordHasher.Verify(request.Password, user.PasswordHash))
-                throw new UnauthorizedAccessException("Invalid credentials");
-
-            if (user.Role != UserTypes.Admin) // check enum
-                throw new UnauthorizedAccessException("Only admins can login here");
-
-            // Generate JWT
-            var token = _jwtService.GenerateToken(user.Username, user.Role);
-
-            return new AuthResultDto(
-                AccessToken: token,
-                ExpiresAt: DateTime.UtcNow.AddMinutes(60),
-                Role: user.Role.ToString()
+            var existedUser=await  _userRepository.GetByUserNameAsync(request.Username);
+            if(existedUser is not null)
+            {
+                throw new InvalidOperationException("Username already exists");
+            }
+            string password=_passwordHasher.HashPassword(request.Password);
+            var user = new User(
+                 request.Username,
+                 request.Email,
+                 request.PhoneNumber,
+                 request.FirstName,
+                 request.LastName,
+                 password,
+                role: UserTypes.Customer
+            );
+            await _userRepository.AddAsync(user);
+            return new UserDto(
+                user.Username,
+                user.Email,
+                user.Role.ToString()
             );
         }
 

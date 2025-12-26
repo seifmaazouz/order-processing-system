@@ -6,6 +6,7 @@ public interface IUserService
 {
     Task<UserDto> CreateAsync(CreateUserRequest request);
     Task<AuthResultDto> LoginAsync(LoginRequest request);
+    Task<UserDto> CreateAdminAsync(CreateUserRequest request);
     Task<UserDto> UpdateAsync(UpdateUserRequest request);
     Task DeleteAsync(int userId);
 
