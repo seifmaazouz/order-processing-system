@@ -27,8 +27,9 @@ builder.Services.AddSwaggerGen();
 
 //JWT tokens
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
+var secretKey = Encoding.UTF8.GetBytes(jwtSettings["Secret"]);
 var secret = jwtSettings["Secret"] ?? throw new InvalidOperationException("JWT Secret is not configured.");
-var secretKey = Encoding.UTF8.GetBytes(secret);
+
 
 builder.Services.AddAuthentication(options =>
 {

@@ -1,8 +1,8 @@
 @OrderProcessingApi_HostAddress = http://localhost:8080
-
-POST {{OrderProcessingApi_HostAddress}}/api/user/register
+# Register customer
+POST {{OrderProcessingApi_HostAddress}}/api/auth/register
 Content-Type: application/json
-Accept: application/json
+Accept: application/json"
 
 {
   "username": "mohamed.test11",
@@ -10,12 +10,12 @@ Accept: application/json
   "lastName": "Shal",
   "phoneNumber": "+201001234567",
   "email": "mohamed.test123@example.com",
-  "password": "StrongPassword123!",
-  "role": "Customer"
+  "password": "StrongPassword123!"
 }
 
 ####
-POST {{OrderProcessingApi_HostAddress}}/api/user/login
+# Login customer
+POST {{OrderProcessingApi_HostAddress}}/api/auth/login
 Content-Type: application/json
 Accept: application/json
 
@@ -24,3 +24,47 @@ Accept: application/json
   "password": "StrongPassword123!"
   
 }
+###
+# Login admin to get token
+POST {{OrderProcessingApi_HostAddress}}/api/auth/login
+Content-Type: application/json
+Accept: application/json
+
+{
+  "username": "admin1@example.com",
+  "password": "3456789012"
+  
+}
+###
+# Register admin using customer
+POST {{OrderProcessingApi_HostAddress}}/api/auth/register-admin
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJtb2hhbWVkLnRlc3QxMSIsImh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vd3MvMjAwOC8wNi9pZGVudGl0eS9jbGFpbXMvcm9sZSI6IkN1c3RvbWVyIiwianRpIjoiY2I5YmIyZDktNjI0ZC00NDhlLWJmMzctMjkyYWVhMjdiZWRjIiwiZXhwIjoxNzY2NzgzNjEzLCJpc3MiOiJPcmRlclByb2Nlc3NpbmdBUEkiLCJhdWQiOiJPcmRlclByb2Nlc3NpbmdDbGllbnQifQ.Z4M3K636_qushlkRZ_dp8JCjOvAEIVSHeCaQroly5ig"
+
+{
+  "username": "another.admin",
+  "firstName": "Another",
+  "lastName": "Admin",
+  "phoneNumber": "+201001234570",
+  "email": "another.admin@example.com",
+  "password": "AnotherStrongAdmin123!",
+  "role": "Admin"
+}
+###
+# Register admin using admin
+POST {{OrderProcessingApi_HostAddress}}/api/auth/register-admin
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJtb2hhbWVkLnRlc3QxMSIsImh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vd3MvMjAwOC8wNi9pZGVudGl0eS9jbGFpbXMvcm9sZSI6IkN1c3RvbWVyIiwianRpIjoiY2I5YmIyZDktNjI0ZC00NDhlLWJmMzctMjkyYWVhMjdiZWRjIiwiZXhwIjoxNzY2NzgzNjEzLCJpc3MiOiJPcmRlclByb2Nlc3NpbmdBUEkiLCJhdWQiOiJPcmRlclByb2Nlc3NpbmdDbGllbnQifQ.Z4M3K636_qushlkRZ_dp8JCjOvAEIVSHeCaQroly5ig"
+
+{
+  "username": "another.admin",
+  "firstName": "Another",
+  "lastName": "Admin",
+  "phoneNumber": "+201001234570",
+  "email": "another.admin@example.com",
+  "password": "AnotherStrongAdmin123!",
+  "role": "Admin"
+}
+
