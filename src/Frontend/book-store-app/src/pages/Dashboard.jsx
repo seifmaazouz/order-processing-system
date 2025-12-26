@@ -1,26 +1,34 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
+import { useSearchParams } from 'react-router-dom';
 import Header from '../components/shared/Header.jsx';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faBook, faCog, faShoppingCart, faSearch, faStar, faPalette, faSmile } from '@fortawesome/free-solid-svg-icons';
+import { faBook, faCog, faShoppingCart, faSearch, faStar, faPalette, faSmile, faGlobe } from '@fortawesome/free-solid-svg-icons';
 import { faFilter } from '@fortawesome/free-solid-svg-icons';
 import { searchBooks } from '../api/search.api.js';
 
 export default function Dashboard() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [showFilters, setShowFilters] = useState(false);
-  const [selectedCategories, setSelectedCategories] = useState([]);
+  const [selectedCategory, setSelectedCategory] = useState(() => {
+    return searchParams.get('category') || '';
+  });
   const [searchResults, setSearchResults] = useState([]);
+  const [hasSearched, setHasSearched] = useState(false);
+  const [lastQueryLabel, setLastQueryLabel] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const filtersRef = useRef(null);
 
   const { register, handleSubmit, watch, setValue } = useForm({
     defaultValues: {
-      searchQuery: '',
-      author: '',
-      publisher: '',
+      searchQuery: searchParams.get('search') || '',
+      author: searchParams.get('author') || '',
+      publisher: searchParams.get('publisher') || '',
     },
   });
+
+  const hasFiltersApplied = Boolean(selectedCategory || watch('author') || watch('publisher'));
 
   const categories = [
     { icon: faStar, label: 'Science' },
@@ -28,6 +36,7 @@ export default function Dashboard() {
     { icon: faSmile, label: 'Religion' },
     { icon: faSmile, label: 'History' },
     { icon: faSmile, label: 'Geography' },
+  
   ];
 
   useEffect(() => {
@@ -41,25 +50,35 @@ export default function Dashboard() {
   }, []);
 
   const toggleCategory = (label) => {
-    setSelectedCategories((prev) =>
-      prev.includes(label) ? prev.filter((c) => c !== label) : [...prev, label]
-    );
+    setSelectedCategory((prev) => prev === label ? '' : label);
   };
 
   const onSubmit = async (data) => {
     setIsLoading(true);
     setError(null);
-
+    
     try {
       const query = {
-        ...(data.searchQuery && { query: data.searchQuery }),
-        ...(selectedCategories.length > 0 && { categories: selectedCategories.join(',') }),
+        ...(data.searchQuery && { search: data.searchQuery }),
+        ...(selectedCategory && { category: selectedCategory }),
         ...(data.author && { author: data.author }),
         ...(data.publisher && { publisher: data.publisher }),
       };
 
+      // Update URL params
+      const params = new URLSearchParams();
+      if (data.searchQuery) params.set('search', data.searchQuery);
+      if (selectedCategory) params.set('category', selectedCategory);
+      if (data.author) params.set('author', data.author);
+      if (data.publisher) params.set('publisher', data.publisher);
+      setSearchParams(params);
+
+      const summary = data.searchQuery ? `"${data.searchQuery}"` : 'all books';
+      setLastQueryLabel(summary);
+
       const results = await searchBooks(query);
       setSearchResults(results);
+      setHasSearched(true);
       setShowFilters(false);
     } catch (err) {
       setError(err.message || 'Failed to search books');
@@ -69,16 +88,35 @@ export default function Dashboard() {
     }
   };
 
+  // Trigger search on mount if URL params exist
+  useEffect(() => {
+    const hasParams = searchParams.get('search') || searchParams.get('category') ||
+      searchParams.get('author') || searchParams.get('publisher');
+    if (hasParams) {
+      handleSubmit(onSubmit)();
+    }
+  }, []); // Only run on mount
+  
+
   const handleApplyFilters = () => {
-    handleSubmit(onSubmit)();
+    // Just save/close filters without searching
+    setShowFilters(false);
+    setError(null);
+  };
+
+  const handleResetFilters = () => {
+    setSelectedCategory('');
+    setValue('author', '');
+    setValue('publisher', '');
+    setError(null);
   };
 
   return (
- <div className="light min-h-screen flex flex-col bg-background-light dark:bg-background-dark font-display text-text-main-light dark:text-text-main-dark transition-colors duration-300">
-      
+    <div className="light min-h-screen flex flex-col bg-background-light dark:bg-background-dark font-display text-text-main-light dark:text-text-main-dark transition-colors duration-300">
+
       {/* Top Navigation */}
       <header className="w-full px-6 py-4 flex items-center justify-between sticky top-0 z-50 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-md">
-        
+
         {/* Logo */}
         <div className="flex items-center gap-3">
           <div className="size-10 bg-primary rounded-full flex items-center justify-center text-background-dark">
@@ -143,14 +181,18 @@ export default function Dashboard() {
                 >
                   {isLoading ? 'Searching...' : 'Search'}
                 </button>
-                
+
               </div>
             </div>
 
             <div className="" ref={filtersRef}>
               <button
                 onClick={() => setShowFilters(s => !s)}
-                className="flex items-center gap-2 h-16 sm:h-16 px-4 rounded-full bg-surface-light dark:bg-surface-dark border border-gray-200 dark:border-gray-700 hover:border-primary transition-colors shadow-sm w-full sm:w-auto"
+                className={`flex items-center gap-2 h-16 sm:h-16 px-4 rounded-full border transition-colors shadow-sm w-full sm:w-auto ${
+                  hasFiltersApplied
+                    ? 'bg-primary/10 border-primary text-primary'
+                    : 'bg-surface-light dark:bg-surface-dark border-gray-200 dark:border-gray-700 hover:border-primary'
+                }`}
               >
                 <FontAwesomeIcon icon={faFilter} />
                 <span className="text-sm font-semibold">Filters</span>
@@ -162,16 +204,15 @@ export default function Dashboard() {
                     <h4 className="text-sm font-semibold mb-2">Categories</h4>
                     <div className="flex flex-wrap gap-2">
                       {categories.map((item) => {
-                        const isActive = selectedCategories.includes(item.label);
+                        const isActive = selectedCategory === item.label;
                         return (
                           <button
                             key={item.label}
                             onClick={() => toggleCategory(item.label)}
-                            className={`flex items-center gap-2 h-8 px-3 rounded-full border text-sm transition-colors ${
-                              isActive
+                            className={`flex items-center gap-2 h-8 px-3 rounded-full border text-sm transition-colors ${isActive
                                 ? 'bg-primary/10 border-primary text-primary'
                                 : 'bg-surface-light dark:bg-surface-dark border-gray-200 dark:border-gray-700 hover:border-primary hover:text-primary'
-                            }`}
+                              }`}
                             aria-pressed={isActive}
                           >
                             <FontAwesomeIcon icon={item.icon} className="text-[14px]" />
@@ -202,7 +243,13 @@ export default function Dashboard() {
                     />
                   </div>
 
-                  <div className="mt-4 flex justify-end">
+                  <div className="mt-4 flex justify-between gap-3">
+                    <button
+                      onClick={handleResetFilters}
+                      className="h-10 px-4 rounded-md border border-gray-300 dark:border-gray-600 bg-surface-light dark:bg-surface-dark font-semibold hover:border-primary hover:text-primary transition-colors shadow-sm"
+                    >
+                      Reset
+                    </button>
                     <button
                       onClick={handleApplyFilters}
                       className="h-10 px-4 rounded-md bg-primary text-background-light font-semibold hover:bg-primary/90 transition-colors shadow-sm"
@@ -214,31 +261,40 @@ export default function Dashboard() {
               )}
             </div>
 
-            {error && (
-              <div className="mt-4 text-sm text-red-600 dark:text-red-400 text-center">
-                Error: {error}
-              </div>
-            )}
 
-            {searchResults.length > 0 && (
-              <div className="mt-8">
-                <h3 className="text-2xl font-bold mb-4">Search Results ({searchResults.length})</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {searchResults.map((book) => (
-                    <div
-                      key={book.id || book.isbn}
-                      className="p-4 rounded-lg bg-surface-light dark:bg-surface-dark border border-gray-200 dark:border-gray-700 hover:border-primary transition-colors"
-                    >
-                      <h4 className="font-bold text-lg mb-2">{book.title}</h4>
-                      {book.author && <p className="text-sm text-gray-600 dark:text-gray-400">Author: {book.author}</p>}
-                      {book.isbn && <p className="text-sm text-gray-600 dark:text-gray-400">ISBN: {book.isbn}</p>}
-                      {book.price && <p className="text-sm font-semibold text-primary mt-2">${book.price}</p>}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+
+
           </div>
+          {error && (
+            <div className="mt-4 text-sm text-red-600 dark:text-red-400 text-center">
+              Error: {error}
+            </div>
+          )}
+          {hasSearched && searchResults.length === 0 && (
+            <div className="mt-4 text-lg text-red-600 dark:text-red-400 text-center font-semibold">
+              No results found
+            </div>
+          )}
+          {searchResults.length > 0 && (
+            <div className="mt-8">
+              <h3 className="text-2xl font-bold mb-4">
+                Search for {lastQueryLabel || 'your query'} ({searchResults.length} results)
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {searchResults.map((book) => (
+                  <div
+                    key={book.id || book.isbn}
+                    className="p-4 rounded-lg bg-surface-light dark:bg-surface-dark border border-gray-200 dark:border-gray-700 hover:border-primary transition-colors"
+                  >
+                    <h4 className="font-bold text-lg mb-2">{book.title}</h4>
+                    {book.author && <p className="text-sm text-gray-600 dark:text-gray-400">Author: {book.author}</p>}
+                    {book.isbn && <p className="text-sm text-gray-600 dark:text-gray-400">ISBN: {book.isbn}</p>}
+                    {book.price && <p className="text-sm font-semibold text-primary mt-2">${book.price}</p>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </main>
 
@@ -254,5 +310,5 @@ export default function Dashboard() {
         </div>
       </footer>
     </div>
-      )
-    }
+  )
+}

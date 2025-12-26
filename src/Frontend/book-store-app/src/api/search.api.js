@@ -1,9 +1,17 @@
 import axios from "axios";
+
 export async function searchBooks(query) {
   try {
+    // Filter out empty/falsy values to avoid sending empty params
+    const cleanParams = Object.fromEntries(
+      Object.entries(query).filter(([_, value]) => value && value !== '')
+    );
+
+    console.log('Sending search request with params:', cleanParams);
+
     // Make GET request with query params
     const response = await axios.get(`http://localhost:8080/api/books/search`, {
-      params: query, // Axios automatically converts this object into URL query parameters
+      params: cleanParams, // Axios automatically converts this object into URL query parameters
       headers: {
         "Content-Type": "application/json", // optional for GET, but fine to include
       },
