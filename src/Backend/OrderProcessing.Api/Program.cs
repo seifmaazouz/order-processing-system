@@ -28,6 +28,8 @@ builder.Services.AddSwaggerGen();
 //JWT tokens
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
 var secretKey = Encoding.UTF8.GetBytes(jwtSettings["Secret"]);
+var secret = jwtSettings["Secret"] ?? throw new InvalidOperationException("JWT Secret is not configured.");
+
 
 builder.Services.AddAuthentication(options =>
 {
@@ -58,16 +60,16 @@ builder.Services.AddScoped<IJwtService, JwtService>();
 // Configure JSON options globally
 builder.Services.ConfigureHttpJsonOptions(options =>
 {
-    options.SerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
-    options.SerializerOptions.NumberHandling = System.Text.Json.Serialization.JsonNumberHandling.Strict;
+    options.SerializerOptions.Converters.Add(new JsonStringEnumConverter());
+    options.SerializerOptions.NumberHandling = JsonNumberHandling.Strict;
 });
 
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
         options.JsonSerializerOptions.Converters.Add(
-            new System.Text.Json.Serialization.JsonStringEnumConverter());
-        options.JsonSerializerOptions.NumberHandling = System.Text.Json.Serialization.JsonNumberHandling.Strict;
+            new JsonStringEnumConverter());
+        options.JsonSerializerOptions.NumberHandling = JsonNumberHandling.Strict;
     });
 
 builder.Services.AddRouting(options => options.LowercaseUrls = true); // make URLs lowercase

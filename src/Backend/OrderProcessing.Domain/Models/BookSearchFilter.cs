@@ -2,8 +2,7 @@ namespace OrderProcessing.Domain.Models;
 
 public record BookSearchFilter
 (
-    string? ISBN,
-    string? Title,
+    string? Search,
     string? Category,
     string? Author,
     string? Publisher
