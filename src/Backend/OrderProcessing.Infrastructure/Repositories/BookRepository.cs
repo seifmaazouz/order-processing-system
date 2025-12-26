@@ -230,14 +230,16 @@ public class BookRepository : IBookRepository
         """;
 
         // dynamic filters 
-        if (!string.IsNullOrWhiteSpace(filter.ISBN))
+        if (!string.IsNullOrWhiteSpace(filter.Search))
         {
             // ignore dashes and find all similar ISBNs
-            searchSql += " AND REPLACE(b.ISBN, '-', '') ILIKE '%' || REPLACE(@ISBN, '-', '') || '%'";
-        }
-        if (!string.IsNullOrWhiteSpace(filter.Title))
-        {
-            searchSql += " AND b.Title ILIKE '%' || @Title || '%'";
+            searchSql +=
+            """
+                AND (
+                    REPLACE(b.ISBN, '-', '') ILIKE '%' || REPLACE(@Search, '-', '') || '%'
+                     OR b.Title ILIKE '%' || @Search || '%'
+                )
+            """;
         }
         if (!string.IsNullOrWhiteSpace(filter.Category))
         {
@@ -259,8 +261,7 @@ public class BookRepository : IBookRepository
 
         var searchResults = await connection.QueryAsync<BookDetailsReadModel>(searchSql, new
         {
-            filter.ISBN,
-            filter.Title,
+            filter.Search,
             Category = filter.Category?.ToString(),
             filter.Author,
             filter.Publisher
