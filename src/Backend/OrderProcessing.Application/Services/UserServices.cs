@@ -51,22 +51,6 @@ namespace OrderProcessing.Application.Services
                 user.Role.ToString()
             );
         }
-
-        public Task DeleteAsync(int userId)
-        {
-            throw new NotImplementedException();
-        }
-
-        public Task<IReadOnlyList<UserDto>> GetAllAsync()
-        {
-            throw new NotImplementedException();
-        }
-
-        public Task<UserDto> GetByIdAsync(string Username)
-        {
-            throw new NotImplementedException();
-        }
-
         public async Task<AuthResultDto> LoginAsync(LoginRequest request)
         {
             var user = await _userRepository.GetByUserNameAsync(request.Username);
@@ -79,9 +63,46 @@ namespace OrderProcessing.Application.Services
 
             return new AuthResultDto(
                 AccessToken: token,
-                ExpiresAt: DateTime.UtcNow.AddMinutes(60) // hard coded
+                ExpiresAt: DateTime.UtcNow.AddMinutes(60),
+                Role: user.Role.ToString() 
             );
         }
+        public async Task<AuthResultDto> LoginAdminAsync(LoginRequest request)
+        {
+            var user = await _userRepository.GetByUserNameAsync(request.Username);
+
+            if (user == null || !_passwordHasher.Verify(request.Password, user.PasswordHash))
+                throw new UnauthorizedAccessException("Invalid credentials");
+
+            if (user.Role != UserTypes.Admin) // check enum
+                throw new UnauthorizedAccessException("Only admins can login here");
+
+            // Generate JWT
+            var token = _jwtService.GenerateToken(user.Username, user.Role);
+
+            return new AuthResultDto(
+                AccessToken: token,
+                ExpiresAt: DateTime.UtcNow.AddMinutes(60),
+                Role: user.Role.ToString()
+            );
+        }
+
+
+        public Task DeleteAsync(int userId)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<IReadOnlyList<UserDto>> GetAllAsync()
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<UserDto> GetByUsernameAsync(string Username)
+        {
+            throw new NotImplementedException();
+        }
+
 
 
         public Task<UserDto> UpdateAsync(UpdateUserRequest request)
