@@ -26,23 +26,23 @@ public class ShoppingCartController : ControllerBase
             ?? throw new UnauthorizedAccessException("Invalid token: username not found");
     }
 
-    [HttpPost("items")]
-    public async Task<ActionResult> AddItemToCart([FromBody] AddCartItemDto dto)
+    [HttpPost("add-item/{isbn}")]
+    public async Task<ActionResult> AddItemToCart(string isbn)
     {
         var username = GetCurrentUsername();
-        await _shoppingCartService.AddItemToCartAsync(username, dto);
+        await _shoppingCartService.AddItemToCartAsync(username, isbn);
         return Ok();
     }
 
-    [HttpPut("items/{isbn}")]
-    public async Task<ActionResult> UpdateItemQuantity(string isbn, [FromBody] UpdateCartItemDto dto)
+    [HttpPut("update-item/{isbn}")]
+    public async Task<ActionResult> UpdateItemQuantity(string isbn, [FromBody] int quantity)
     {
         var username = GetCurrentUsername();
-        await _shoppingCartService.UpdateCartItemAsync(username, dto);
+        await _shoppingCartService.UpdateCartItemAsync(username, isbn, quantity);
         return Ok();
     }
 
-    [HttpDelete("items/{isbn}")]
+    [HttpDelete("remove-item/{isbn}")]
     public async Task<ActionResult> RemoveItemFromCart(string isbn)
     {
         var username = GetCurrentUsername();

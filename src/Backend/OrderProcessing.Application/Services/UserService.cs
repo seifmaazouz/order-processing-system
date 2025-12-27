@@ -1,9 +1,11 @@
+// ...existing code...
 using OrderProcessing.Application.DTOs.User;
 using OrderProcessing.Application.DTOs.Requests;
 using OrderProcessing.Domain.Entities;
 using OrderProcessing.Application.Interfaces;
 using OrderProcessing.Domain.Interfaces.Repositories;
 using OrderProcessing.Application.Security;
+using OrderProcessing.Application.DTOs.Order;
 
 namespace OrderProcessing.Application.Services
 {
@@ -13,17 +15,36 @@ namespace OrderProcessing.Application.Services
         private readonly ICreditCardRepository _creditCardRepository;
         private readonly IJwtService _jwtService;
         private readonly IPasswordHasher _passwordHasher;
+        private readonly ICustomerOrderRepository _customerOrderRepository;
 
         public UserService(
             IUserRepository userRepository,
             ICreditCardRepository creditCardRepository,
             IJwtService jwtService,
-            IPasswordHasher passwordHasher)
+            IPasswordHasher passwordHasher,
+            ICustomerOrderRepository customerOrderRepository)
         {
             _userRepository = userRepository;
             _creditCardRepository = creditCardRepository;
             _jwtService = jwtService;
             _passwordHasher = passwordHasher;
+            _customerOrderRepository = customerOrderRepository;
+        }
+
+        public async Task<IEnumerable<CustomerOrderDto>> GetPastOrdersAsync(string token)
+        {
+            var username = _jwtService.GetUsernameFromToken(token);
+            if (string.IsNullOrEmpty(username))
+                throw new UnauthorizedAccessException("Invalid token.");
+
+            // Get all orders for this user
+            var orders = await _customerOrderRepository.GetByUsernameAsync(username);
+            return orders.Select(o => new CustomerOrderDto(
+                o.OrderNumber,
+                o.TotalPrice,
+                o.Status,
+                o.OrderDate
+            )).ToList();
         }
 
         public async Task<DetailsDto> GetDetailsAsync(string token)
@@ -49,7 +70,7 @@ namespace OrderProcessing.Application.Services
                 user.LastName,
                 user.Email,
                 user.PhoneNumber,
-                user.Address != null ? new List<string> { user.Address } : new List<string>(),
+                user.Address,
                 creditCardDtos
             );
         }

@@ -5,13 +5,13 @@ namespace OrderProcessing.Domain.Entities
     public class CustomerOrder
     {
         public int OrderNumber { private set; get; }
-        public float TotalPrice { private set; get; }
+        public decimal TotalPrice { private set; get; }
         public OrderStatus Status { private set; get; }
         public DateOnly OrderDate { private set; get; }
         public string Username { private set; get; }
         public CustomerOrder(
             int orderNumber,
-            float totalPrice,
+            decimal totalPrice,
             OrderStatus status,
             DateOnly orderDate,
             string username)
