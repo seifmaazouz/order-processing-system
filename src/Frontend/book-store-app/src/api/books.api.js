@@ -5,9 +5,11 @@ const BOOKS_URL = `${API_BASE_URL}/books`;
 
 export async function addBook(payload) {
   try {
+    const token = localStorage.getItem('access');
     const response = await axios.post(BOOKS_URL, payload, {
       headers: {
         "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
       },
     });
     return response.data;
@@ -19,9 +21,11 @@ export async function addBook(payload) {
 
 export async function editBook(isbn, updates) {
   try {
+    const token = localStorage.getItem('access');
     const response = await axios.put(`${BOOKS_URL}/${isbn}`, updates, {
       headers: {
         "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
       },
     });
     return response.data;
@@ -33,9 +37,11 @@ export async function editBook(isbn, updates) {
 
 export async function removeBook(isbn) {
   try {
+    const token = localStorage.getItem('access');
     const response = await axios.delete(`${BOOKS_URL}/${isbn}`, {
       headers: {
         "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
       },
     });
     return response.data;

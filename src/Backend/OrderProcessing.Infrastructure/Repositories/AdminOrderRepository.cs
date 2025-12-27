@@ -19,14 +19,14 @@ namespace OrderProcessing.Infrastructure.Repositories
         {
             const string sql = """
                 SELECT
-                    OrderID,
-                    OrderDate,
-                    "Status",
-                    TotalPrice,
-                    PubID,
-                    CustName
-                FROM AdminOrder
-                ORDER BY OrderDate DESC
+                    orderid,
+                    orderdate,
+                    "Status" as status,
+                    totalprice,
+                    pubid,
+                    custname
+                FROM adminorder
+                ORDER BY orderdate DESC
             """;
 
             using var connection = await _connectionFactory.CreateConnectionAsync();
@@ -36,14 +36,94 @@ namespace OrderProcessing.Infrastructure.Repositories
             var orders = new List<AdminOrder>();
             foreach (var row in rows)
             {
-                orders.Add(new AdminOrder(
-                    row.orderid,
-                    DateOnly.FromDateTime(row.orderdate),
-                    Enum.Parse<OrderStatus>(row.status, true),
-                    row.totalprice,
-                    row.pubid,
-                    row.custname
-                ));
+                try
+                {
+                    // Handle both PascalCase and camelCase from Dapper
+                    var orderId = row.orderid ?? row.OrderID ?? row.OrderId;
+                    var orderDate = row.orderdate ?? row.OrderDate;
+                    var status = row.status ?? row.Status;
+                    var totalPrice = row.totalprice ?? row.TotalPrice;
+                    var pubId = row.pubid ?? row.PubID ?? row.PublisherId;
+                    var custName = row.custname ?? row.CustName ?? row.Username;
+                    
+                    // Validate required fields
+                    if (orderId == null)
+                        throw new InvalidOperationException("Order ID is null");
+                    if (orderDate == null)
+                        throw new InvalidOperationException("Order date is null");
+                    if (status == null)
+                        throw new InvalidOperationException("Order status is null");
+                    if (totalPrice == null)
+                        throw new InvalidOperationException("Total price is null");
+                    if (pubId == null)
+                        throw new InvalidOperationException("Publisher ID is null");
+                    if (custName == null)
+                        throw new InvalidOperationException("Customer name is null");
+                    
+                    // Convert orderDate to DateOnly
+                    DateOnly orderDateOnly = default;
+                    if (orderDate is DateOnly dateOnly)
+                    {
+                        orderDateOnly = dateOnly;
+                    }
+                    else if (orderDate is DateTime dateTime)
+                    {
+                        orderDateOnly = DateOnly.FromDateTime(dateTime.Date);
+                    }
+                    else
+                    {
+                        var dateStr = orderDate?.ToString();
+                        if (string.IsNullOrWhiteSpace(dateStr))
+                        {
+                            throw new InvalidOperationException($"Invalid order date format: {orderDate}");
+                        }
+                        DateOnly parsedDate;
+                        if (!DateOnly.TryParse(dateStr, out parsedDate))
+                        {
+                            throw new InvalidOperationException($"Invalid order date format: {orderDate}");
+                        }
+                        orderDateOnly = parsedDate;
+                    }
+                    
+                    // Parse status - handle both enum string and database string
+                    var statusStr = status?.ToString()?.Trim() ?? "";
+                    if (string.IsNullOrWhiteSpace(statusStr))
+                    {
+                        throw new InvalidOperationException("Order status is empty");
+                    }
+                    
+                    // Try to parse status, handling case variations
+                    OrderStatus orderStatus;
+                    if (!Enum.TryParse<OrderStatus>(statusStr, true, out orderStatus))
+                    {
+                        // Try common variations
+                        var normalizedStatus = statusStr.ToLower();
+                        if (normalizedStatus == "pending")
+                            orderStatus = OrderStatus.Pending;
+                        else if (normalizedStatus == "confirmed")
+                            orderStatus = OrderStatus.Confirmed;
+                        else if (normalizedStatus == "canceled" || normalizedStatus == "cancelled")
+                            orderStatus = OrderStatus.Canceled;
+                        else
+                            throw new InvalidOperationException($"Invalid order status: {statusStr}. Valid values are: Pending, Confirmed, Canceled");
+                    }
+                    
+                    orders.Add(new AdminOrder(
+                        Convert.ToInt32(orderId),
+                        orderDateOnly,
+                        orderStatus,
+                        Convert.ToDecimal(totalPrice),
+                        Convert.ToInt32(pubId),
+                        custName.ToString()
+                    ));
+                }
+                catch (Exception ex)
+                {
+                    // Log the error with row data for debugging
+                    System.Diagnostics.Debug.WriteLine($"Error processing admin order row: {ex.Message}");
+                    System.Diagnostics.Debug.WriteLine($"Row data: orderid={row.orderid}, status={row.status}, orderdate={row.orderdate}");
+                    throw new InvalidOperationException($"Error processing admin order: {ex.Message}", ex);
+                }
             }
 
             return orders;
@@ -53,14 +133,14 @@ namespace OrderProcessing.Infrastructure.Repositories
         {
             const string sql = """
                 SELECT
-                    OrderID,
-                    OrderDate,
-                    "Status",
-                    TotalPrice,
-                    PubID,
-                    CustName
-                FROM AdminOrder
-                WHERE OrderID = @OrderId
+                    orderid,
+                    orderdate,
+                    "Status" as status,
+                    totalprice,
+                    pubid,
+                    custname
+                FROM adminorder
+                WHERE orderid = @OrderId
             """;
 
             using var connection = await _connectionFactory.CreateConnectionAsync();
@@ -73,26 +153,65 @@ namespace OrderProcessing.Infrastructure.Repositories
             if (row is null)
                 return null;
 
+            // Handle both PascalCase and camelCase from Dapper
+            var orderIdValue = row.orderid ?? row.OrderID ?? row.OrderId;
+            var orderDate = row.orderdate ?? row.OrderDate;
+            var status = row.status ?? row.Status;
+            var totalPrice = row.totalprice ?? row.TotalPrice;
+            var pubId = row.pubid ?? row.PubID ?? row.PublisherId;
+            var custName = row.custname ?? row.CustName ?? row.Username;
+            
+            // Convert orderDate to DateOnly
+            DateOnly orderDateOnly = default;
+            if (orderDate is DateOnly dateOnly)
+            {
+                orderDateOnly = dateOnly;
+            }
+            else if (orderDate is DateTime dateTime)
+            {
+                orderDateOnly = DateOnly.FromDateTime(dateTime.Date);
+            }
+            else
+            {
+                var dateStr = orderDate?.ToString();
+                if (string.IsNullOrWhiteSpace(dateStr))
+                {
+                    throw new InvalidOperationException($"Invalid order date format: {orderDate}");
+                }
+                if (!DateOnly.TryParse(dateStr, out DateOnly parsedDate))
+                {
+                    throw new InvalidOperationException($"Invalid order date format: {orderDate}");
+                }
+                orderDateOnly = parsedDate;
+            }
+            
+            // Parse status
+            var statusStr = status?.ToString() ?? "";
+            if (!Enum.TryParse<OrderStatus>(statusStr, true, out OrderStatus orderStatus))
+            {
+                throw new InvalidOperationException($"Invalid order status: {statusStr}");
+            }
+            
             return new AdminOrder(
-                row.orderid,
-                DateOnly.FromDateTime(row.orderdate),
-                Enum.Parse<OrderStatus>(row.status, true),
-                row.totalprice,
-                row.pubid,
-                row.custname
+                Convert.ToInt32(orderIdValue),
+                orderDateOnly,
+                orderStatus,
+                Convert.ToDecimal(totalPrice),
+                Convert.ToInt32(pubId),
+                custName?.ToString() ?? ""
             );
         }
 
         public async Task<int> AddAsync(AdminOrder order, List<AdminOrderItem> items)
         {
             const string orderSql = """
-                INSERT INTO AdminOrder (OrderDate, "Status", TotalPrice, PubID, CustName)
+                INSERT INTO adminorder (orderdate, status, totalprice, pubid, custname)
                 VALUES (@OrderDate, @Status, @TotalPrice, @PublisherId, @Username)
-                RETURNING OrderID
+                RETURNING orderid
             """;
 
             const string itemSql = """
-                INSERT INTO AdminOrderItem (ISBN, OrderNum, Quantity, UnitPrice)
+                INSERT INTO adminorderitem (isbn, ordernum, quantity, unitprice)
                 VALUES (@ISBN, @OrderNum, @Quantity, @UnitPrice)
             """;
 
@@ -142,9 +261,9 @@ namespace OrderProcessing.Infrastructure.Repositories
         public async Task UpdateStatusAsync(int orderId, string status)
         {
             const string sql = """
-                UPDATE AdminOrder
+                UPDATE adminorder
                 SET "Status" = @Status
-                WHERE OrderID = @OrderId
+                WHERE orderid = @OrderId
             """;
 
             using var connection = await _connectionFactory.CreateConnectionAsync();
@@ -158,8 +277,8 @@ namespace OrderProcessing.Infrastructure.Repositories
         public async Task DeleteAsync(int orderId)
         {
             const string sql = """
-                DELETE FROM AdminOrder
-                WHERE OrderID = @OrderId
+                DELETE FROM adminorder
+                WHERE orderid = @OrderId
             """;
 
             using var connection = await _connectionFactory.CreateConnectionAsync();
@@ -173,9 +292,9 @@ namespace OrderProcessing.Infrastructure.Repositories
         public async Task<int> GetOrderCountForBookAsync(int isbn)
         {
             const string sql = """
-                SELECT COUNT(DISTINCT OrderNum)
-                FROM AdminOrderItem
-                WHERE ISBN = @ISBN
+                SELECT COUNT(DISTINCT ordernum)
+                FROM adminorderitem
+                WHERE isbn = @ISBN
             """;
 
             using var connection = await _connectionFactory.CreateConnectionAsync();

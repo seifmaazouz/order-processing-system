@@ -36,8 +36,12 @@ public class GlobalExceptionHandlingMiddleware
             DuplicateResourceException ex => (HttpStatusCode.Conflict, ex.Message),
             BusinessRuleViolationException ex => (HttpStatusCode.BadRequest, ex.Message),
             ArgumentException ex => (HttpStatusCode.BadRequest, ex.Message),
+            InvalidOperationException ex when ex.Message.Contains("libgssapi") || ex.Message.Contains("PostgreSQL native libraries") => 
+                (HttpStatusCode.InternalServerError, ex.Message),
             InvalidOperationException ex => (HttpStatusCode.BadRequest, ex.Message),
             DataConstraintException ex => (HttpStatusCode.Conflict, ex.Message),
+            DllNotFoundException ex when ex.Message.Contains("libgssapi") => 
+                (HttpStatusCode.InternalServerError, "PostgreSQL native libraries are missing. Please install PostgreSQL client libraries."),
             _ => (HttpStatusCode.InternalServerError, "An unexpected error occurred.")
         };
 

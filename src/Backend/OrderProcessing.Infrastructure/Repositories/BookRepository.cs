@@ -167,10 +167,11 @@ public class BookRepository : IBookRepository
         var sql = 
         """
             SELECT b.ISBN, b.Title, b.PublicationYear, b.SellingPrice, b.Quantity, b.Threshold,
-                b.Category AS CategoryName, p.PubName AS PublisherName, STRING_AGG(ba.AuthorName, ', ') AS AuthorNames
+                b.Category AS CategoryName, p.PubName AS PublisherName, 
+                COALESCE(STRING_AGG(ba.AuthorName, ', '), '') AS AuthorNames
             FROM Book b
             JOIN Publisher p ON b.PubID = p.PubID
-            JOIN BookAuthor ba ON b.ISBN = ba.ISBN
+            LEFT JOIN BookAuthor ba ON b.ISBN = ba.ISBN
             WHERE b.ISBN = @ISBN
             GROUP BY b.ISBN, b.Title, b.PublicationYear, b.SellingPrice, b.Quantity, b.Threshold, b.Category, p.PubName
         """;
@@ -186,10 +187,11 @@ public class BookRepository : IBookRepository
         var sql = 
         """
             SELECT b.ISBN, b.Title, b.PublicationYear, b.SellingPrice, b.Quantity, b.Threshold,
-                b.Category AS CategoryName, p.PubName AS PublisherName, STRING_AGG(ba.AuthorName, ', ') AS AuthorNames
+                b.Category AS CategoryName, p.PubName AS PublisherName, 
+                COALESCE(STRING_AGG(ba.AuthorName, ', '), '') AS AuthorNames
             FROM Book b
             JOIN Publisher p ON b.PubID = p.PubID
-            JOIN BookAuthor ba ON b.ISBN = ba.ISBN
+            LEFT JOIN BookAuthor ba ON b.ISBN = ba.ISBN
             GROUP BY b.ISBN, b.Title, b.PublicationYear, b.SellingPrice, b.Quantity, b.Threshold, b.Category, p.PubName
         """;
 
@@ -203,10 +205,11 @@ public class BookRepository : IBookRepository
         var sql = 
         """
             SELECT b.ISBN, b.Title, b.PublicationYear, b.SellingPrice, b.Quantity, b.Threshold,
-                b.Category AS CategoryName, p.PubName AS PublisherName, STRING_AGG(ba.AuthorName, ', ') AS AuthorNames
+                b.Category AS CategoryName, p.PubName AS PublisherName, 
+                COALESCE(STRING_AGG(ba.AuthorName, ', '), '') AS AuthorNames
             FROM Book b
             JOIN Publisher p ON b.PubID = p.PubID
-            JOIN BookAuthor ba ON b.ISBN = ba.ISBN
+            LEFT JOIN BookAuthor ba ON b.ISBN = ba.ISBN
             WHERE b.Quantity < b.Threshold
             GROUP BY b.ISBN, b.Title, b.PublicationYear, b.SellingPrice, b.Quantity, b.Threshold, b.Category, p.PubName
         """;
@@ -222,10 +225,11 @@ public class BookRepository : IBookRepository
         var searchSql =
         """
             SELECT b.ISBN, b.Title, b.PublicationYear, b.SellingPrice, b.Quantity, b.Threshold,
-                b.Category AS CategoryName, p.PubName AS PublisherName, STRING_AGG(ba.AuthorName, ', ') AS AuthorNames
+                b.Category AS CategoryName, p.PubName AS PublisherName, 
+                COALESCE(STRING_AGG(ba.AuthorName, ', '), '') AS AuthorNames
             FROM Book b
             JOIN Publisher p ON b.PubID = p.PubID
-            JOIN BookAuthor ba ON b.ISBN = ba.ISBN
+            LEFT JOIN BookAuthor ba ON b.ISBN = ba.ISBN
             WHERE 1 = 1
         """;
 

@@ -7,7 +7,7 @@ export default function NotFound() {
   const navigate = useNavigate();
 
   return (
-    <div className="light min-h-screen flex flex-col bg-background-light dark:bg-background-dark font-display text-text-main-light dark:text-text-main-dark transition-colors duration-300">
+    <div className="min-h-screen flex flex-col bg-background-light font-display text-text-main transition-colors duration-300">
       <div className="flex-1 flex items-center justify-center px-4 py-20">
         <div className="text-center max-w-md">
           {/* 404 Number */}
@@ -19,7 +19,7 @@ export default function NotFound() {
           </h1>
 
           {/* Error Description */}
-          <p className="text-lg text-gray-600 dark:text-gray-400 mb-8 font-medium">
+          <p className="text-lg text-gray-600 mb-8 font-medium">
             Oops! The page you're looking for doesn't exist. It might have been moved or deleted.
           </p>
 
@@ -34,7 +34,7 @@ export default function NotFound() {
             </button>
             <button
               onClick={() => navigate('/dashboard')}
-              className="flex items-center justify-center gap-2 px-6 h-12 rounded-lg bg-primary text-background-dark hover:bg-primary/90 transition-colors font-bold shadow-sm"
+              className="flex items-center justify-center gap-2 px-6 h-12 rounded-lg bg-primary text-white hover:bg-primary/90 transition-colors font-bold shadow-sm"
             >
               <FontAwesomeIcon icon={faHome} />
               Back to Dashboard
@@ -44,8 +44,8 @@ export default function NotFound() {
       </div>
 
       {/* Footer */}
-      <footer className="w-full py-6 border-t border-gray-200 dark:border-gray-800">
-        <div className="max-w-7xl mx-auto px-6 flex flex-col sm:flex-row justify-between items-center text-sm text-gray-500 dark:text-gray-400">
+      <footer className="w-full py-6 border-t border-gray-200">
+        <div className="max-w-7xl mx-auto px-6 flex flex-col sm:flex-row justify-between items-center text-sm text-gray-500">
           <p>© 2025 Bookstore Inc. All rights reserved.</p>
           <div className="flex gap-4 mt-2 sm:mt-0">
             <a href="#" className="hover:text-primary">Help Center</a>

@@ -134,7 +134,7 @@ namespace OrderProcessing.Infrastructure.Repositories
         public async Task DeleteAsync(string username)
         {
             const string sql = """
-                DELETE FROM User
+                DELETE FROM "User"
                 WHERE Username = @Username
             """;
 
@@ -142,6 +142,118 @@ namespace OrderProcessing.Infrastructure.Repositories
 
             await connection.ExecuteAsync(sql, new { Username = username });
         }
+
+        public async Task<IReadOnlyList<User>> GetAllCustomersAsync()
+        {
+            const string sql = """
+                SELECT
+                    Username,
+                    "Password",
+                    FirstName,
+                    LastName,
+                    ShipAddress,
+                    Email,
+                    PhoneNumber,
+                    "Role"
+                FROM "User"
+                WHERE "Role" = 'Customer'
+                ORDER BY Username
+            """;
+
+            using var connection = await _connectionFactory.CreateConnectionAsync();
+
+            var rows = await connection.QueryAsync<UserRow>(sql);
+
+            return rows.Select(row =>
+            {
+                UserTypes role = UserTypes.Customer;
+                if (!string.IsNullOrWhiteSpace(row.Role))
+                {
+                    Enum.TryParse<UserTypes>(row.Role, true, out role);
+                }
+
+                return new User(
+                    row.Username,
+                    row.Email,
+                    row.PhoneNumber,
+                    row.FirstName,
+                    row.LastName,
+                    row.Password,
+                    role,
+                    row.ShipAddress ?? string.Empty
+                );
+            }).ToList();
+        }
+
+        public async Task<IReadOnlyList<User>> SearchCustomersAsync(string? username, string? firstName, string? lastName, string? email)
+        {
+            var conditions = new List<string> { "\"Role\" = 'Customer'" };
+            var parameters = new Dictionary<string, object>();
+
+            if (!string.IsNullOrWhiteSpace(username))
+            {
+                conditions.Add("Username ILIKE @Username");
+                parameters["Username"] = $"%{username}%";
+            }
+
+            if (!string.IsNullOrWhiteSpace(firstName))
+            {
+                conditions.Add("FirstName ILIKE @FirstName");
+                parameters["FirstName"] = $"%{firstName}%";
+            }
+
+            if (!string.IsNullOrWhiteSpace(lastName))
+            {
+                conditions.Add("LastName ILIKE @LastName");
+                parameters["LastName"] = $"%{lastName}%";
+            }
+
+            if (!string.IsNullOrWhiteSpace(email))
+            {
+                conditions.Add("Email ILIKE @Email");
+                parameters["Email"] = $"%{email}%";
+            }
+
+            var sql = $"""
+                SELECT
+                    Username,
+                    "Password",
+                    FirstName,
+                    LastName,
+                    ShipAddress,
+                    Email,
+                    PhoneNumber,
+                    "Role"
+                FROM "User"
+                WHERE {string.Join(" AND ", conditions)}
+                ORDER BY Username
+            """;
+
+            using var connection = await _connectionFactory.CreateConnectionAsync();
+
+            var rows = await connection.QueryAsync<UserRow>(sql, parameters);
+
+            return rows.Select(row =>
+            {
+                UserTypes role = UserTypes.Customer;
+                if (!string.IsNullOrWhiteSpace(row.Role))
+                {
+                    Enum.TryParse<UserTypes>(row.Role, true, out role);
+                }
+
+                return new User(
+                    row.Username,
+                    row.Email,
+                    row.PhoneNumber,
+                    row.FirstName,
+                    row.LastName,
+                    row.Password,
+                    role,
+                    row.ShipAddress ?? string.Empty
+                );
+            }).ToList();
+        }
+
         private record UserRow(
             string Username,
             string Password,

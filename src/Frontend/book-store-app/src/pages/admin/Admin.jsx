@@ -54,6 +54,7 @@ export default function Admin() {
 			title: '',
 			sellingPrice: '',
 			quantity: 0,
+			threshold: 0,
 			year: 0,
 			authors: [],
 			category: '',
@@ -112,14 +113,20 @@ export default function Admin() {
 
 	useEffect(() => {
 		function handleClick(e) {
-			const clickOutsideFilters = filtersRef.current && !filtersRef.current.contains(e.target);
-			if (clickOutsideFilters) {
+			// Don't close filters if clicking inside any modal
+			const isClickInModal = e.target.closest('.fixed.inset-0.z-50');
+			if (isClickInModal) {
+				return;
+			}
+			
+			// Only handle filter dropdown clicks when it's actually visible
+			if (showFilters && filtersRef.current && !filtersRef.current.contains(e.target)) {
 				setShowFilters(false);
 			}
 		}
 		document.addEventListener('click', handleClick);
 		return () => document.removeEventListener('click', handleClick);
-	}, []);
+	}, [showFilters]);
 
 	const toggleCategory = (label) => {
 		setSelectedCategory((prev) => (prev === label ? '' : label));
@@ -147,6 +154,7 @@ export default function Admin() {
 			title: book.title ?? '',
 			sellingPrice: book.price ?? '',
 			quantity: book.stock ?? 0,
+			threshold: book.threshold ?? 0,
 			year: book.year ?? 0,
 			authors: book.authors ?? [],
 			category: book.category ?? '',
@@ -160,12 +168,14 @@ export default function Admin() {
 		if (!editingBook) return;
 		const sellingPrice = formData.sellingPrice ? Math.max(0, Number(formData.sellingPrice)) : null;
 		const quantity = formData.quantity !== '' ? Math.max(0, Number(formData.quantity)) : null;
+		const threshold = formData.threshold !== '' ? Math.max(0, Number(formData.threshold)) : null;
 		const validAuthors = formData.authors.filter(a => a.trim() !== '');
 		try {
 			const payload = {
 				...(formData.title && { title: formData.title }),
 				...(sellingPrice !== null && sellingPrice > 0 && { sellingPrice }),
 				...(quantity !== null && { quantity }),
+				...(threshold !== null && { threshold }),
 				...(formData.year && { publicationYear: Number(formData.year) }),
 				...(validAuthors.length > 0 && { authors: validAuthors }),
 				...(formData.publisher && { publisher: formData.publisher }),
@@ -328,11 +338,26 @@ const handleConfirmRemove = async () => {
 						onClick={handleLogout}
 						className="flex w-full cursor-pointer items-center justify-center gap-2 overflow-hidden rounded-full h-12 px-6 bg-primary/10 hover:bg-primary/20 dark:bg-primary/20 dark:hover:bg-primary/30 text-text-main dark:text-primary text-sm font-bold transition-colors"
 					>
+						<FontAwesomeIcon icon={faArrowRightFromBracket} className="text-[18px]" />
+						<span className="truncate">Log Out</span>
+					</button>
+				</aside>
 
 				{/* Edit Modal */}
 				{showEditModal && (
-					<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
-						<div className="w-full max-w-lg rounded-2xl bg-white dark:bg-surface-dark p-6 shadow-2xl border border-gray-200 dark:border-gray-700">
+					<div 
+						className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4"
+						onClick={(e) => {
+							// Close modal if clicking the backdrop
+							if (e.target === e.currentTarget) {
+								handleCancelDialogs();
+							}
+						}}
+					>
+						<div 
+							className="w-full max-w-lg rounded-2xl bg-white dark:bg-surface-dark p-6 shadow-2xl border border-gray-200 dark:border-gray-700"
+							onClick={(e) => e.stopPropagation()}
+						>
 							<h3 className="text-xl font-bold mb-4 text-text-main dark:text-white">Edit Book</h3>
 							<div className="space-y-4">
 								<div>
@@ -344,7 +369,7 @@ const handleConfirmRemove = async () => {
 									/>
 									{errorsEdit.title && <p className="text-red-500 text-xs mt-1">{errorsEdit.title.message}</p>}
 								</div>
-								<div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+								<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 									<div>
 										<label className="text-sm font-semibold">Selling Price<span className="text-red-500">*</span></label>
 										<input
@@ -358,20 +383,6 @@ const handleConfirmRemove = async () => {
 											className="mt-1 w-full h-10 px-3 rounded-md bg-surface-light dark:bg-surface-dark border border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-primary outline-none"
 										/>
 										{errorsEdit.sellingPrice && <p className="text-red-500 text-xs mt-1">{errorsEdit.sellingPrice.message}</p>}
-									</div>
-									<div>
-										<label className="text-sm font-semibold">Quantity<span className="text-red-500">*</span></label>
-										<input
-											type="number"
-											min="0"
-											{...registerEdit('quantity', { 
-												required: 'Quantity is required',
-												valueAsNumber: true,
-												min: { value: 0, message: 'Quantity cannot be negative' }
-											})}
-											className="mt-1 w-full h-10 px-3 rounded-md bg-surface-light dark:bg-surface-dark border border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-primary outline-none"
-										/>
-										{errorsEdit.quantity && <p className="text-red-500 text-xs mt-1">{errorsEdit.quantity.message}</p>}
 									</div>
 									<div>
 										<label className="text-sm font-semibold">Year<span className="text-red-500">*</span></label>
@@ -388,6 +399,36 @@ const handleConfirmRemove = async () => {
 											className="mt-1 w-full h-10 px-3 rounded-md bg-surface-light dark:bg-surface-dark border border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-primary outline-none"
 										/>
 										{errorsEdit.year && <p className="text-red-500 text-xs mt-1">{errorsEdit.year.message}</p>}
+									</div>
+								</div>
+								<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+									<div>
+										<label className="text-sm font-semibold">Quantity<span className="text-red-500">*</span></label>
+										<input
+											type="number"
+											min="0"
+											{...registerEdit('quantity', { 
+												required: 'Quantity is required',
+												valueAsNumber: true,
+												min: { value: 0, message: 'Quantity cannot be negative' }
+											})}
+											className="mt-1 w-full h-10 px-3 rounded-md bg-surface-light dark:bg-surface-dark border border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-primary outline-none"
+										/>
+										{errorsEdit.quantity && <p className="text-red-500 text-xs mt-1">{errorsEdit.quantity.message}</p>}
+									</div>
+									<div>
+										<label className="text-sm font-semibold">Threshold<span className="text-red-500">*</span></label>
+										<input
+											type="number"
+											min="0"
+											{...registerEdit('threshold', { 
+												required: 'Threshold is required',
+												valueAsNumber: true,
+												min: { value: 0, message: 'Threshold cannot be negative' }
+											})}
+											className="mt-1 w-full h-10 px-3 rounded-md bg-surface-light dark:bg-surface-dark border border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-primary outline-none"
+										/>
+										{errorsEdit.threshold && <p className="text-red-500 text-xs mt-1">{errorsEdit.threshold.message}</p>}
 									</div>
 								</div>
 
@@ -482,10 +523,6 @@ const handleConfirmRemove = async () => {
 						</div>
 					</div>
 				)}
-						<FontAwesomeIcon icon={faArrowRightFromBracket} className="text-[18px]" />
-						<span className="truncate">Log Out</span>
-					</button>
-				</aside>
 
 				{/* Main Content */}
 				<main className="flex-1 flex flex-col h-full overflow-hidden relative">

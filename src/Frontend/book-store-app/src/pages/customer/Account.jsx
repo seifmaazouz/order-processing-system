@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faUser, faKey, faChevronDown, faHome } from '@fortawesome/free-solid-svg-icons';
 import PasswordInput from '../../components/shared/PasswordInput.jsx';
-import { getAccountDetails, updateAccountDetails, changePassword } from '../../api/accountDetails.api.js';
+import { getAccountDetails, updateAccountDetails, changePassword, addCreditCard, removeCreditCard } from '../../api/accountDetails.api.js';
 import DashboardHeader from '../../components/dashboard/DashboardHeader.jsx';
 import { useCart } from '../../context/CartContext.jsx';
 
@@ -14,6 +14,7 @@ export default function Account() {
   const [isEditing, setIsEditing] = useState(false);
   const [details, setDetails] = useState(null);
   const [isPasswordOpen, setIsPasswordOpen] = useState(false);
+  const [isCardOpen, setIsCardOpen] = useState(false);
   const [toast, setToast] = useState(null);
   const [showSettings, setShowSettings] = useState(false);
   const settingsRef = useRef(null);
@@ -25,6 +26,12 @@ export default function Account() {
     reset: resetPwd,
     watch: watchPwd,
     formState: { errors: pwdErrors },
+  } = useForm();
+  const {
+    register: registerCard,
+    handleSubmit: handleSubmitCard,
+    reset: resetCard,
+    formState: { errors: cardErrors },
   } = useForm();
 
   useEffect(() => {
@@ -138,6 +145,62 @@ export default function Account() {
       }
     } catch (err) {
       setToast({ type: 'error', message: err?.message || 'Change password failed' });
+    } finally {
+      setTimeout(() => setToast(null), 3000);
+    }
+  };
+
+  const onAddCreditCard = async (cardData) => {
+    try {
+      const token = localStorage.getItem('access');
+      // Convert MM/YY to Date string (last day of the month) in YYYY-MM-DD format
+      const [month, year] = cardData.expiryDate.split('/');
+      const expiryYear = 2000 + parseInt(year);
+      const expiryMonth = parseInt(month);
+      // Get last day of the month
+      const lastDay = new Date(expiryYear, expiryMonth, 0).getDate();
+      // Format as YYYY-MM-DD for better compatibility
+      const expiryDateStr = `${expiryYear}-${String(expiryMonth).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+      
+      const res = await addCreditCard(cardData.cardNumber, expiryDateStr, token);
+      setToast({ type: 'success', message: res.message || 'Credit card added successfully' });
+      resetCard();
+      setIsCardOpen(false);
+      // Reload account details to show new card
+      const data = await getAccountDetails(token);
+      const normalizedData = {
+        ...data,
+        shipAddress: Array.isArray(data.addresses) && data.addresses.length > 0 
+          ? data.addresses[0] 
+          : (data.shipAddress || '')
+      };
+      setDetails(normalizedData);
+    } catch (err) {
+      setToast({ type: 'error', message: err?.response?.data?.message || err?.message || 'Failed to add credit card' });
+    } finally {
+      setTimeout(() => setToast(null), 3000);
+    }
+  };
+
+  const onRemoveCreditCard = async (cardNumber) => {
+    if (!window.confirm('Are you sure you want to remove this credit card?')) {
+      return;
+    }
+    try {
+      const token = localStorage.getItem('access');
+      const res = await removeCreditCard(cardNumber.toString(), token);
+      setToast({ type: 'success', message: res.message || 'Credit card removed successfully' });
+      // Reload account details
+      const data = await getAccountDetails(token);
+      const normalizedData = {
+        ...data,
+        shipAddress: Array.isArray(data.addresses) && data.addresses.length > 0 
+          ? data.addresses[0] 
+          : (data.shipAddress || '')
+      };
+      setDetails(normalizedData);
+    } catch (err) {
+      setToast({ type: 'error', message: err?.response?.data?.message || err?.message || 'Failed to remove credit card' });
     } finally {
       setTimeout(() => setToast(null), 3000);
     }
@@ -268,34 +331,113 @@ export default function Account() {
         </section>
 
         {/* Credit Cards Section */}
-        <section className="mb-10 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-surface-dark p-6 shadow-sm">
+        <section className="mb-10 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-surface-dark p-6 shadow-sm overflow-hidden">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-semibold">Payment Methods</h2>
+            <button
+              type="button"
+              onClick={() => setIsCardOpen(!isCardOpen)}
+              className="px-4 py-2 rounded-full bg-primary text-white text-sm font-semibold hover:bg-primary/90"
+            >
+              {isCardOpen ? 'Cancel' : '+ Add Card'}
+            </button>
           </div>
+          
+          {/* Add Credit Card Form */}
+          {isCardOpen && (
+            <div className="border-t border-gray-200 dark:border-gray-700 pt-4 mb-4">
+              <form onSubmit={handleSubmitCard(onAddCreditCard)} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-semibold mb-2">Card Number</label>
+                  <input
+                    type="text"
+                    {...registerCard('cardNumber', {
+                      required: 'Card number is required',
+                      pattern: {
+                        value: /^[\d\s]{13,19}$/,
+                        message: 'Card number must be 13-19 digits'
+                      }
+                    })}
+                    placeholder="1234 5678 9012 3456"
+                    onChange={(e) => {
+                      const value = e.target.value.replace(/\D/g, '');
+                      const formatted = value.match(/.{1,4}/g)?.join(' ') || value;
+                      e.target.value = formatted.slice(0, 19);
+                    }}
+                    className="w-full h-10 px-3 rounded-md bg-surface-light dark:bg-surface-dark border border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-primary outline-none"
+                  />
+                  {cardErrors.cardNumber && (
+                    <p className="text-red-500 text-xs mt-1">{cardErrors.cardNumber.message}</p>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold mb-2">Expiry Date (MM/YY)</label>
+                  <input
+                    type="text"
+                    {...registerCard('expiryDate', {
+                      required: 'Expiry date is required',
+                      pattern: {
+                        value: /^(0[1-9]|1[0-2])\/\d{2}$/,
+                        message: 'Format: MM/YY'
+                      }
+                    })}
+                    placeholder="MM/YY"
+                    onChange={(e) => {
+                      const value = e.target.value.replace(/\D/g, '');
+                      if (value.length <= 4) {
+                        const formatted = value.length > 2 ? `${value.slice(0, 2)}/${value.slice(2)}` : value;
+                        e.target.value = formatted;
+                      }
+                    }}
+                    className="w-full h-10 px-3 rounded-md bg-surface-light dark:bg-surface-dark border border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-primary outline-none"
+                  />
+                  {cardErrors.expiryDate && (
+                    <p className="text-red-500 text-xs mt-1">{cardErrors.expiryDate.message}</p>
+                  )}
+                </div>
+                <div className="md:col-span-2 flex justify-end mt-2">
+                  <button type="submit" className="px-5 py-2 rounded-full bg-primary text-white font-semibold hover:bg-primary/90">
+                    Add Card
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
+
           {loadingDetails ? (
             <p className="text-sm text-gray-500">Loading...</p>
           ) : details?.creditCards && details.creditCards.length > 0 ? (
             <div className="space-y-3">
-              {details.creditCards.map((card, idx) => (
-                <div 
-                  key={idx} 
-                  className="flex items-center justify-between p-4 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-8 rounded bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
-                      <span className="text-white text-xs font-bold">CARD</span>
+              {details.creditCards.map((card, idx) => {
+                const cardNumStr = card.cardNumber?.toString() || '';
+                const last4 = cardNumStr.slice(-4);
+                return (
+                  <div 
+                    key={idx} 
+                    className="flex items-center justify-between p-4 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-8 rounded bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+                        <span className="text-white text-xs font-bold">CARD</span>
+                      </div>
+                      <div>
+                        <p className="font-mono text-lg text-gray-800 dark:text-gray-200">
+                          •••• •••• •••• {last4}
+                        </p>
+                        <p className="text-sm text-gray-500">
+                          Expires: {card.expiryMonth?.padStart(2, '0') || '**'}/{card.expiryYear || '**'}
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="font-mono text-lg text-gray-800 dark:text-gray-200">
-                        •••• •••• •••• {card.cardNumber?.slice(-4) || '****'}
-                      </p>
-                      <p className="text-sm text-gray-500">
-                        Expires: {card.expiryMonth?.padStart(2, '0')}/{card.expiryYear}
-                      </p>
-                    </div>
+                    <button
+                      onClick={() => onRemoveCreditCard(card.cardNumber)}
+                      className="px-3 py-1 rounded-full bg-red-500 hover:bg-red-600 text-white text-sm font-semibold"
+                    >
+                      Remove
+                    </button>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           ) : (
             <div className="text-center py-8">

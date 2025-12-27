@@ -4,6 +4,7 @@ using OrderProcessing.Application.Exceptions;
 using OrderProcessing.Domain.Entities;
 using OrderProcessing.Domain.Interfaces.Repositories;
 using OrderProcessing.Domain.ValueObjects;
+using System;
 
 namespace OrderProcessing.Application.Services
 {
@@ -95,7 +96,11 @@ namespace OrderProcessing.Application.Services
             if (order == null)
                 throw new NotFoundException("AdminOrder", "OrderId", orderId.ToString());
 
-            await _adminOrderRepository.UpdateStatusAsync(orderId, status);
+            // Parse status string to OrderStatus enum
+            if (!Enum.TryParse<OrderStatus>(status, ignoreCase: true, out var orderStatus))
+                throw new ArgumentException($"Invalid order status: {status}");
+
+            await _adminOrderRepository.UpdateStatusAsync(orderId, orderStatus.ToString());
         }
     }
 }

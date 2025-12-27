@@ -15,8 +15,8 @@ import { CartProvider } from "./context/CartContext.jsx";
 
 function App() {
   return (
-    <CartProvider>
-      <BrowserRouter>
+    <BrowserRouter>
+      <CartProvider>
         <Routes>
           {/* Root goes to login */}
           <Route path="/" element={<Navigate to="/login" replace />} />
@@ -80,8 +80,8 @@ function App() {
           />
           <Route path="*" element={<NotFound />} />
         </Routes>
-      </BrowserRouter>
-    </CartProvider>
+      </CartProvider>
+    </BrowserRouter>
   );
 }
 

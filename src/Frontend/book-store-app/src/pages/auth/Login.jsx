@@ -101,7 +101,7 @@ export default function Login() {
         </div>
 
         {/* Right Form */}
-        <div className="w-full lg:w-1/2 flex items-center justify-center px-6 py-12 lg:p-24 bg-background-light dark:bg-background-dark">
+        <div className="w-full lg:w-1/2 flex items-center justify-center px-6 py-12 lg:p-24 bg-background-light">
             <LoginForm onSubmit={onSubmit} resetForm={resetForm} loading={loading} />
         </div>
       </main>

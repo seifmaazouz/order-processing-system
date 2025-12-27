@@ -13,7 +13,12 @@ export const getTotalSalesPreviousMonth = async () => {
 				'Authorization': `Bearer ${token}`
 			}
 		});
-		return response.data;
+		// Backend returns: { period, totalSalesAmount, totalTransactionCount }
+		return {
+			totalSales: response.data.totalSalesAmount || 0,
+			totalBooksSold: 0, // Not provided by backend - would need separate query
+			totalOrders: response.data.totalTransactionCount || 0
+		};
 	} catch (error) {
 		console.error('Error fetching previous month sales:', error.response?.data);
 		throw error;
@@ -31,7 +36,12 @@ export const getTotalSalesByDate = async (date) => {
 				'Authorization': `Bearer ${token}`
 			}
 		});
-		return response.data;
+		// Backend returns: { period, totalSalesAmount, totalTransactionCount }
+		return {
+			totalSales: response.data.totalSalesAmount || 0,
+			totalBooksSold: 0, // Not provided by backend
+			totalOrders: response.data.totalTransactionCount || 0
+		};
 	} catch (error) {
 		console.error('Error fetching sales by date:', error.response?.data);
 		throw error;
@@ -48,7 +58,14 @@ export const getTop5Customers = async () => {
 				'Authorization': `Bearer ${token}`
 			}
 		});
-		return response.data;
+		// Backend returns: [{ customerName, totalSpent }]
+		return response.data.map((c, index) => ({
+			userId: `customer-${index}`, // Generate unique key
+			customerName: c.customerName || 'Unknown',
+			totalSpent: c.totalSpent || 0,
+			email: '', // Not provided by backend
+			orderCount: 0 // Not provided by backend
+		}));
 	} catch (error) {
 		console.error('Error fetching top customers:', error.response?.data);
 		throw error;
@@ -65,7 +82,13 @@ export const getTop10SellingBooks = async () => {
 				'Authorization': `Bearer ${token}`
 			}
 		});
-		return response.data;
+		// Backend returns: [{ isbn, title, totalCopiesSold }]
+		return response.data.map(b => ({
+			isbn: b.isbn || '',
+			title: b.title || 'Unknown',
+			totalCopiesSold: b.totalCopiesSold || 0,
+			totalRevenue: 0 // Not provided by backend - would need price * quantity
+		}));
 	} catch (error) {
 		console.error('Error fetching top selling books:', error.response?.data);
 		throw error;
@@ -83,7 +106,13 @@ export const getBookReplenishmentCount = async (isbn) => {
 				'Authorization': `Bearer ${token}`
 			}
 		});
-		return response.data;
+		// Backend returns: { isbn, title, timesOrderedFromPublisher }
+		return {
+			isbn: response.data.isbn || isbn,
+			bookTitle: response.data.title || 'Unknown',
+			timesOrdered: response.data.timesOrderedFromPublisher || 0,
+			totalQuantityOrdered: response.data.timesOrderedFromPublisher || 0
+		};
 	} catch (error) {
 		console.error('Error fetching book replenishment count:', error.response?.data);
 		throw error;

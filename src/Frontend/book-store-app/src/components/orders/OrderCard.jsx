@@ -28,9 +28,9 @@ export default function OrderCard({ order, getStatusBadge }) {
             {order.items.map((item, idx) => (
               <li key={idx} className="flex justify-between">
                 <span>
-                  {item.title} <span className="text-gray-500">x{item.quantity}</span>
+                  {item.title || item.isbn} <span className="text-gray-500">x{item.quantity}</span>
                 </span>
-                <span>${(Number(item.price) * item.quantity).toFixed(2)}</span>
+                <span>${(Number(item.unitPrice || item.price || 0) * item.quantity).toFixed(2)}</span>
               </li>
             ))}
           </ul>

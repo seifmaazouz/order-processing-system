@@ -7,5 +7,6 @@ public record CustomerOrderDto(
     int OrderNumber,
     decimal TotalPrice,
     [property: JsonConverter(typeof(JsonStringEnumConverter))] OrderStatus Status,
-    DateOnly OrderDate
+    DateOnly OrderDate,
+    IReadOnlyList<OrderItemDto> Items
 );

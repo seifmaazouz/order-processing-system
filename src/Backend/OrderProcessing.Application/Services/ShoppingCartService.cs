@@ -141,16 +141,45 @@ public class ShoppingCartService : IShoppingCartService
         if (cart == null || cart.CartItems.Count == 0) 
             throw new BusinessRuleViolationException("Cannot checkout an empty cart");
 
+        // Parse expiry date from string (accepts YYYY-MM-DD or ISO format)
+        if (string.IsNullOrWhiteSpace(checkoutDto.ExpiryDate))
+            throw new BusinessRuleViolationException("Expiry date is required.");
+
+        DateTime expiryDateTime;
+        if (!DateTime.TryParse(checkoutDto.ExpiryDate, out expiryDateTime))
+        {
+            // If direct parsing fails, try to extract date from ISO string format
+            if (checkoutDto.ExpiryDate.Contains('T'))
+            {
+                // Extract just the date part from ISO format (YYYY-MM-DDTHH:mm:ss...)
+                var datePart = checkoutDto.ExpiryDate.Split('T')[0];
+                if (!DateTime.TryParse(datePart, out expiryDateTime))
+                {
+                    throw new BusinessRuleViolationException($"Invalid expiry date format: {checkoutDto.ExpiryDate}. Expected YYYY-MM-DD format.");
+                }
+            }
+            else
+            {
+                throw new BusinessRuleViolationException($"Invalid expiry date format: {checkoutDto.ExpiryDate}. Expected YYYY-MM-DD format.");
+            }
+        }
+
         // Validate credit card
-        var isValidCard = await _creditCardRepository.ValidateCreditCardAsync(checkoutDto.CardNumber, checkoutDto.ExpiryDate);
+        var isValidCard = await _creditCardRepository.ValidateCreditCardAsync(checkoutDto.CardNumber, expiryDateTime);
         if (!isValidCard) throw new BusinessRuleViolationException("Invalid credit card information");
 
         // Calculate total price
         decimal totalPrice = cart.CartItems.Sum(item => item.Quantity * item.UnitPrice);
 
-        // Create customer order
+        // Create order items from cart items
+        var orderItems = cart.CartItems.Select(item => 
+            new CustomerOrderItem(item.ISBN, 0, item.Quantity, item.UnitPrice)
+        ).ToList();
+
+        // Create customer order with items
         var orderId = await _orderRepository.AddAsync(
-            new CustomerOrder(0, totalPrice, OrderStatus.Paid, DateOnly.FromDateTime(DateTime.Now), username)
+            new CustomerOrder(0, totalPrice, OrderStatus.Confirmed, DateOnly.FromDateTime(DateTime.Now), username),
+            orderItems
         );
 
         // Update book quantities (deduct from stock)

@@ -1,13 +1,48 @@
 import axios from 'axios';
 import API_BASE_URL from '../config/api.config.js';
 
-const ORDERS_URL = `${API_BASE_URL}/orders`;
+const ORDERS_URL = `${API_BASE_URL}/admin/orders`;
 
 // Get all orders for admin
 export const getAllOrders = async () => {
 	try {
-		const response = await axios.get(ORDERS_URL);
-		return response.data;
+		const token = localStorage.getItem('access');
+		if (!token) {
+			throw new Error('No access token found. Please login first.');
+		}
+		
+		const response = await axios.get(ORDERS_URL, {
+			headers: {
+				'Content-Type': 'application/json',
+				'Authorization': `Bearer ${token}`
+			}
+		});
+		
+		// Backend returns: [{ OrderId, OrderDate, Status, TotalPrice, PublisherId, Username }]
+		// Handle both PascalCase and camelCase, and DateOnly serialization
+		return Array.isArray(response.data) ? response.data.map(order => {
+			const orderDate = order.OrderDate || order.orderDate;
+			// Handle DateOnly serialization (could be string "YYYY-MM-DD" or Date object)
+			let dateValue = null;
+			if (orderDate) {
+				if (typeof orderDate === 'string') {
+					dateValue = orderDate;
+				} else if (orderDate instanceof Date) {
+					dateValue = orderDate.toISOString().split('T')[0];
+				} else {
+					dateValue = String(orderDate);
+				}
+			}
+			
+			return {
+				orderId: order.OrderId || order.orderId,
+				orderDate: dateValue,
+				status: (order.Status || order.status || '').toString(),
+				totalPrice: parseFloat(order.TotalPrice || order.totalPrice || 0),
+				publisherId: parseInt(order.PublisherId || order.publisherId || 0),
+				username: order.Username || order.username || ''
+			};
+		}) : [];
 	} catch (error) {
 		console.error('Error fetching orders:', error.response?.data);
 		throw error;
@@ -17,7 +52,18 @@ export const getAllOrders = async () => {
 // Confirm an order (add quantity to stock)
 export const confirmOrder = async (orderId) => {
 	try {
-		const response = await axios.put(`${ORDERS_URL}/${orderId}/confirm`);
+		const token = localStorage.getItem('access');
+		// Backend expects: { Status: string }
+		const response = await axios.put(
+			`${ORDERS_URL}/${orderId}/status`,
+			{ Status: 'Confirmed' },
+			{
+				headers: {
+					'Content-Type': 'application/json',
+					'Authorization': `Bearer ${token}`
+				}
+			}
+		);
 		return response.data;
 	} catch (error) {
 		console.error('Error confirming order:', error.response?.data);
@@ -28,8 +74,13 @@ export const confirmOrder = async (orderId) => {
 // Get pending orders only
 export const getPendingOrders = async () => {
 	try {
+		const token = localStorage.getItem('access');
 		const response = await axios.get(ORDERS_URL, {
-			params: { status: 'Pending' }
+			params: { status: 'Pending' },
+			headers: {
+				'Content-Type': 'application/json',
+				'Authorization': `Bearer ${token}`
+			}
 		});
 		return response.data;
 	} catch (error) {

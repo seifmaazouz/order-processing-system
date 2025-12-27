@@ -18,10 +18,10 @@ namespace OrderProcessing.Infrastructure.Repositories
         {
             const string sql = """
                 SELECT
-                    CardNumber,
-                    ExpiryDate
-                FROM CreditCard
-                WHERE CardNumber = @CardNumber
+                    cardnumber as card_number,
+                    expirydate as expiry_date
+                FROM creditcard
+                WHERE cardnumber = @CardNumber
             """;
 
             using var connection = await _connectionFactory.CreateConnectionAsync();
@@ -34,24 +34,58 @@ namespace OrderProcessing.Infrastructure.Repositories
             if (row is null)
                 return null;
 
+            // Handle both DateOnly and DateTime from database
+            DateOnly expiryDate;
+            if (row.expiry_date is DateOnly dateOnly)
+            {
+                expiryDate = dateOnly;
+            }
+            else if (row.expiry_date is DateTime dateTime)
+            {
+                expiryDate = DateOnly.FromDateTime(dateTime.Date);
+            }
+            else
+            {
+                // Try to parse as string if needed
+                var dateStr = row.expiry_date?.ToString();
+                if (string.IsNullOrWhiteSpace(dateStr))
+                {
+                    throw new InvalidOperationException($"Invalid expiry date format: {row.expiry_date}");
+                }
+                
+                if (!DateOnly.TryParse(dateStr, out DateOnly parsedDate))
+                {
+                    throw new InvalidOperationException($"Invalid expiry date format: {row.expiry_date}");
+                }
+                
+                expiryDate = parsedDate;
+            }
+
+            // Handle both PascalCase and camelCase from Dapper
+            var cardNum = row.card_number ?? row.CardNumber;
+            if (cardNum == null)
+            {
+                throw new InvalidOperationException("Card number not found in result");
+            }
+
             return new CreditCard(
-                row.card_number,
-                DateOnly.FromDateTime(row.expiry_date)
+                Convert.ToInt64(cardNum),
+                expiryDate
             );
         }
         public async Task<IEnumerable<CreditCard>> GetUserCardsAsync(string username)
         {
             const string sql = """
                 SELECT
-                    cc.CardNumber,
-                    cc.ExpiryDate
-                FROM CreditCard cc
-                INNER JOIN CardHolder ch
-                    ON ch.CardNumber = cc.CardNumber
-                WHERE ch.Username = @Username
+                    cc.cardnumber as card_number,
+                    cc.expirydate as expiry_date
+                FROM creditcard cc
+                INNER JOIN cardholder ch
+                    ON ch.cardnumber = cc.cardnumber
+                WHERE ch.username = @Username
             """;
 
-            using var connection =await  _connectionFactory.CreateConnectionAsync();
+            using var connection = await _connectionFactory.CreateConnectionAsync();
 
             var rows = await connection.QueryAsync<dynamic>(
                 sql,
@@ -59,20 +93,55 @@ namespace OrderProcessing.Infrastructure.Repositories
             );
 
             return rows.Select(row =>
-                new CreditCard(
-                    row.card_number,
-                    DateOnly.FromDateTime(row.expiry_date)
-                )
-            );
+            {
+                // Handle both DateOnly and DateTime from database
+                DateOnly expiryDate;
+                if (row.expiry_date is DateOnly dateOnly)
+                {
+                    expiryDate = dateOnly;
+                }
+                else if (row.expiry_date is DateTime dateTime)
+                {
+                    expiryDate = DateOnly.FromDateTime(dateTime.Date);
+                }
+                else
+                {
+                    // Try to parse as string if needed
+                    var dateStr = row.expiry_date?.ToString();
+                    if (string.IsNullOrWhiteSpace(dateStr))
+                    {
+                        throw new InvalidOperationException($"Invalid expiry date format: {row.expiry_date}");
+                    }
+                    
+                    if (!DateOnly.TryParse(dateStr, out DateOnly parsedDate))
+                    {
+                        throw new InvalidOperationException($"Invalid expiry date format: {row.expiry_date}");
+                    }
+                    
+                    expiryDate = parsedDate;
+                }
+
+                // Handle both PascalCase and camelCase from Dapper
+                var cardNum = row.card_number ?? row.CardNumber;
+                if (cardNum == null)
+                {
+                    throw new InvalidOperationException("Card number not found in result");
+                }
+
+                return new CreditCard(
+                    Convert.ToInt64(cardNum),
+                    expiryDate
+                );
+            });
         }
 
 
         public async Task AddAsync(CreditCard card, string username)
         {
             const string insertCardSql = """
-                INSERT INTO CreditCard (
-                    CardNumber,
-                    ExpiryDate
+                INSERT INTO creditcard (
+                    cardnumber,
+                    expirydate
                 )
                 VALUES (
                     @CardNumber,
@@ -81,9 +150,9 @@ namespace OrderProcessing.Infrastructure.Repositories
             """;
 
             const string insertHolderSql = """
-                INSERT INTO CardHolder (
-                    CardNumber,
-                    Username
+                INSERT INTO cardholder (
+                    cardnumber,
+                    username
                 )
                 VALUES (
                     @CardNumber,
@@ -125,9 +194,9 @@ namespace OrderProcessing.Infrastructure.Repositories
 
         public async Task DeleteAsync(long cardNumber, string username)
         {
-            const string countHoldersSql = @"SELECT COUNT(*) FROM CardHolder WHERE CardNumber = @CardNumber";
-            const string deleteHolderSql = @"DELETE FROM CardHolder WHERE CardNumber = @CardNumber AND Username = @Username";
-            const string deleteCardSql = @"DELETE FROM CreditCard WHERE CardNumber = @CardNumber";
+            const string countHoldersSql = @"SELECT COUNT(*) FROM cardholder WHERE cardnumber = @CardNumber";
+            const string deleteHolderSql = @"DELETE FROM cardholder WHERE cardnumber = @CardNumber AND username = @Username";
+            const string deleteCardSql = @"DELETE FROM creditcard WHERE cardnumber = @CardNumber";
 
             using var connection = await _connectionFactory.CreateConnectionAsync();
             using var transaction = connection.BeginTransaction();
@@ -168,20 +237,32 @@ namespace OrderProcessing.Infrastructure.Repositories
 
         public async Task<bool> ValidateCreditCardAsync(long cardNumber, DateTime expiryDate)
         {
-            const string sql = """
-                SELECT COUNT(1)
-                FROM CreditCard
-                WHERE CardNumber = @CardNumber
-                AND ExpiryDate >= @ExpiryDate
-            """;
+            try
+            {
+                // Convert DateTime to DateOnly for comparison (extract just the date part)
+                var expiryDateOnly = DateOnly.FromDateTime(expiryDate.Date);
+                
+                const string sql = """
+                    SELECT COUNT(1)
+                    FROM creditcard
+                    WHERE cardnumber = @CardNumber
+                    AND expirydate >= @ExpiryDate
+                """;
 
-            using var connection = await _connectionFactory.CreateConnectionAsync();
-            var count = await connection.QuerySingleAsync<int>(
-                sql,
-                new { CardNumber = cardNumber, ExpiryDate = expiryDate }
-            );
+                using var connection = await _connectionFactory.CreateConnectionAsync();
+                var count = await connection.QuerySingleAsync<int>(
+                    sql,
+                    new { CardNumber = cardNumber, ExpiryDate = expiryDateOnly.ToDateTime(TimeOnly.MinValue) }
+                );
 
-            return count > 0;
+                return count > 0;
+            }
+            catch (Exception ex)
+            {
+                // Log the error for debugging
+                System.Diagnostics.Debug.WriteLine($"Error validating credit card {cardNumber}: {ex.Message}");
+                throw;
+            }
         }
     }
 }

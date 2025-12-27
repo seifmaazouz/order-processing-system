@@ -46,13 +46,12 @@ export default function Orders() {
 
   const getStatusBadge = (status) => {
     const statusMap = {
-      pending: { label: 'Pending', color: 'bg-yellow-100 text-yellow-600' },
-      processing: { label: 'Processing', color: 'bg-blue-100 text-blue-600' },
-      shipped: { label: 'Shipped', color: 'bg-purple-100 text-purple-600' },
-      delivered: { label: 'Delivered', color: 'bg-green-100 text-green-600' },
-      cancelled: { label: 'Cancelled', color: 'bg-red-100 text-red-600' },
+      pending: { label: 'Pending', color: 'bg-yellow-100 text-yellow-600 dark:bg-yellow-900/30 dark:text-yellow-400' },
+      confirmed: { label: 'Confirmed', color: 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400' },
+      canceled: { label: 'Canceled', color: 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400' },
+      cancelled: { label: 'Cancelled', color: 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400' },
     };
-    return statusMap[status?.toLowerCase()] || { label: status, color: 'bg-gray-100 text-gray-600' };
+    return statusMap[status?.toLowerCase()] || { label: status || 'Unknown', color: 'bg-gray-100 text-gray-600 dark:bg-gray-900/30 dark:text-gray-400' };
   };
 
   return (

@@ -148,7 +148,15 @@ export default function Analytics() {
 							</button>
 						</nav>
 					</div>
-					<button className="flex w-full cursor-pointer items-center justify-center gap-2 overflow-hidden rounded-full h-12 px-6 bg-primary/10 hover:bg-primary/20 dark:bg-primary/20 dark:hover:bg-primary/30 text-text-main dark:text-primary text-sm font-bold transition-colors">
+					<button 
+						onClick={() => {
+							localStorage.removeItem('access');
+							localStorage.removeItem('role');
+							localStorage.removeItem('userId');
+							navigate('/login', { replace: true });
+						}}
+						className="flex w-full cursor-pointer items-center justify-center gap-2 overflow-hidden rounded-full h-12 px-6 bg-primary/10 hover:bg-primary/20 dark:bg-primary/20 dark:hover:bg-primary/30 text-text-main dark:text-primary text-sm font-bold transition-colors"
+					>
 						<FontAwesomeIcon icon={faArrowRightFromBracket} />
 						<span>Logout</span>
 					</button>

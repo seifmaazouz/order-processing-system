@@ -34,6 +34,8 @@ INSERT INTO BookAuthor (ISBN, AuthorName) VALUES
 ('978-0-123456-01-0', 'John Smith'),
 ('978-0-123456-02-7', 'Alice Brown'),
 ('978-0-123456-03-4', 'David Johnson'),
+('978-0-123456-04-1', 'William Thompson'),
+('978-0-123456-05-8', 'Maria Rodriguez'),
 ('978-0-123456-06-5', 'Emma Wilson'),
 ('978-0-123456-07-2', 'Michael Davis'),
 ('978-0-123456-08-9', 'Sarah Miller'),

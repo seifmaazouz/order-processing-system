@@ -55,3 +55,44 @@ export async function changePassword(payload, token) {
   });
   return res.data; // { ok: true, message }
 }
+
+export async function addCreditCard(cardNumber, expiryDate, token) {
+  // Validate and parse card number
+  const cleanedCardNumber = cardNumber.replace(/\s/g, '');
+  if (!cleanedCardNumber || cleanedCardNumber.length < 13 || cleanedCardNumber.length > 19) {
+    throw new Error('Card number must be between 13 and 19 digits');
+  }
+  
+  const cardNumberInt = parseInt(cleanedCardNumber, 10);
+  if (isNaN(cardNumberInt) || cardNumberInt <= 0) {
+    throw new Error('Invalid card number');
+  }
+  
+  const requestBody = {
+    CardNumber: cardNumberInt,
+    ExpiryDate: expiryDate
+  };
+  
+  const res = await axios.post(`${USER_URL}/add-credit-card`, requestBody, {
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+  });
+  return res.data; // { message: "Credit card added successfully." }
+}
+
+export async function removeCreditCard(cardNumber, token) {
+  const requestBody = {
+    cardNumber: cardNumber,
+    token: token
+  };
+  
+  const res = await axios.post(`${USER_URL}/remove-card`, requestBody, {
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+  });
+  return res.data; // { message: "Credit card removed successfully." }
+}
