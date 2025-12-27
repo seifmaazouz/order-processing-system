@@ -21,11 +21,11 @@ namespace OrderProcessing.Infrastructure.Repositories
                 SELECT
                     OrderID,
                     OrderDate,
-                    Status,
+                    "Status",
                     TotalPrice,
                     Custname
-                FROM "Order"
-                WHERE Custname = @Username
+                FROM CustomerOrder
+                WHERE CustName = @Username
                 ORDER BY OrderDate DESC
             """;
 
@@ -40,13 +40,13 @@ namespace OrderProcessing.Infrastructure.Repositories
         {
             const string sql = """
                 SELECT
-                    OrderNumber,
+                    OrderID,
                     TotalPrice,
-                    Status,
+                    "Status",
                     OrderDate,
                     Username
-                FROM "Order"
-                WHERE OrderNumber = @OrderNumber
+                FROM CustomerOrder
+                WHERE OrderID = @OrderID
                   AND Username = @Username
             """;
 
@@ -63,19 +63,19 @@ namespace OrderProcessing.Infrastructure.Repositories
         public async Task AddAsync(CustomerOrder order)
         {
             const string sql = """
-                INSERT INTO "Order" (
+                INSERT INTO CustomerOrder (
                     OrderID,
                     OrderDate,
-                    Status,
+                    "Status",
                     TotalPrice,
-                    Custname
+                    CustName
                 )
                 VALUES (
                     @OrderID,
                     @OrderDate,
-                    @Status::order_status_enum,
+                    @"Status"::order_status_enum,
                     @TotalPrice,
-                    @Custname
+                    @CustName
                 )
             """;
 
@@ -94,10 +94,10 @@ namespace OrderProcessing.Infrastructure.Repositories
         public async Task UpdateStatusAsync(int orderNumber, string username)
         {
             const string sql = """
-                UPDATE "Order"
-                SET Status = @Status::order_status_enum
+                UPDATE CustomerOrder
+                SET "Status" = @"Status"::order_status_enum
                 WHERE OrderID = @OrderID
-                  AND Custname = @Custname
+                  AND CustName = @CustName
             """;
 
             using var connection = await _connectionFactory.CreateConnectionAsync();
@@ -113,9 +113,9 @@ namespace OrderProcessing.Infrastructure.Repositories
         public async Task DeleteAsync(int orderNumber, string username)
         {
             const string sql = """
-                DELETE FROM "Order"
+                DELETE FROM CustomerOrder
                 WHERE OrderID = @OrderID
-                  AND Custname = @Custname
+                  AND CustName = @CustName
             """;
 
             using var connection = await _connectionFactory.CreateConnectionAsync();
