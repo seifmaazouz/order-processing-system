@@ -1,15 +1,15 @@
+using OrderProcessing.Application.DTOs.CreditCard;
 using OrderProcessing.Application.DTOs.Requests;
 using OrderProcessing.Application.DTOs.User;
-using OrderProcessing.Domain.Entities;
 
 namespace OrderProcessing.Application.Interfaces
 {
     public interface IUserService
     {
-        
-        Task ChangePasswordAsync(ChangePasswordRequest request);
+        Task ChangePasswordAsync(string token, ChangePasswordRequest request);
+        Task UpdateProfileAsync(string token, UpdateUserProfileDto dto);
+        Task AddCreditCardAsync(string token, AddCreditCardDto dto);
         Task RemoveCreditCardAsync(RemoveCardRequest request);
         Task<DetailsDto> GetDetailsAsync(string token);
-        
     }
 }

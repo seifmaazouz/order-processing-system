@@ -1,5 +1,6 @@
 using Dapper;
 using OrderProcessing.Domain.Entities;
+using OrderProcessing.Domain.Models;
 using OrderProcessing.Domain.Interfaces;
 using OrderProcessing.Domain.Interfaces.Repositories;
 
@@ -108,6 +109,49 @@ namespace OrderProcessing.Infrastructure.Repositories
             using var connection =await  _connectionFactory.CreateConnectionAsync();
 
             await connection.ExecuteAsync(sql, new { OrderNumber = orderNumber });
+        }
+
+        public async Task<int> CreateOrderAsync(string username, decimal totalPrice, List<CartItemReadModel> cartItems)
+        {
+            const string insertOrderSql = """
+                INSERT INTO "Order" (OrderDate, "Status", TotalPrice, CustName)
+                VALUES (CURRENT_DATE, 'Confirmed', @TotalPrice, @Username)
+                RETURNING OrderID
+            """;
+
+            const string orderItemSql = """
+                INSERT INTO OrderItem (ISBN, OrderNum, Quantity, UnitPrice)
+                VALUES (@ISBN, @OrderNum, @Quantity, @UnitPrice)
+            """;
+
+            using var connection = await _connectionFactory.CreateConnectionAsync();
+            using var transaction = connection.BeginTransaction();
+
+            try
+            {
+                var orderId = await connection.QuerySingleAsync<int>(
+                    insertOrderSql,
+                    new { Username = username, TotalPrice = totalPrice },
+                    transaction
+                );
+
+                foreach (var item in cartItems)
+                {
+                    await connection.ExecuteAsync(
+                        orderItemSql,
+                        new { item.ISBN, OrderNum = orderId, item.Quantity, item.UnitPrice },
+                        transaction
+                    );
+                }
+
+                transaction.Commit();
+                return orderId;
+            }
+            catch
+            {
+                transaction.Rollback();
+                throw;
+            }
         }
     }
 }

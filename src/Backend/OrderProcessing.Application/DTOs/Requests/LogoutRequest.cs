@@ -2,10 +2,7 @@ namespace OrderProcessing.Application.DTOs.Requests
 {
     public record LogoutRequest
     {
-        public string Token;
-        
+        public required string Token { get; init; }
     }
-    
-}
-
-    
+   
+}   
