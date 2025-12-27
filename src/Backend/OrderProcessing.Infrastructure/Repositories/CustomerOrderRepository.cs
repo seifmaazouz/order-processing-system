@@ -60,36 +60,37 @@ namespace OrderProcessing.Infrastructure.Repositories
             return row is null ? null : Map(row);
         }
 
-        public async Task AddAsync(CustomerOrder order)
+        public async Task<int> AddAsync(CustomerOrder order)
         {
             const string sql = """
                 INSERT INTO CustomerOrder (
-                    OrderID,
-                    OrderDate,
                     "Status",
                     TotalPrice,
-                    CustName
+                    CustName,
+                    OrderDate
                 )
                 VALUES (
-                    @OrderID,
-                    @OrderDate,
-                    @"Status"::order_status_enum,
+                    @Status::order_status_enum,
                     @TotalPrice,
-                    @CustName
+                    @CustName,
+                    @OrderDate
                 )
+                RETURNING OrderID
             """;
 
             using var connection = await _connectionFactory.CreateConnectionAsync();
 
-            await connection.ExecuteAsync(sql, new
+            var orderId = await connection.ExecuteScalarAsync<int>(sql, new
             {
-                order.OrderNumber,
-                order.TotalPrice,
                 Status = order.Status.ToString(),
-                order.OrderDate,
-                order.Username
+                order.TotalPrice,
+                CustName = order.Username,
+                order.OrderDate
             });
+
+            return orderId;
         }
+
 
         public async Task UpdateStatusAsync(int orderNumber, string username)
         {
