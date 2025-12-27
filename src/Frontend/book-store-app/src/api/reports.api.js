@@ -29,6 +29,7 @@ export const getTotalSalesByDate = async (date) => {
 
 // c) Top 5 Customers (Last 3 Months)
 export const getTop5Customers = async () => {
+	console.log(localStorage.getItem('access'));
 	try {
 		const response = await axios.get(`${REPORTS_URL}/top-5-customers`);
 		return response.data;

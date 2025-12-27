@@ -24,7 +24,7 @@ export async function getAccountDetails(token) {
 export async function updateAccountDetails(payload, token) {
   // Backend expects: { address, email, firstName, lastName, phoneNumber }
   const requestBody = {
-    address: payload.address ?? null,
+    address: payload.shipAddress ?? null,
     email: payload.email ?? null,
     firstName: payload.firstName ?? null,
     lastName: payload.lastName ?? null,

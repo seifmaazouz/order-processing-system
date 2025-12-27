@@ -39,15 +39,22 @@ export default function Account() {
         }
         
         const data = await getAccountDetails(token);
-        setDetails(data);
-        console.log('Fetched account details:', data);
+        // Backend returns addresses as array, but we store it as shipAddress in state
+        const normalizedData = {
+          ...data,
+          shipAddress: Array.isArray(data.addresses) && data.addresses.length > 0 
+            ? data.addresses[0] 
+            : (data.shipAddress || '')
+        };
+        setDetails(normalizedData);
+        console.log('Fetched account details:', normalizedData);
         reset({
-          username: data.username || '',
-          firstName: data.firstName || '',
-          lastName: data.lastName || '',
-          email: data.email || '',
-          phoneNumber: data.phoneNumber || '',
-          address: data.addresses?.[0] || '',
+          username: normalizedData.username || '',
+          firstName: normalizedData.firstName || '',
+          lastName: normalizedData.lastName || '',
+          email: normalizedData.email || '',
+          phoneNumber: normalizedData.phoneNumber || '',
+          shipAddress: normalizedData.shipAddress || '',
         });
       } catch (err) {
         console.error('Account loading error:', err);
@@ -74,9 +81,17 @@ export default function Account() {
     try {
       const token = localStorage.getItem('access');
       const res = await updateAccountDetails(formData, token);
-      if (res?.ok) {
+      if (res?.ok || res?.message) {
         setToast({ type: 'success', message: res.message || 'Profile updated' });
-        setDetails((prev) => ({ ...prev, ...formData }));
+        // Update details state with the new data
+        setDetails((prev) => ({
+          ...prev,
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          email: formData.email,
+          phoneNumber: formData.phoneNumber,
+          shipAddress: formData.shipAddress,
+        }));
         setIsEditing(false);
       } else {
         setToast({ type: 'error', message: res?.message || 'Update failed' });
@@ -97,7 +112,7 @@ export default function Account() {
         lastName: details.lastName || '',
         email: details.email || '',
         phoneNumber: details.phoneNumber || '',
-        address: details.addresses?.[0] || '',
+        shipAddress: details.shipAddress || '',
       });
     }
     setIsEditing(false);
@@ -203,7 +218,7 @@ export default function Account() {
               <div className="md:col-span-2">
                 <label className="text-sm font-semibold">Address</label>
                 <input
-                  {...register('address')}
+                  {...register('shipAddress')}
                   type="text"
                   className="mt-1 w-full h-10 px-3 rounded-md bg-surface-light dark:bg-surface-dark border border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-primary outline-none"
                 />
@@ -241,7 +256,7 @@ export default function Account() {
               </div>
               <div className="md:col-span-2">
                 <span className="text-sm font-semibold">Address</span>
-                <p className="mt-1 text-gray-800 dark:text-gray-200">{details?.addresses?.[0] || '-'}</p>
+                <p className="mt-1 text-gray-800 dark:text-gray-200">{details?.shipAddress || '-'}</p>
               </div>
               <div className="md:col-span-2 flex justify-end mt-2">
                 <button type="button" onClick={() => setIsEditing(true)} className="px-5 py-2 rounded-full bg-primary text-white font-semibold hover:bg-primary/90">

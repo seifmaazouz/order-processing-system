@@ -58,8 +58,8 @@ function RegisterForm({ onSubmit, resetForm }) {
             {/* Address */}
             <label className="flex flex-col gap-1">
                 <span className="font-medium text-xs">Address</span>
-                <input className="form-input h-10 px-3 rounded-xl border" placeholder="123 Main St" {...register("address")} />
-                {errors.address && <p className="text-xs text-red-500 mt-0.5">{errors.address.message}</p>}
+                <input className="form-input h-10 px-3 rounded-xl border" placeholder="123 Main St" {...register("shipAddress")} />
+                {errors.shipAddress && <p className="text-xs text-red-500 mt-0.5">{errors.shipAddress.message}</p>}
             </label>
 
             {/* Password */}

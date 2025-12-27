@@ -24,7 +24,8 @@ export async function checkCartAvailability(bookId, quantity) {
 
 // Add item to cart (legacy function kept for compatibility)
 export async function addCart(data) {
-  const token = await axios.post(`${API_BASE_URL}/user/login`, data, {
+  const { isbn, ...bodyData } = data;
+  const token = await axios.post(`${API_BASE_URL}/shoppingcart/items/${isbn}`, bodyData, {
     headers: {
       "Content-Type": "application/json",
     },
