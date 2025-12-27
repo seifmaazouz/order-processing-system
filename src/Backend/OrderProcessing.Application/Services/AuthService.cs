@@ -36,20 +36,20 @@ namespace OrderProcessing.Application.Services
 
         public async Task<UserDto> CreateAsync(CreateUserRequest request)
         {
-            var existedUser=await  _userRepository.GetByUserNameAsync(request.Username);
-            if(existedUser is not null)
+            var existedUser = await _userRepository.GetByUserNameAsync(request.Username);
+            if (existedUser is not null)
             {
                 throw new DuplicateResourceException("Username already exists");
             }
-            string password=_passwordHasher.HashPassword(request.Password);
+            string password = _passwordHasher.HashPassword(request.Password);
             var user = new User(
-                 request.Username,
-                 request.Email,
-                 request.PhoneNumber,
-                 request.FirstName,
-                 request.LastName,
-                 password,
-                role: UserTypes.Customer
+                request.Username,
+                request.Email,
+                request.PhoneNumber,
+                request.FirstName,
+                request.LastName,
+                password,
+                role: UserTypes.Customer // Always customer for normal registration
             );
             await _userRepository.AddAsync(user);
             return new UserDto(
@@ -76,20 +76,20 @@ namespace OrderProcessing.Application.Services
         }
         public async Task<UserDto> CreateAdminAsync(CreateUserRequest request)
         {
-            var existedUser=await  _userRepository.GetByUserNameAsync(request.Username);
-            if(existedUser is not null)
+            var existedUser = await _userRepository.GetByUserNameAsync(request.Username);
+            if (existedUser is not null)
             {
                 throw new InvalidOperationException("Username already exists");
             }
-            string password=_passwordHasher.HashPassword(request.Password);
+            string password = _passwordHasher.HashPassword(request.Password);
             var user = new User(
-                 request.Username,
-                 request.Email,
-                 request.PhoneNumber,
-                 request.FirstName,
-                 request.LastName,
-                 password,
-                role: UserTypes.Customer
+                request.Username,
+                request.Email,
+                request.PhoneNumber,
+                request.FirstName,
+                request.LastName,
+                password,
+                role: UserTypes.Admin // Always admin for admin registration
             );
             await _userRepository.AddAsync(user);
             return new UserDto(
