@@ -1,6 +1,7 @@
-namespace OrderProcessing.Application.DTOs.User;
+namespace OrderProcessing.Application.DTOs.Requests;
 
 public record ChangePasswordRequest(
+    string Token,
     string OldPassword,
     string NewPassword
 );

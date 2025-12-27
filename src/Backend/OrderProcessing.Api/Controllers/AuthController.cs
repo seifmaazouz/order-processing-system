@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using OrderProcessing.Application.DTOs.User;
+using OrderProcessing.Application.DTOs.Requests;
 using OrderProcessing.Application.Interfaces;
 
 namespace OrderProcessing.Api.Controllers
@@ -10,9 +11,9 @@ namespace OrderProcessing.Api.Controllers
     [Route("api/[controller]")]
     public class AuthController:ControllerBase
     {
-         private readonly IUserService _userService;
+         private readonly IAuthService _userService;
 
-        public AuthController(IUserService userService)
+        public AuthController(IAuthService userService)
         {
             _userService = userService;
         }
@@ -67,7 +68,7 @@ namespace OrderProcessing.Api.Controllers
 
             try
             {
-                var user = await _userService.CreateAsync(request);
+                var user = await _userService.CreateAdminAsync(request);
                 return CreatedAtAction(nameof(Register), new { username = user.Username }, user);
             }
             catch (InvalidOperationException ex)
@@ -79,7 +80,11 @@ namespace OrderProcessing.Api.Controllers
             {
                 return StatusCode(500, new { message = ex.Message });
             }
-        
         }
+        // [HttpPost("logout")]
+        // public async Task<IActionResult> Logout(LogoutRequest request)
+        // {
+            
+        // }
     }
 }
