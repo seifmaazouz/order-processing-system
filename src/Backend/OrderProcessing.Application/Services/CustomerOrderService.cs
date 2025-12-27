@@ -34,7 +34,7 @@ public class CustomerOrderService : ICustomerOrderService
             .Select(o => new CustomerOrderDto(
                 o.OrderNumber,
                 o.TotalPrice,
-                o.Status.ToString(),
+                o.Status,
                 o.OrderDate
             ))
             .ToList();
@@ -61,7 +61,7 @@ public class CustomerOrderService : ICustomerOrderService
 
         var newOrder = new CustomerOrder(
             orderNumber: 0, // let DB handle auto-increment
-            totalPrice: (float)totalPrice,
+            totalPrice: totalPrice,
             status: OrderStatus.Pending,
             orderDate: DateOnly.FromDateTime(DateTime.UtcNow),
             username: username
@@ -72,7 +72,7 @@ public class CustomerOrderService : ICustomerOrderService
         return new CustomerOrderDto(
             newOrder.OrderNumber,
             newOrder.TotalPrice,
-            newOrder.Status.ToString(),
+            newOrder.Status,
             newOrder.OrderDate
         );
     }
