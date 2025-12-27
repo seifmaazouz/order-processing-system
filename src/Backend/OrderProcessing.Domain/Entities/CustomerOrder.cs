@@ -1,17 +1,18 @@
+using OrderProcessing.Domain.ValueObjects;
+
 namespace OrderProcessing.Domain.Entities
 {
-    public class Order
+    public class CustomerOrder
     {
         public int OrderNumber { private set; get; }
         public float TotalPrice { private set; get; }
-        public string Status { private set; get; } = null!;
+        public OrderStatus Status { private set; get; }
         public DateOnly OrderDate { private set; get; }
         public string Username { private set; get; }
-        public ICollection<OrderItem> Items { private set; get; } = null!;
-        public Order(
+        public CustomerOrder(
             int orderNumber,
             float totalPrice,
-            string status,
+            OrderStatus status,
             DateOnly orderDate,
             string username)
         {
@@ -20,7 +21,10 @@ namespace OrderProcessing.Domain.Entities
             Status = status;
             OrderDate = orderDate;
             Username = username;
-            Items = new List<OrderItem>();
+        }
+        public void ChangeStatus(OrderStatus newStatus)
+        {
+            Status = newStatus;
         }
 
     }
