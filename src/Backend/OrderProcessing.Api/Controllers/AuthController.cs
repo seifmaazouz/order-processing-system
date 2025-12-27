@@ -81,10 +81,36 @@ namespace OrderProcessing.Api.Controllers
                 return StatusCode(500, new { message = ex.Message });
             }
         }
-        // [HttpPost("logout")]
-        // public async Task<IActionResult> Logout(LogoutRequest request)
-        // {
-            
-        // }
+
+        [HttpPost("logout")]
+        public async Task<IActionResult> Logout()
+        {
+            try
+            {
+                var token = GetBearerToken();
+                var message = await _userService.LogoutAsync(token);
+                return Ok(new { message });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = ex.Message });
+            }
+        }
+
+        private string GetBearerToken()
+        {
+            if (!Request.Headers.TryGetValue("Authorization", out var authHeader))
+                throw new UnauthorizedAccessException("Authorization header missing");
+
+            var token = authHeader.ToString().Replace("Bearer ", "").Trim();
+            if (string.IsNullOrWhiteSpace(token))
+                throw new UnauthorizedAccessException("Bearer token missing");
+
+            return token;
+        }
     }
 }
