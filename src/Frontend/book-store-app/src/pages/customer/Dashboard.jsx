@@ -1,8 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { useSearchParams } from 'react-router-dom';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faStar, faPalette, faSmile, faGlobe } from '@fortawesome/free-solid-svg-icons';
 import { searchBooks } from '../../api/search.api.js';
 import DashboardHeader from '../../components/dashboard/DashboardHeader.jsx';
 import DashboardHero from '../../components/dashboard/DashboardHero.jsx';
@@ -11,6 +9,7 @@ import DashboardFooter from '../../components/dashboard/DashboardFooter.jsx';
 import ResultsGrid from '../../components/dashboard/ResultsGrid.jsx';
 import { useCart } from '../../context/CartContext.jsx';
 import { useNavigate } from 'react-router-dom';
+import { dashboardCategories } from '../../constants/categories.js';
 
 export default function Dashboard() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -38,15 +37,6 @@ export default function Dashboard() {
   });
 
   const hasFiltersApplied = Boolean(selectedCategory || watch('author') || watch('publisher'));
-
-  const categories = [
-    { icon: faStar, label: 'Science' },
-    { icon: faPalette, label: 'Art' },
-    { icon: faSmile, label: 'Religion' },
-    { icon: faSmile, label: 'History' },
-    { icon: faSmile, label: 'Geography' },
-    { icon: faGlobe, label: 'All' },
-  ];
 
   useEffect(() => {
     function handleClick(e) {
@@ -145,7 +135,7 @@ export default function Dashboard() {
             showFilters={showFilters}
             onToggleFilters={() => setShowFilters((s) => !s)}
             filtersRef={filtersRef}
-            categories={categories}
+            categories={dashboardCategories}
             selectedCategory={selectedCategory}
             onSelectCategory={toggleCategory}
             onReset={handleResetFilters}

@@ -4,6 +4,7 @@ import Login from "./pages/auth/Login";
 import Register from "./pages/auth/Register";
 import Dashboard from "./pages/customer/Dashboard.jsx";
 import Admin from "./pages/admin/Admin.jsx"
+import Analytics from "./pages/admin/Analytics.jsx"
 import Account from "./pages/customer/Account.jsx";
 import Orders from "./pages/customer/Orders.jsx";
 import Cart from "./pages/customer/Cart.jsx";
@@ -16,10 +17,33 @@ function App() {
     <CartProvider>
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/" element={<Navigate to="/admin" replace />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
-          <Route path="/dashboard" element={<Admin />} />
+          <Route
+            path="/dashboard"
+            element={
+              <PrivateAuth>
+                <Dashboard />
+              </PrivateAuth>
+            }
+          />
+          <Route 
+            path="/admin" 
+            element={
+              <PrivateAuth>
+                <Admin />
+              </PrivateAuth>
+            } 
+          />
+          <Route 
+            path="/admin/analytics" 
+            element={
+              <PrivateAuth>
+                <Analytics />
+              </PrivateAuth>
+            } 
+          />
           <Route
             path="/account"
             element={

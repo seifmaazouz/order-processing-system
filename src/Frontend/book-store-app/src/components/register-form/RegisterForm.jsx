@@ -2,12 +2,10 @@ import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { registerSchema } from "../../schemas/registerSchema";
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faEye, faEyeSlash } from '@fortawesome/free-solid-svg-icons';
+import PasswordInput from '../shared/PasswordInput';
 
 function RegisterForm({ onSubmit, resetForm }) {
-    const { register, handleSubmit, formState: { errors, isSubmitting }, reset,resetField } = useForm({ resolver: zodResolver(registerSchema) });
-    const [showPassword, setShowPassword] = useState(false);
+    const { register, handleSubmit, formState: { errors, isSubmitting }, reset, resetField } = useForm({ resolver: zodResolver(registerSchema) });
 
     useEffect(() => {
         if (resetForm) {
@@ -60,27 +58,12 @@ function RegisterForm({ onSubmit, resetForm }) {
 
 
             {/* Password */}
-            <label className="flex flex-col gap-1">
-                <span className="font-medium text-xs">Password</span>
-                <div className="flex rounded-xl border overflow-hidden">
-                    <input
-                        type={showPassword ? "text" : "password"}
-                        className="flex-1 h-10 px-3 outline-none"
-                        placeholder="Create a strong password"
-                        {...register("password")}
-                    />
-                    <button
-                        type="button"
-                        onClick={() => setShowPassword(s => !s)}
-                        className="flex items-center px-3 cursor-pointer"
-                        aria-label={showPassword ? "Hide password" : "Show password"}
-                        title={showPassword ? "Hide password" : "Show password"}
-                    >
-                        <FontAwesomeIcon icon={showPassword ? faEye : faEyeSlash} />
-                    </button>
-                </div>
-                {errors.password && <p className="text-xs text-red-500 mt-0.5">{errors.password.message}</p>}
-            </label>
+            <PasswordInput
+                label="Password"
+                register={register("password")}
+                error={errors.password}
+                className="h-10 rounded-xl"
+            />
 
             {/* Submit Button */}
             <button

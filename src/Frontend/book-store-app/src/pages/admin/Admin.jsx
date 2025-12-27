@@ -1,45 +1,67 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import {
-	faThLarge,
-	faBookOpen,
-	faShoppingBag,
-	faUsers,
-	faChartBar,
-	faArrowRightFromBracket,
-	faFilter,
-	faPlus,
-} from '@fortawesome/free-solid-svg-icons';
+import { faBookOpen, faShoppingBag, faChartBar, faArrowRightFromBracket, faFilter, faPlus } from '@fortawesome/free-solid-svg-icons';
 import BookCard from '../../components/dashboard/BookCard.jsx';
 import SearchBar from '../../components/dashboard/SearchBar.jsx';
 import FiltersDropdown from '../../components/dashboard/FiltersDropdown.jsx';
 import { searchBooks } from '../../api/search.api.js';
+import { addBook, editBook, removeBook } from '../../api/books.api.js';
 import { useForm } from 'react-hook-form';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+import { dashboardCategories, categoryOptions } from '../../constants/categories.js';
 
 export default function Admin() {
 	const [books, setBooks] = useState([]);
 	const [showFilters, setShowFilters] = useState(false);
-	const [selectedCategory, setSelectedCategory] = useState('');
+		const [searchParams, setSearchParams] = useSearchParams();
+		const [selectedCategory, setSelectedCategory] = useState(() => searchParams.get('category') || '');
 	const [isLoading, setIsLoading] = useState(false);
 	const [error, setError] = useState(null);
+	const [editingBook, setEditingBook] = useState(null);
+	const [showEditModal, setShowEditModal] = useState(false);
+	const [removingBook, setRemovingBook] = useState(null);
+	const [showRemoveModal, setShowRemoveModal] = useState(false);
+	const [showAddModal, setShowAddModal] = useState(false);
 	const filtersRef = useRef(null);
+	
 	const { register, handleSubmit, watch, setValue } = useForm({
 		defaultValues: {
-			searchQuery: '',
-			author: '',
+			searchQuery: searchParams.get('search') || '',
+			author: searchParams.get('author') || '',
+			publisher: searchParams.get('publisher') || '',
+		},
+	});
+	
+	const { register: registerAdd, handleSubmit: handleSubmitAdd, watch: watchAdd, setValue: setValueAdd, reset: resetAdd, formState: { errors: errorsAdd } } = useForm({
+		defaultValues: {
+			title: '',
+			sellingPrice: '',
+			stock: 0,
+			authors: [''],
+			category: '',
+			pubID: '',
+			isbn: '',
+			threshold: 0,
+			publicationYear: '',
+		},
+	});
+	
+	const { register: registerEdit, handleSubmit: handleSubmitEdit, watch: watchEdit, setValue: setValueEdit, reset: resetEdit, formState: { errors: errorsEdit } } = useForm({
+		defaultValues: {
+			title: '',
+			sellingPrice: '',
+			quantity: 0,
+			year: 0,
+			authors: [],
+			category: '',
 			publisher: '',
+			isbn: '',
 		},
 	});
 
 	const hasFiltersApplied = Boolean(selectedCategory || watch('author') || watch('publisher'));
-
-	const categories = [
-		{ icon: faBookOpen, label: 'Fiction' },
-		{ icon: faChartBar, label: 'Business' },
-		{ icon: faUsers, label: 'Self-Help' },
-		{ icon: faShoppingBag, label: 'Tech' },
-		{ icon: faThLarge, label: 'All' },
-	];
 
 	const statusMap = {
 		'in-stock': { label: 'In Stock', color: 'bg-green-100 text-green-700' },
@@ -57,6 +79,14 @@ export default function Admin() {
 				...(formData.author && { author: formData.author }),
 				...(formData.publisher && { publisher: formData.publisher }),
 			};
+
+			const params = new URLSearchParams();
+			if (formData.searchQuery) params.set('search', formData.searchQuery);
+			if (selectedCategory) params.set('category', selectedCategory);
+			if (formData.author) params.set('author', formData.author);
+			if (formData.publisher) params.set('publisher', formData.publisher);
+			setSearchParams(params);
+
 			const results = await searchBooks(query);
 			setBooks(results);
 		} catch (err) {
@@ -67,7 +97,8 @@ export default function Admin() {
 	};
 
 	useEffect(() => {
-		fetchBooks({ searchQuery: '', author: '', publisher: '' });
+		handleSubmit(fetchBooks)();
+		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, []);
 
 	useEffect(() => {
@@ -95,23 +126,172 @@ export default function Admin() {
 		setValue('author', '');
 		setValue('publisher', '');
 		setError(null);
+		setSearchParams(new URLSearchParams());
 		setShowFilters(false);
 	};
 
 	const handleSelect = () => {};
+
 	const handleEdit = (book) => {
-		console.log('Edit book:', book);
-		// TODO: Implement edit modal/form
+		setEditingBook(book);
+		resetEdit({
+			title: book.title ?? '',
+			sellingPrice: book.price ?? '',
+			quantity: book.stock ?? 0,
+			year: book.year ?? 0,
+			authors: book.authors ?? [],
+			category: book.category ?? '',
+			publisher: book.publisher ?? '',
+			isbn: book.isbn ?? '',
+		});
+		setShowEditModal(true);
 	};
 
-	const handleRemove = (book) => {
-		console.log('Remove book:', book);
-		// TODO: Implement delete confirmation
+	const handleSaveEdit = handleSubmitEdit(async (formData) => {
+		if (!editingBook) return;
+		const sellingPrice = formData.sellingPrice ? Math.max(0, Number(formData.sellingPrice)) : null;
+		const quantity = formData.quantity !== '' ? Math.max(0, Number(formData.quantity)) : null;
+		const validAuthors = formData.authors.filter(a => a.trim() !== '');
+		try {
+			const payload = {
+				...(formData.title && { title: formData.title }),
+				...(sellingPrice !== null && sellingPrice > 0 && { sellingPrice }),
+				...(quantity !== null && { quantity }),
+				...(formData.year && { publicationYear: Number(formData.year) }),
+				...(validAuthors.length > 0 && { authors: validAuthors }),
+				...(formData.publisher && { publisher: formData.publisher }),
+			};
+			const updated = await editBook(editingBook.isbn, payload);
+			const updatedBook = { 
+				...editingBook, 
+				title: formData.title || editingBook.title,
+				price: sellingPrice || editingBook.price,
+				stock: quantity !== null ? quantity : editingBook.stock,
+				year: formData.year || editingBook.year,
+				authors: validAuthors.length > 0 ? validAuthors : editingBook.authors,
+				publisher: formData.publisher || editingBook.publisher,
+			};
+			setBooks((prev) =>
+				prev.map((b) =>
+					b.id === editingBook.id || b.isbn === editingBook.isbn
+						? updatedBook
+						: b
+				)
+			);
+			toast.success('Book updated successfully');
+			setShowEditModal(false);
+			setEditingBook(null);
+		} catch (err) {
+			const message = err?.response?.data?.error || err?.response?.data?.message || err?.message || 'Failed to update book';
+			toast.error(message);
+			console.error('Edit error:', err.response?.data);
+		}
+	});
+
+	const computeStatus = (qty) => {
+		if (qty > 5) return 'in-stock';
+		if (qty > 0) return 'low-stock';
+		return 'out-of-stock';
+	};
+
+	const handleOpenAdd = () => {
+		resetAdd();
+		setShowAddModal(true);
+	};
+
+
+
+	const handleAuthorChange = (index, value) => {
+		const authors = [...watchAdd('authors')];
+		authors[index] = value;
+		setValueAdd('authors', authors);
+	};
+
+	const handleAddAuthor = () => {
+		setValueAdd('authors', [...watchAdd('authors'), '']);
+	};
+
+	const handleRemoveAuthorField = (index) => {
+		const authors = watchAdd('authors');
+		if (authors.length === 1) return;
+		setValueAdd('authors', authors.filter((_, i) => i !== index));
+	};
+
+	const handleEditAuthorChange = (index, value) => {
+		const authors = [...watchEdit('authors')];
+		authors[index] = value;
+		setValueEdit('authors', authors);
+	};
+
+	const handleEditAddAuthor = () => {
+		setValueEdit('authors', [...watchEdit('authors'), '']);
+	};
+
+	const handleEditRemoveAuthorField = (index) => {
+		const authors = watchEdit('authors');
+		if (authors.length === 1) return;
+		setValueEdit('authors', authors.filter((_, i) => i !== index));
+	};
+
+	const handleSaveNewBook = handleSubmitAdd(async (formData) => {
+		try {
+			const validAuthors = formData.authors.filter(author => author.trim() !== '');
+			const payload = {
+				...(formData.title && { title: formData.title }),
+				...(formData.sellingPrice && Number(formData.sellingPrice) > 0 && { sellingPrice: Number(formData.sellingPrice) }),
+				...(formData.stock >= 0 && { quantity: Number(formData.stock) }),
+				...(formData.isbn && { isbn: formData.isbn }),
+				...(formData.category && { category: formData.category }),
+				...(formData.pubID && { pubID: Number(formData.pubID) }),
+				...(validAuthors.length > 0 && { authors: validAuthors }),
+				...(formData.threshold >= 0 && { threshold: Number(formData.threshold) }),
+				...(formData.publicationYear && { publicationYear: Number(formData.publicationYear) }),
+			};
+			await addBook(payload);
+			toast.success('Book added successfully!');
+			setShowAddModal(false);
+			resetAdd();
+			handleSubmit(fetchBooks)();
+		} catch (error) {
+			const errorMsg = error.response?.data?.error || error.response?.data?.message || error.message || 'Failed to add book';
+			toast.error(errorMsg);
+			console.error('Add book error:', error.response?.data);
+		}
+	});
+
+const handleRemove = (book) => {
+	setRemovingBook(book);
+	setShowRemoveModal(true);
+};
+
+const handleConfirmRemove = async () => {
+		if (!removingBook) return;
+		try {
+			await removeBook(removingBook.isbn);
+			toast.success('Book removed successfully');
+			setShowRemoveModal(false);
+			setRemovingBook(null);
+			// Refetch books to ensure state is in sync with backend
+			handleSubmit(fetchBooks)();
+		} catch (err) {
+			const message = err?.response?.data?.error || err?.response?.data?.message || err?.message || 'Failed to remove book';
+			toast.error(message);
+			console.error('Delete error:', err.response?.data);
+		}
+	};
+
+	const handleCancelDialogs = () => {
+		setShowEditModal(false);
+		setShowRemoveModal(false);
+		setShowAddModal(false);
+		setEditingBook(null);
+		setRemovingBook(null);
 	};
 
 	return (
 		<div className="light bg-background-light dark:bg-background-dark font-display text-text-main dark:text-gray-100 antialiased overflow-hidden">
 			<div className="flex h-screen w-full">
+				<ToastContainer position="top-right" autoClose={3000} hideProgressBar theme="colored" />
 				{/* Side Navigation */}
 				<aside className="hidden md:flex w-72 flex-col justify-between border-r border-[#e6e0db] dark:border-[#443628] bg-background-light dark:bg-background-dark p-6 transition-all">
 					<div className="flex flex-col gap-8">
@@ -120,11 +300,8 @@ export default function Admin() {
 							<p className="text-text-secondary text-sm font-medium">Admin Dashboard</p>
 						</div>
 						<nav className="flex flex-col gap-2">
-							<a href="#" className="group flex items-center gap-3 px-4 py-3 rounded-full text-text-main dark:text-gray-200 hover:bg-[#efe9e3] dark:hover:bg-[#3a2d20] transition-colors">
-								<FontAwesomeIcon icon={faThLarge} className="group-hover:scale-110 transition-transform" />
-								<p className="text-sm font-medium">Dashboard</p>
-							</a>
-							<a href="#" className="flex items-center gap-3 px-4 py-3 rounded-full bg-[#f4ede7] dark:bg-[#3a2d20] shadow-sm">
+
+							<a href="/admin" className="flex items-center gap-3 px-4 py-3 rounded-full bg-[#f4ede7] dark:bg-[#3a2d20] shadow-sm">
 								<FontAwesomeIcon icon={faBookOpen} className="text-text-main dark:text-primary" />
 								<p className="text-sm font-bold text-text-main dark:text-white">Inventory</p>
 							</a>
@@ -132,17 +309,168 @@ export default function Admin() {
 								<FontAwesomeIcon icon={faShoppingBag} className="group-hover:scale-110 transition-transform" />
 								<p className="text-sm font-medium">Orders</p>
 							</a>
-							<a href="#" className="group flex items-center gap-3 px-4 py-3 rounded-full text-text-main dark:text-gray-200 hover:bg-[#efe9e3] dark:hover:bg-[#3a2d20] transition-colors">
-								<FontAwesomeIcon icon={faUsers} className="group-hover:scale-110 transition-transform" />
-								<p className="text-sm font-medium">Customers</p>
-							</a>
-							<a href="#" className="group flex items-center gap-3 px-4 py-3 rounded-full text-text-main dark:text-gray-200 hover:bg-[#efe9e3] dark:hover:bg-[#3a2d20] transition-colors">
+
+							<a href="/admin/analytics" className="group flex items-center gap-3 px-4 py-3 rounded-full text-text-main dark:text-gray-200 hover:bg-[#efe9e3] dark:hover:bg-[#3a2d20] transition-colors">
 								<FontAwesomeIcon icon={faChartBar} className="group-hover:scale-110 transition-transform" />
 								<p className="text-sm font-medium">Analytics</p>
 							</a>
 						</nav>
 					</div>
 					<button className="flex w-full cursor-pointer items-center justify-center gap-2 overflow-hidden rounded-full h-12 px-6 bg-primary/10 hover:bg-primary/20 dark:bg-primary/20 dark:hover:bg-primary/30 text-text-main dark:text-primary text-sm font-bold transition-colors">
+
+				{/* Edit Modal */}
+				{showEditModal && (
+					<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
+						<div className="w-full max-w-lg rounded-2xl bg-white dark:bg-surface-dark p-6 shadow-2xl border border-gray-200 dark:border-gray-700">
+							<h3 className="text-xl font-bold mb-4 text-text-main dark:text-white">Edit Book</h3>
+							<div className="space-y-4">
+								<div>
+									<label className="text-sm font-semibold">Title<span className="text-red-500">*</span></label>
+									<input
+										type="text"
+										{...registerEdit('title', { required: 'Title is required' })}
+										className="mt-1 w-full h-10 px-3 rounded-md bg-surface-light dark:bg-surface-dark border border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-primary outline-none"
+									/>
+									{errorsEdit.title && <p className="text-red-500 text-xs mt-1">{errorsEdit.title.message}</p>}
+								</div>
+								<div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+									<div>
+										<label className="text-sm font-semibold">Selling Price<span className="text-red-500">*</span></label>
+										<input
+											min="0"
+											type="number"
+											step="0.01"
+											{...registerEdit('sellingPrice', { 
+												required: 'Selling price is required',
+												min: { value: 0.01, message: 'Price must be greater than 0' }
+											})}
+											className="mt-1 w-full h-10 px-3 rounded-md bg-surface-light dark:bg-surface-dark border border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-primary outline-none"
+										/>
+										{errorsEdit.sellingPrice && <p className="text-red-500 text-xs mt-1">{errorsEdit.sellingPrice.message}</p>}
+									</div>
+									<div>
+										<label className="text-sm font-semibold">Quantity<span className="text-red-500">*</span></label>
+										<input
+											type="number"
+											min="0"
+											{...registerEdit('quantity', { 
+												required: 'Quantity is required',
+												valueAsNumber: true,
+												min: { value: 0, message: 'Quantity cannot be negative' }
+											})}
+											className="mt-1 w-full h-10 px-3 rounded-md bg-surface-light dark:bg-surface-dark border border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-primary outline-none"
+										/>
+										{errorsEdit.quantity && <p className="text-red-500 text-xs mt-1">{errorsEdit.quantity.message}</p>}
+									</div>
+									<div>
+										<label className="text-sm font-semibold">Year<span className="text-red-500">*</span></label>
+										<input
+											type="number"
+											min="1000"
+											max={new Date().getFullYear()}
+											{...registerEdit('year', { 
+												required: 'Publication year is required',
+												valueAsNumber: true,
+												min: { value: 1000, message: 'Year must be at least 1000' },
+												max: { value: new Date().getFullYear(), message: `Year cannot exceed ${new Date().getFullYear()}` }
+											})}
+											className="mt-1 w-full h-10 px-3 rounded-md bg-surface-light dark:bg-surface-dark border border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-primary outline-none"
+										/>
+										{errorsEdit.year && <p className="text-red-500 text-xs mt-1">{errorsEdit.year.message}</p>}
+									</div>
+								</div>
+
+								{/* Publisher Field */}
+								<div className="mt-4">
+									<label className="text-sm font-semibold">Publisher<span className="text-red-500">*</span></label>
+									<input
+										type="text"
+										{...registerEdit('publisher', { required: 'Publisher is required' })}
+										className="mt-1 w-full h-10 px-3 rounded-md bg-surface-light dark:bg-surface-dark border border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-primary outline-none"
+									/>
+									{errorsEdit.publisher && <p className="text-red-500 text-xs mt-1">{errorsEdit.publisher.message}</p>}
+								</div>
+
+								{/* Authors Field */}
+								<div className="mt-4">
+									<label className="text-sm font-semibold">Authors<span className="text-red-500">*</span></label>
+									{watchEdit('authors').map((author, index) => (
+										<div key={index} className="flex gap-2 mt-2">
+											<input
+												type="text"
+												value={author}
+												onChange={(e) => handleEditAuthorChange(index, e.target.value)}
+												placeholder={`Author ${index + 1}`}
+												className="flex-1 h-10 px-3 rounded-md bg-surface-light dark:bg-surface-dark border border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-primary outline-none"
+											/>
+											{watchEdit('authors').length > 1 && (
+												<button
+													type="button"
+													onClick={() => handleEditRemoveAuthorField(index)}
+													className="px-3 py-2 rounded-md bg-red-500 text-white hover:bg-red-600"
+												>
+													Remove
+												</button>
+											)}
+										</div>
+									))}
+									<button
+										type="button"
+										onClick={handleEditAddAuthor}
+										className="mt-2 px-4 py-2 rounded-md bg-primary text-white hover:bg-primary/90"
+									>
+										Add Author
+									</button>
+									{watchEdit('authors').some(a => a.trim() === '') && (
+										<p className="text-red-500 text-xs mt-1">All author fields must be filled or removed</p>
+									)}
+								</div>
+							</div>
+							<div className="mt-6 flex justify-end gap-3">
+								<button
+									onClick={handleCancelDialogs}
+									className="px-4 py-2 rounded-full border border-gray-300 dark:border-gray-600 bg-surface-light dark:bg-surface-dark text-sm font-semibold hover:border-primary hover:text-primary"
+								>
+									Cancel
+								</button>
+								<button
+									onClick={handleSaveEdit}
+									className="px-4 py-2 rounded-full bg-primary text-white text-sm font-semibold hover:bg-primary/90"
+								>
+									Save Changes
+								</button>
+							</div>
+						</div>
+					</div>
+				)}
+
+				{/* Remove Confirmation */}
+				{showRemoveModal && (
+					<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
+						<div className="w-full max-w-md rounded-2xl bg-white dark:bg-surface-dark p-6 shadow-2xl border border-gray-200 dark:border-gray-700">
+							<h3 className="text-xl font-bold mb-3 text-text-main dark:text-white">Remove Book</h3>
+							<p className="text-sm text-text-secondary dark:text-gray-300 mb-6">
+								Are you sure you want to remove
+								{' '}
+								<span className="font-semibold">{removingBook?.title}</span>?
+							</p>
+							<div className="flex justify-end gap-3">
+								<button
+									onClick={handleCancelDialogs}
+									className="px-4 py-2 rounded-full border border-gray-300 dark:border-gray-600 bg-surface-light dark:bg-surface-dark text-sm font-semibold hover:border-primary hover:text-primary"
+								>
+									Cancel
+								</button>
+								<button
+									onClick={handleConfirmRemove}
+									className="px-4 py-2 rounded-full bg-red-500 text-white text-sm font-semibold hover:bg-red-600"
+								>
+									Remove
+								</button>
+							</div>
+						</div>
+					</div>
+				)}
 						<FontAwesomeIcon icon={faArrowRightFromBracket} className="text-[18px]" />
 						<span className="truncate">Log Out</span>
 					</button>
@@ -165,7 +493,7 @@ export default function Admin() {
 											showFilters={showFilters}
 											onToggleFilters={() => setShowFilters((s) => !s)}
 											filtersRef={filtersRef}
-											categories={categories}
+													categories={dashboardCategories}
 											selectedCategory={selectedCategory}
 											onSelectCategory={toggleCategory}
 											register={register}
@@ -174,7 +502,7 @@ export default function Admin() {
 											hasFiltersApplied={hasFiltersApplied}
 										/>
 									</div>
-									<button className="flex cursor-pointer items-center justify-center gap-2 overflow-hidden rounded-full h-16 px-6 bg-primary hover:bg-primary/90 text-[#1c140d] shadow-lg shadow-orange-500/20 text-sm font-bold tracking-wide transition-all transform active:scale-95 whitespace-nowrap lg:ml-auto">
+									<button onClick={handleOpenAdd} className="flex cursor-pointer items-center justify-center gap-2 overflow-hidden rounded-full h-16 px-6 bg-primary hover:bg-primary/90 text-[#1c140d] shadow-lg shadow-orange-500/20 text-sm font-bold tracking-wide transition-all transform active:scale-95 whitespace-nowrap lg:ml-auto">
 										<FontAwesomeIcon icon={faPlus} className="text-[18px]" />
 										<span>Add New Book</span>
 									</button>
@@ -212,6 +540,184 @@ export default function Admin() {
 						</div>
 					</div>
 				</main>
+
+				{/* Add Book Modal */}
+				{showAddModal && (
+					<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
+						<div className="w-full max-w-2xl rounded-2xl bg-white dark:bg-surface-dark p-6 shadow-2xl border border-gray-200 dark:border-gray-700 max-h-[90vh] overflow-y-auto">
+							<h3 className="text-xl font-bold mb-4 text-text-main dark:text-white">Add New Book</h3>
+							<div className="space-y-4">
+								<div>
+									<label className="text-sm font-semibold">Title<span className="text-red-500">*</span></label>
+									<input
+										type="text"
+										{...registerAdd('title', { required: 'Title is required' })}
+										className="mt-1 w-full h-10 px-3 rounded-md bg-surface-light dark:bg-surface-dark border border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-primary outline-none"
+									/>
+									{errorsAdd.title && <p className="text-red-500 text-xs mt-1">{errorsAdd.title.message}</p>}
+								</div>
+
+								<div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+									<div>
+									<label className="text-sm font-semibold">Selling Price<span className="text-red-500">*</span></label>
+									<input
+										type="number"
+										step="0.01"
+										min="0"
+										{...registerAdd('sellingPrice', { 
+											required: 'Selling price is required',
+											min: { value: 0.01, message: 'Price must be greater than 0' }
+										})}
+											className="mt-1 w-full h-10 px-3 rounded-md bg-surface-light dark:bg-surface-dark border border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-primary outline-none"
+										/>
+										{errorsAdd.sellingPrice && <p className="text-red-500 text-xs mt-1">{errorsAdd.sellingPrice.message}</p>}
+									</div>
+									<div>
+										<label className="text-sm font-semibold">Quantity<span className="text-red-500">*</span></label>
+										<input
+											type="number"
+											min="0"
+											{...registerAdd('stock', { 
+												required: 'Quantity is required',
+												valueAsNumber: true,
+												min: { value: 0, message: 'Quantity cannot be negative' }
+											})}
+											className="mt-1 w-full h-10 px-3 rounded-md bg-surface-light dark:bg-surface-dark border border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-primary outline-none"
+										/>
+										{errorsAdd.stock && <p className="text-red-500 text-xs mt-1">{errorsAdd.stock.message}</p>}
+									</div>
+									<div>
+										<label className="text-sm font-semibold">Threshold<span className="text-red-500">*</span></label>
+										<input
+											type="number"
+											min="0"
+											{...registerAdd('threshold', { 
+												required: 'Threshold is required',
+												valueAsNumber: true,
+												min: { value: 0, message: 'Threshold cannot be negative' }
+											})}
+											className="mt-1 w-full h-10 px-3 rounded-md bg-surface-light dark:bg-surface-dark border border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-primary outline-none"
+										/>
+										{errorsAdd.threshold && <p className="text-red-500 text-xs mt-1">{errorsAdd.threshold.message}</p>}
+									</div>
+								</div>
+
+								<div>
+									<label className="text-sm font-semibold">Category<span className="text-red-500">*</span></label>
+									<select
+										{...registerAdd('category', { required: 'Category is required' })}
+										className="mt-1 w-full h-10 px-3 rounded-md bg-surface-light dark:bg-surface-dark border border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-primary outline-none"
+									>
+										<option value="">Select category</option>
+										{categoryOptions.map((cat) => (
+											<option key={cat} value={cat}>
+												{cat}
+											</option>
+										))}
+									</select>
+									{errorsAdd.category && <p className="text-red-500 text-xs mt-1">{errorsAdd.category.message}</p>}
+								</div>
+
+<div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+					<div>
+						<label className="text-sm font-semibold">Publisher ID<span className="text-red-500">*</span></label>
+						<input
+							type="number"
+							min="1"
+					{...registerAdd('pubID', { 
+						required: 'Publisher ID is required',
+						min: { value: 1, message: 'Publisher ID must be at least 1' }
+					})}
+							className="mt-1 w-full h-10 px-3 rounded-md bg-surface-light dark:bg-surface-dark border border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-primary outline-none"
+						/>
+						{errorsAdd.pubID && <p className="text-red-500 text-xs mt-1">{errorsAdd.pubID.message}</p>}
+					</div>
+					<div>
+						<label className="text-sm font-semibold">ISBN<span className="text-red-500">*</span></label>
+						<input
+							type="text"
+							{...registerAdd('isbn', { 
+								required: 'ISBN is required',
+								pattern: { value: /^[0-9-]+$/, message: 'ISBN must contain only numbers and hyphens' }
+							})}
+							className="mt-1 w-full h-10 px-3 rounded-md bg-surface-light dark:bg-surface-dark border border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-primary outline-none"
+						/>
+						{errorsAdd.isbn && <p className="text-red-500 text-xs mt-1">{errorsAdd.isbn.message}</p>}
+					</div>
+					<div>
+						<label className="text-sm font-semibold">Publication Year<span className="text-red-500">*</span></label>
+						<input
+							type="number"
+							min="1000"
+							max={new Date().getFullYear()}
+							{...registerAdd('publicationYear', { 
+								required: 'Publication year is required',
+								min: { value: 1000, message: 'Year must be at least 1000' },
+								max: { value: new Date().getFullYear(), message: `Year cannot exceed ${new Date().getFullYear()}` }
+							})}
+											className="mt-1 w-full h-10 px-3 rounded-md bg-surface-light dark:bg-surface-dark border border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-primary outline-none"
+										/>
+										{errorsAdd.publicationYear && <p className="text-red-500 text-xs mt-1">{errorsAdd.publicationYear.message}</p>}
+									</div>
+								</div>
+
+								<div className="space-y-2">
+									<div className="flex items-center justify-between">
+										<label className="text-sm font-semibold">Authors<span className="text-red-500">*</span></label>
+										<button
+											onClick={handleAddAuthor}
+											type="button"
+											className="px-3 py-1 rounded-full bg-primary text-white text-xs font-semibold hover:bg-primary/90"
+										>
+											Add Author
+										</button>
+									</div>
+									<div className="space-y-2">
+										{watchAdd('authors').map((author, idx) => (
+											<div key={idx} className="space-y-1">
+												<label className="text-xs font-semibold text-text-secondary dark:text-gray-300">Author {idx + 1}</label>
+												<div className="flex items-center gap-2">
+													<input
+														type="text"
+														value={author}
+														onChange={(e) => handleAuthorChange(idx, e.target.value)}
+														className="flex-1 h-10 px-3 rounded-md bg-surface-light dark:bg-surface-dark border border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-primary outline-none"
+														placeholder="Enter author name"
+													/>
+													<button
+														onClick={() => handleRemoveAuthorField(idx)}
+														type="button"
+														disabled={watchAdd('authors').length === 1}
+														className="px-3 py-2 rounded-full text-xs font-semibold border border-gray-300 dark:border-gray-600 hover:border-red-500 hover:text-red-600 disabled:opacity-50"
+													>
+														Remove
+													</button>
+												</div>
+											</div>
+										))}
+									</div>
+								</div>
+							</div>
+							<div className="mt-6 flex justify-end gap-3">
+							{watchAdd('authors').some(a => a.trim() === '') && (
+								<p className="text-red-500 text-xs mt-1">All author fields must be filled or removed</p>
+							)}
+								<button
+									onClick={handleCancelDialogs}
+									className="px-4 py-2 rounded-full border border-gray-300 dark:border-gray-600 bg-surface-light dark:bg-surface-dark text-sm font-semibold hover:border-primary hover:text-primary"
+								>
+									Cancel
+								</button>
+								<button
+									onClick={handleSaveNewBook}
+									className="px-4 py-2 rounded-full bg-primary text-white text-sm font-semibold hover:bg-primary/90"
+								>
+									Add Book
+								</button>
+							</div>
+						</div>
+					</div>
+				)}
 			</div>
 		</div>
 	);

@@ -19,12 +19,24 @@ export default function Login() {
 
     try {
     setResetForm(false);
+    console.log('Login data:', data);
       const res = await loginUsers(data);
-      console.log(data);
-      console.log(res);
-      localStorage.setItem("access", res.data.access);
-      localStorage.setItem("refresh", res.data.refresh);
+      console.log('Login response:', res);
+    localStorage.setItem("role", res.data.role);
+    localStorage.setItem("access", res.data.accessToken);
+      
+      console.log('Access token:', res.data?.accessToken);
+      
+      
+      if (!res.data?.accessToken) {
+        throw new Error('No access token in response');
+      }
+      
+      localStorage.setItem("access", res.data.accessToken);
+      
       localStorage.setItem("userId", data.username);
+      
+      console.log('Stored token:', localStorage.getItem('access'));
       
       setIncorrect(false);
       setLoading(false);

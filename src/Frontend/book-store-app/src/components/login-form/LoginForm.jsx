@@ -5,11 +5,9 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { ThreeCircles } from 'react-loader-spinner';    
 import { loginSchema } from "../../schemas/loginSchema";
 import ErrorMsg from '../shared/ErrorMsg';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faEye, faEyeSlash } from '@fortawesome/free-solid-svg-icons';
+import PasswordInput from '../shared/PasswordInput';
 export default function LoginForm({ onSubmit, resetForm , loading}) {
     const { register, handleSubmit, formState: { errors }, reset } = useForm({ resolver: zodResolver(loginSchema) });
-    const [showPassword, setShowPassword] = useState(false);
     useEffect(() => {
         if (resetForm) {
             reset({ username: '',
@@ -39,32 +37,19 @@ export default function LoginForm({ onSubmit, resetForm , loading}) {
                     {errors.username && <ErrorMsg error={errors.username.message} />}
                 </label>
 
-                <label className="flex flex-col gap-2">
+                <div className="flex flex-col gap-2">
                     <div className="flex justify-between">
                         <span className="font-medium">Password</span>
                         <Link className="text-sm text-primary hover:text-primary-hover" to="/forgot-password">
                                 Forgot Password?
                             </Link>
                     </div>
-                    <div className="flex rounded-xl border border-border-color overflow-hidden items-center">
-                        <input
-                            type={showPassword ? 'text' : 'password'}
-                            placeholder="********"
-                            {...register("password")}
-                            className="flex-1 h-14 px-4 outline-none"
-                        />
-                        <button
-                            type="button"
-                            onClick={() => setShowPassword(s => !s)}
-                            className="flex items-center px-4 cursor-pointer"
-                            aria-label={showPassword ? "Hide password" : "Show password"}
-                            title={showPassword ? "Hide password" : "Show password"}
-                        >
-                            <FontAwesomeIcon icon={showPassword ? faEye : faEyeSlash} />
-                        </button>
-                    </div>
-                    {errors.password && <ErrorMsg error={errors.password.message} />}
-                </label>
+                    <PasswordInput
+                        register={register("password")}
+                        error={errors.password}
+                        className="h-14 rounded-xl"
+                    />
+                </div>
 
                 <button className="h-14 rounded-full bg-primary hover:bg-primary-hover text-white font-bold transition-all"
                     type="submit"
