@@ -14,7 +14,7 @@ namespace OrderProcessing.Infrastructure.Repositories
             _connectionFactory = connectionFactory;
         }
 
-        public async Task<CreditCard?> GetByNumberAsync(string cardNumber)
+        public async Task<CreditCard?> GetByNumberAsync(long cardNumber)
         {
             const string sql = """
                 SELECT
@@ -91,9 +91,8 @@ namespace OrderProcessing.Infrastructure.Repositories
                 )
             """;
 
-            using var connection =await  _connectionFactory.CreateConnectionAsync();
+            using var connection = await _connectionFactory.CreateConnectionAsync();
             using var transaction = connection.BeginTransaction();
-
             try
             {
                 await connection.ExecuteAsync(
@@ -105,7 +104,6 @@ namespace OrderProcessing.Infrastructure.Repositories
                     },
                     transaction
                 );
-
                 await connection.ExecuteAsync(
                     insertHolderSql,
                     new
@@ -115,6 +113,49 @@ namespace OrderProcessing.Infrastructure.Repositories
                     },
                     transaction
                 );
+                transaction.Commit();
+            }
+            catch (Npgsql.PostgresException ex)
+            {
+                transaction.Rollback();
+                throw PostgresExceptionTranslator.Translate(ex);
+            }
+        }
+
+
+        public async Task DeleteAsync(long cardNumber, string username)
+        {
+            const string countHoldersSql = @"SELECT COUNT(*) FROM CardHolder WHERE CardNumber = @CardNumber";
+            const string deleteHolderSql = @"DELETE FROM CardHolder WHERE CardNumber = @CardNumber AND Username = @Username";
+            const string deleteCardSql = @"DELETE FROM CreditCard WHERE CardNumber = @CardNumber";
+
+            using var connection = await _connectionFactory.CreateConnectionAsync();
+            using var transaction = connection.BeginTransaction();
+
+            try
+            {
+                // Remove the mapping for this user
+                await connection.ExecuteAsync(
+                    deleteHolderSql,
+                    new { CardNumber = cardNumber, Username = username },
+                    transaction
+                );
+
+                // Check if any mappings remain
+                var remaining = await connection.QuerySingleAsync<int>(
+                    countHoldersSql,
+                    new { CardNumber = cardNumber },
+                    transaction
+                );
+
+                if (remaining == 0)
+                {
+                    await connection.ExecuteAsync(
+                        deleteCardSql,
+                        new { CardNumber = cardNumber },
+                        transaction
+                    );
+                }
 
                 transaction.Commit();
             }
@@ -125,43 +166,22 @@ namespace OrderProcessing.Infrastructure.Repositories
             }
         }
 
-
-        public async Task DeleteAsync(string cardNumber)
+        public async Task<bool> ValidateCreditCardAsync(long cardNumber, DateTime expiryDate)
         {
-            const string deleteHolderSql = """
-                DELETE FROM CardHolder
+            const string sql = """
+                SELECT COUNT(1)
+                FROM CreditCard
                 WHERE CardNumber = @CardNumber
-            """;
-
-            const string deleteCardSql = """
-                DELETE FROM CreditCard
-                WHERE CardNumber = @CardNumber
+                AND ExpiryDate >= @ExpiryDate
             """;
 
             using var connection = await _connectionFactory.CreateConnectionAsync();
-            using var transaction = connection.BeginTransaction();
+            var count = await connection.QuerySingleAsync<int>(
+                sql,
+                new { CardNumber = cardNumber, ExpiryDate = expiryDate }
+            );
 
-            try
-            {
-                await connection.ExecuteAsync(
-                    deleteHolderSql,
-                    new { CardNumber = cardNumber },
-                    transaction
-                );
-
-                await connection.ExecuteAsync(
-                    deleteCardSql,
-                    new { CardNumber = cardNumber },
-                    transaction
-                );
-
-                transaction.Commit();
-            }
-            catch
-            {
-                transaction.Rollback();
-                throw;
-            }
+            return count > 0;
         }
     }
 }
