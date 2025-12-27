@@ -54,10 +54,10 @@ namespace OrderProcessing.Application.Services
             );
         }
 
-        public async Task ChangePasswordAsync(ChangePasswordRequest request)
+        public async Task ChangePasswordAsync(string token, ChangePasswordRequest request)
         {
             // 1. Get username from token
-            var username = _jwtService.GetUsernameFromToken(request.Token);
+            var username = _jwtService.GetUsernameFromToken(token);
             if (string.IsNullOrEmpty(username))
                 throw new UnauthorizedAccessException("Invalid token.");
 
@@ -69,7 +69,6 @@ namespace OrderProcessing.Application.Services
             // 3. Verify current password
             if (!_passwordHasher.Verify(request.OldPassword, user.PasswordHash))
                 throw new UnauthorizedAccessException("Current password is incorrect.");
-
 
             // 4. Hash new password
             var newHash = _passwordHasher.HashPassword(request.NewPassword);
@@ -87,6 +86,19 @@ namespace OrderProcessing.Application.Services
             );
 
             await _userRepository.UpdateAsync(updatedUser);
+        }
+
+        public async Task AddCreditCardAsync(string token, OrderProcessing.Application.DTOs.CreditCard.AddCreditCardDto dto)
+        {
+            var username = _jwtService.GetUsernameFromToken(token);
+            if (string.IsNullOrEmpty(username))
+                throw new UnauthorizedAccessException("Invalid token.");
+
+            // Add credit card for user (service will validate and handle duplicates)
+            await _creditCardRepository.AddAsync(
+                new CreditCard(dto.CardNumber, DateOnly.FromDateTime(dto.ExpiryDate)),
+                username
+            );
         }
         public async Task RemoveCreditCardAsync(RemoveCardRequest request)
         {
