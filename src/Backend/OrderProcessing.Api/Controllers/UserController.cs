@@ -48,7 +48,7 @@ namespace OrderProcessing.API.Controllers
             try
             {
                 var token = GetBearerToken();
-                await _userService.ChangePasswordAsync(request with { Token = token });
+                await _userService.ChangePasswordAsync(token, request);
                 return Ok(new { message = "Password changed successfully." });
             }
             catch (UnauthorizedAccessException ex)
