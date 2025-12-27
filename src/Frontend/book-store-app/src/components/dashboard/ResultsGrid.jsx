@@ -40,12 +40,18 @@ export default function ResultsGrid({ results, lastQueryLabel }) {
   };
 
   const handleAddToCart = async (book) => {
-    const success = await addToCart(book);
-    if (success) {
-      setToast({ type: 'success', message: `"${book.title}" added to cart!` });
-      setTimeout(() => setToast(null), 3000);
-    } else {
-      setToast({ type: 'error', message: error || 'Failed to add item' });
+    try {
+      const success = await addToCart(book);
+      if (success) {
+        setToast({ type: 'success', message: `"${book.title}" added to cart!` });
+        setTimeout(() => setToast(null), 3000);
+      } else {
+        setToast({ type: 'error', message: error || 'Failed to add item' });
+        setTimeout(() => setToast(null), 4000);
+      }
+    } catch (err) {
+      console.error('Error adding to cart:', err);
+      setToast({ type: 'error', message: 'Failed to add item to cart' });
       setTimeout(() => setToast(null), 4000);
     }
   };
