@@ -1,8 +1,8 @@
+
 using Microsoft.AspNetCore.Mvc;
 using OrderProcessing.Application.DTOs.User;
 using OrderProcessing.Application.DTOs.Requests;
 using OrderProcessing.Application.Interfaces;
-using System.Security.Authentication;
 using OrderProcessing.Application.DTOs.CreditCard;
 
 namespace OrderProcessing.API.Controllers
@@ -16,6 +16,26 @@ namespace OrderProcessing.API.Controllers
         public UserController(IUserService userService)
         {
             _userService = userService;
+        }
+
+        // GET api/user/orders
+        [HttpGet("orders")]
+        public async Task<IActionResult> GetPastOrders()
+        {
+            try
+            {
+                var token = GetBearerToken();
+                var orders = await _userService.GetPastOrdersAsync(token);
+                return Ok(orders);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = ex.Message });
+            }
         }
 
         // GET api/user/details

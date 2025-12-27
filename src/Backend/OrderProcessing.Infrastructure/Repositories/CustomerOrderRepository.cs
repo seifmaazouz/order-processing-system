@@ -136,7 +136,7 @@ namespace OrderProcessing.Infrastructure.Repositories
 
             return new CustomerOrder(
                 row.OrderID,
-                (float)row.TotalPrice,  // convert decimal to float if your domain uses float
+                row.TotalPrice,
                 status,
                 row.OrderDate,
                 row.CustName
