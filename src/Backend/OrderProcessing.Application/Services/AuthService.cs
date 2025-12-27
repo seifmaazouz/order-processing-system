@@ -15,15 +15,19 @@ namespace OrderProcessing.Application.Services
         private readonly IUserRepository _userRepository;
         private readonly IPasswordHasher _passwordHasher;
         private readonly IJwtService _jwtService;
+        private readonly IShoppingCartService _shoppingCartService;
+
         public AuthService(
         IUserRepository userRepository,
         IPasswordHasher passwordHasher,
-        IJwtService jwtService
+        IJwtService jwtService,
+        IShoppingCartService shoppingCartService
         )
     {
         _userRepository = userRepository;
         _passwordHasher=passwordHasher;
         _jwtService=jwtService;
+        _shoppingCartService=shoppingCartService;
     }
         public Task ChangePasswordAsync(ChangePasswordRequest request)
         {
@@ -32,20 +36,20 @@ namespace OrderProcessing.Application.Services
 
         public async Task<UserDto> CreateAsync(CreateUserRequest request)
         {
-            var existedUser=await  _userRepository.GetByUserNameAsync(request.Username);
-            if(existedUser is not null)
+            var existedUser = await _userRepository.GetByUserNameAsync(request.Username);
+            if (existedUser is not null)
             {
                 throw new DuplicateResourceException("Username already exists");
             }
-            string password=_passwordHasher.HashPassword(request.Password);
+            string password = _passwordHasher.HashPassword(request.Password);
             var user = new User(
-                 request.Username,
-                 request.Email,
-                 request.PhoneNumber,
-                 request.FirstName,
-                 request.LastName,
-                 password,
-                role: UserTypes.Customer
+                request.Username,
+                request.Email,
+                request.PhoneNumber,
+                request.FirstName,
+                request.LastName,
+                password,
+                role: UserTypes.Customer // Always customer for normal registration
             );
             await _userRepository.AddAsync(user);
             return new UserDto(
@@ -72,20 +76,20 @@ namespace OrderProcessing.Application.Services
         }
         public async Task<UserDto> CreateAdminAsync(CreateUserRequest request)
         {
-            var existedUser=await  _userRepository.GetByUserNameAsync(request.Username);
-            if(existedUser is not null)
+            var existedUser = await _userRepository.GetByUserNameAsync(request.Username);
+            if (existedUser is not null)
             {
                 throw new InvalidOperationException("Username already exists");
             }
-            string password=_passwordHasher.HashPassword(request.Password);
+            string password = _passwordHasher.HashPassword(request.Password);
             var user = new User(
-                 request.Username,
-                 request.Email,
-                 request.PhoneNumber,
-                 request.FirstName,
-                 request.LastName,
-                 password,
-                role: UserTypes.Customer
+                request.Username,
+                request.Email,
+                request.PhoneNumber,
+                request.FirstName,
+                request.LastName,
+                password,
+                role: UserTypes.Admin // Always admin for admin registration
             );
             await _userRepository.AddAsync(user);
             return new UserDto(
@@ -95,9 +99,16 @@ namespace OrderProcessing.Application.Services
             );
         }
 
-        public Task<string> LogoutAsync(LogoutRequest request)
+        public async Task<string> LogoutAsync(string token)
         {
-            throw new NotImplementedException();
+            var username = _jwtService.GetUsernameFromToken(token);
+            if (string.IsNullOrEmpty(username))
+                throw new UnauthorizedAccessException("Invalid token.");
+
+            // Clear user's shopping cart on logout
+            await _shoppingCartService.ClearCartAsync(username);
+
+            return "Logged out successfully. Shopping cart cleared.";
         }
 
     }
