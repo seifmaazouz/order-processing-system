@@ -26,7 +26,7 @@ namespace OrderProcessing.Api.Controllers
             try
             {
                 var user = await _userService.CreateAsync(request);
-                return CreatedAtAction(nameof(Register), new { username = user.Username }, user);
+                return Created(string.Empty, user);
             }
             catch (InvalidOperationException ex)
             {
@@ -69,7 +69,7 @@ namespace OrderProcessing.Api.Controllers
             try
             {
                 var user = await _userService.CreateAdminAsync(request);
-                return CreatedAtAction(nameof(Register), new { username = user.Username }, user);
+                return Created(string.Empty, user);
             }
             catch (InvalidOperationException ex)
             {
