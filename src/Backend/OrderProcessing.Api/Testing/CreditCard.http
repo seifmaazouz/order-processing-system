@@ -1,0 +1,48 @@
+### Credit Card Endpoints (User)
+@OrderProcessingApi_HostAddress = http://localhost:8080
+@UserToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJtb2hhbWVkLnRlc3QxMSIsImh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vd3MvMjAwOC8wNi9pZGVudGl0eS9jbGFpbXMvcm9sZSI6IkN1c3RvbWVyIiwianRpIjoiMjEyZmI5ODQtNmEyYy00OTVlLThjOWQtZWQ4ODVmZDVmMGUzIiwiZXhwIjoxNzY2ODA1MzY1LCJpc3MiOiJPcmRlclByb2Nlc3NpbmdBUEkiLCJhdWQiOiJPcmRlclByb2Nlc3NpbmdDbGllbnQifQ.8DDgv9dxROh9stVX2zuc8y9LzJ0dTSOQ_YGBMx4oXxM
+
+# Get all credit cards for user
+GET {{OrderProcessingApi_HostAddress}}/api/creditcard
+Authorization: Bearer {{UserToken}}
+
+###
+# Add a new credit card for user
+POST {{OrderProcessingApi_HostAddress}}/api/creditcard
+Authorization: Bearer {{UserToken}}
+Content-Type: application/json
+
+{
+  "cardNumber": "1234567890123456",
+  "expiryDate": "2030-12-31"
+}
+
+###
+# Delete a credit card for user
+DELETE {{OrderProcessingApi_HostAddress}}/api/creditcard/1234567890123456
+Authorization: Bearer {{UserToken}}
+
+### Credit Card Endpoints (Admin)
+@AdminToken = <PASTE_ADMIN_JWT_TOKEN_HERE>
+
+# Get all credit cards for admin
+GET {{OrderProcessingApi_HostAddress}}/api/creditcard
+Authorization: Bearer {{AdminToken}}
+
+###
+# Add a new credit card for admin
+POST {{OrderProcessingApi_HostAddress}}/api/creditcard
+Authorization: Bearer {{AdminToken}}
+Content-Type: application/json
+
+{
+  "cardNumber": "9876543210123456",
+  "expiryDate": "2031-01-01"
+}
+
+###
+# Delete a credit card for admin
+DELETE {{OrderProcessingApi_HostAddress}}/api/creditcard/9876543210123456
+Authorization: Bearer {{AdminToken}}
+
+###
