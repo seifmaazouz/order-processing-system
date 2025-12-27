@@ -67,8 +67,9 @@ namespace OrderProcessing.Application.Services
                 throw new KeyNotFoundException("User not found.");
 
             // 3. Verify current password
-            if (!_passwordHasher.Verify(user.PasswordHash, request.OldPassword))
+            if (!_passwordHasher.Verify(request.OldPassword, user.PasswordHash))
                 throw new UnauthorizedAccessException("Current password is incorrect.");
+
 
             // 4. Hash new password
             var newHash = _passwordHasher.HashPassword(request.NewPassword);

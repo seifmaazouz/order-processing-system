@@ -20,6 +20,8 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IOrderRepository, OrderRepository>();
         services.AddScoped<IReportRepository, ReportRepistory>();
+        services.AddScoped<ICreditCardRepository, CreditCardRepository>();
+
 
         return services;
     }
