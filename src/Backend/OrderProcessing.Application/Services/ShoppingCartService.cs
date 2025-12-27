@@ -62,7 +62,7 @@ public class ShoppingCartService : IShoppingCartService
 
     public async Task AddItemToCartAsync(string username, string isbn)
     {
-        int quantity = 1; // I changed to default 1 for now
+        int quantity = 1; // Always add 1 item
         
         if (quantity <= 0)
             throw new BusinessRuleViolationException("Quantity must be greater than 0");
@@ -71,6 +71,10 @@ public class ShoppingCartService : IShoppingCartService
         var book = await _bookRepository.GetBookDetailsAsync(isbn);
         if (book == null)
             throw new NotFoundException("Book", "ISBN", isbn);
+
+        // Check if book is available (in stock)
+        if (book.Quantity <= 0)
+            throw new BusinessRuleViolationException($"Book {book.Title} is currently out of stock");
 
         var cart = await _shoppingCartRepository.GetCartByUsernameAsync(username);
         
@@ -89,9 +93,9 @@ public class ShoppingCartService : IShoppingCartService
         await _shoppingCartRepository.AddCartItemAsync(cart.CartId, cartItem);
     }
 
-    public async Task UpdateCartItemAsync(string username, UpdateCartItemDto updateCartItemDto)
+    public async Task UpdateCartItemAsync(string username, string isbn, int quantity)
     {
-        if (updateCartItemDto.Quantity <= 0)
+        if (quantity <= 0)
             throw new BusinessRuleViolationException("Quantity must be greater than 0");
 
         var cart = await _shoppingCartRepository.GetCartByUsernameAsync(username);
@@ -101,14 +105,14 @@ public class ShoppingCartService : IShoppingCartService
         }
 
         var cartItem = new CartItemReadModel(
-            updateCartItemDto.ISBN,
-            updateCartItemDto.Quantity,
+            isbn,
+            quantity,
             -1
         );
         var affected = await _shoppingCartRepository.UpdateCartItemAsync(cart.CartId, cartItem);
         if (affected == 0)
         {
-            throw new NotFoundException("Cart item", "ISBN", updateCartItemDto.ISBN);
+            throw new NotFoundException("Cart item", "ISBN", isbn);
         }
     }
 
