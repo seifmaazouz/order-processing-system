@@ -20,21 +20,21 @@ public class ReportRepository : IReportRepository
 
         var salesSql = 
         """
-            SELECT OrderID, OrderDate, "Status", TotalPrice
-            FROM "Order"
+            SELECT OrderID, OrderDate, TotalPrice
+            FROM CustomerOrder 
             WHERE "Status" = 'Confirmed' 
-            AND OrderDate >= CURRENT_DATE - INTERVAL '1 month' 
-            AND OrderDate <= CURRENT_DATE
+              AND OrderDate >= CURRENT_DATE - INTERVAL '1 month' 
+              AND OrderDate <= CURRENT_DATE
         """;
 
         // this select returns the total revenue from all the sales
         var totalPriceSql =
         """
             SELECT SUM(TotalPrice) AS totalPrice
-            FROM "Order"
+            FROM CustomerOrder
             WHERE "Status" = 'Confirmed' 
-            AND OrderDate >= CURRENT_DATE - INTERVAL '1 month' 
-            AND OrderDate <= CURRENT_DATE
+              AND OrderDate >= CURRENT_DATE - INTERVAL '1 month' 
+              AND OrderDate <= CURRENT_DATE
         """;
 
         var sales = await connection.QueryAsync(salesSql);
@@ -55,19 +55,19 @@ public class ReportRepository : IReportRepository
         // admin that inserts the date inserts it here
         var salesSql = 
         """
-            SELECT OrderID, OrderDate, "Status", TotalPrice
-            FROM "Order"
+            SELECT OrderID, OrderDate, TotalPrice
+            FROM CustomerOrder
             WHERE "Status" = 'Confirmed'
-            AND OrderDate = @Date
+              AND OrderDate = @Date
         """;
 
         // this select returns the total revenue from all the sales on that day
         var totalPriceSql =
         """
             SELECT SUM(TotalPrice) AS totalPrice
-            FROM "Order"
+            FROM CustomerOrder
             WHERE "Status" = 'Confirmed'
-            AND OrderDate = @Date
+              AND OrderDate = @Date
         """;
 
         var sales = await connection.QueryAsync(salesSql, new { Date = date.ToDateTime(TimeOnly.MinValue) });
@@ -86,14 +86,14 @@ public class ReportRepository : IReportRepository
         using var connection = await _connectionFactory.CreateConnectionAsync();
         var sql = 
         """
-            SELECT CustName AS CustomerName, SUM(TotalPrice) AS TotalSpent
-            FROM "Order"
-            WHERE "Status" = 'Confirmed' 
-              AND OrderDate >= CURRENT_DATE - INTERVAL '3 months' 
-              AND OrderDate <= CURRENT_DATE
-            GROUP BY CustName
-            ORDER BY TotalSpent DESC
-            LIMIT 5
+                SELECT CustName AS CustomerName, SUM(TotalPrice) AS TotalSpent
+                FROM CustomerOrder
+                WHERE "Status" = 'Confirmed' 
+                    AND OrderDate >= CURRENT_DATE - INTERVAL '3 months' 
+                    AND OrderDate <= CURRENT_DATE
+                GROUP BY CustName
+                ORDER BY TotalSpent DESC
+                LIMIT 5
         """;
         return await connection.QueryAsync<TopCustomerReadModel>(sql);
     }
@@ -104,12 +104,12 @@ public class ReportRepository : IReportRepository
         var sql =
         """
             SELECT b.ISBN, b.Title, SUM(oi.Quantity) AS TotalCopiesSold
-            FROM OrderItem AS oi
+            FROM CustomerOrderItem AS oi
             JOIN Book AS b ON b.ISBN = oi.ISBN
-            JOIN "Order" AS o ON o.OrderID = oi.OrderNum
+            JOIN CustomerOrder AS o ON o.OrderID = oi.OrderNum
             WHERE o."Status" = 'Confirmed' 
-              AND o.OrderDate >= CURRENT_DATE - INTERVAL '3 months' 
-              AND o.OrderDate <= CURRENT_DATE
+                AND o.OrderDate >= CURRENT_DATE - INTERVAL '3 months' 
+                AND o.OrderDate <= CURRENT_DATE
             GROUP BY b.ISBN, b.Title
             ORDER BY TotalCopiesSold DESC
             LIMIT 10
@@ -122,13 +122,9 @@ public class ReportRepository : IReportRepository
         using var connection = await _connectionFactory.CreateConnectionAsync();
         var sql =
         """
-            SELECT oi.ISBN, b.Title, COUNT(oi.OrderNum) as TimesOrderedFromPublisher
-            FROM OrderItem AS oi
-            JOIN Book AS b ON b.ISBN = oi.ISBN
-            JOIN "Order" AS o ON oi.OrderNum = o.OrderID
-            JOIN "User" AS u ON o.CustName = u.Username
-            WHERE u."Role" = 'Admin' AND oi.ISBN = @Isbn
-            GROUP BY oi.ISBN, b.Title
+            SELECT SUM(Quantity) AS TimesOrderedFromPublisher
+            FROM AdminOrderItem
+            WHERE ISBN = @Isbn
         """;
         return await connection.QuerySingleOrDefaultAsync<BookReplenishmentCountReadModel>(sql, new { Isbn = isbn });
     }

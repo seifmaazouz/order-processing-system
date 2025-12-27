@@ -4,6 +4,8 @@ using OrderProcessing.Application.Mappings;
 using OrderProcessing.Application.Exceptions;
 using OrderProcessing.Domain.Interfaces.Repositories;
 using OrderProcessing.Domain.Models;
+using OrderProcessing.Domain.Entities;
+using OrderProcessing.Domain.ValueObjects;
 
 namespace OrderProcessing.Application.Services;
 
@@ -12,13 +14,13 @@ public class ShoppingCartService : IShoppingCartService
     private readonly IShoppingCartRepository _shoppingCartRepository;
     private readonly IBookRepository _bookRepository;
     private readonly ICreditCardRepository _creditCardRepository;
-    private readonly IOrderRepository _orderRepository;
+    private readonly ICustomerOrderRepository _orderRepository;
 
     public ShoppingCartService(
         IShoppingCartRepository shoppingCartRepository, 
         IBookRepository bookRepository,
         ICreditCardRepository creditCardRepository,
-        IOrderRepository orderRepository)
+        ICustomerOrderRepository orderRepository)
     {
         _shoppingCartRepository = shoppingCartRepository;
         _bookRepository = bookRepository;
@@ -33,16 +35,28 @@ public class ShoppingCartService : IShoppingCartService
         if (cart == null)
             return new ShoppingCartDetailsDto(0, username, new List<CartItemDetailsDto>(), 0);
         
-        var itemsDto = new List<CartItemDetailsDto>();
-        foreach (var item in cart.CartItems)
+        // Get all ISBNs at once to avoid N+1 queries
+        var isbns = cart.CartItems.Select(i => i.ISBN).ToList();
+        var books = new Dictionary<string, (string Title, List<string> Authors)>();
+        
+        foreach (var isbn in isbns)
         {
-            var book = await _bookRepository.GetBookDetailsAsync(item.ISBN);
-            var title = book?.Title ?? string.Empty;
-            var authors = (book?.AuthorNames ?? "")
-                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                .ToList();
-            itemsDto.Add(item.ToCartItemDetailsDto(title, authors));
+            var book = await _bookRepository.GetBookDetailsAsync(isbn);
+            if (book != null)
+            {
+                var authors = (book.AuthorNames ?? "")
+                    .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                    .ToList();
+                books[isbn] = (book.Title, authors);
+            }
         }
+        
+        var itemsDto = cart.CartItems.Select(item =>
+        {
+            var (title, authors) = books.GetValueOrDefault(item.ISBN, (string.Empty, new List<string>()));
+            return item.ToCartItemDetailsDto(title, authors);
+        }).ToList();
+        
         return cart.ToShoppingCartDetailsDto(itemsDto);
     }
 
@@ -115,14 +129,12 @@ public class ShoppingCartService : IShoppingCartService
         if (!isValidCard) throw new BusinessRuleViolationException("Invalid credit card information");
 
         // Calculate total price
-        decimal totalPrice = 0;
-        foreach (var item in cart.CartItems)
-        {
-            totalPrice += item.Quantity * item.UnitPrice;
-        }
+        decimal totalPrice = cart.CartItems.Sum(item => item.Quantity * item.UnitPrice);
 
-        // Create order
-        var orderId = await _orderRepository.CreateOrderAsync(username, totalPrice, cart.CartItems);
+        // Create customer order
+        var orderId = await _orderRepository.AddAsync(
+            new CustomerOrder(0, totalPrice, OrderStatus.Paid, DateOnly.FromDateTime(DateTime.Now), username)
+        );
 
         // Update book quantities (deduct from stock)
         foreach (var item in cart.CartItems)

@@ -49,7 +49,8 @@ namespace OrderProcessing.Application.Services
                 request.FirstName,
                 request.LastName,
                 password,
-                role: UserTypes.Customer // Always customer for normal registration
+                role: UserTypes.Customer, // Always customer for normal registration
+                address: request.ShipAddress
             );
             await _userRepository.AddAsync(user);
             return new UserDto(
@@ -89,7 +90,8 @@ namespace OrderProcessing.Application.Services
                 request.FirstName,
                 request.LastName,
                 password,
-                role: UserTypes.Admin // Always admin for admin registration
+                role: UserTypes.Admin, // Always admin for admin registration
+                address: request.ShipAddress
             );
             await _userRepository.AddAsync(user);
             return new UserDto(
