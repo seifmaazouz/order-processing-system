@@ -3,6 +3,7 @@ using OrderProcessing.Application.DTOs.User;
 using OrderProcessing.Application.DTOs.Requests;
 using OrderProcessing.Application.Interfaces;
 using System.Security.Authentication;
+using OrderProcessing.Application.DTOs.CreditCard;
 
 namespace OrderProcessing.API.Controllers
 {
@@ -50,6 +51,54 @@ namespace OrderProcessing.API.Controllers
                 var token = GetBearerToken();
                 await _userService.ChangePasswordAsync(token, request);
                 return Ok(new { message = "Password changed successfully." });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(new { message = ex.Message });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = ex.Message });
+            }
+        }
+
+        // PUT api/user/profile
+        [HttpPut("profile")]
+        public async Task<IActionResult> UpdateProfile([FromBody] UpdateUserProfileDto request)
+        {
+            try
+            {
+                var token = GetBearerToken();
+                await _userService.UpdateProfileAsync(token, request);
+                return Ok(new { message = "Profile updated successfully." });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(new { message = ex.Message });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = ex.Message });
+            }
+        }
+
+        // POST api/user/add-credit-card
+        [HttpPost("add-credit-card")]
+        public async Task<IActionResult> AddCreditCard([FromBody] AddCreditCardDto request)
+        {
+            try
+            {
+                var token = GetBearerToken();
+                await _userService.AddCreditCardAsync(token, request);
+                return Ok(new { message = "Credit card added successfully." });
             }
             catch (UnauthorizedAccessException ex)
             {
