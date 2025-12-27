@@ -56,6 +56,7 @@ builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
 builder.Services.AddScoped<IBookService, BookService>();
 builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<IReportService, ReportService>();
+builder.Services.AddScoped<IUserService, UserService>();
 
 
 // Configure JSON options globally

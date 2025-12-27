@@ -46,26 +46,42 @@ namespace OrderProcessing.Application.Services
         public string GetUsernameFromToken(string token)
         {
             var principal = GetPrincipalFromToken(token);
-            return principal?.FindFirst(JwtRegisteredClaimNames.Sub)?.Value 
-                   ?? throw new SecurityTokenException("Invalid token: username not found");
+            if (principal == null)
+                throw new SecurityTokenException("Invalid token");
+
+            // Try both 'sub' and 'nameidentifier'
+            var username = principal.FindFirst(JwtRegisteredClaimNames.Sub)?.Value
+                        ?? principal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (username == null)
+                throw new SecurityTokenException("Invalid token: username not found");
+
+            return username;
         }
+
+
 
         public UserTypes GetRoleFromToken(string token)
         {
             var principal = GetPrincipalFromToken(token);
-            var roleClaim = principal?.FindFirst(ClaimTypes.Role)?.Value 
-                            ?? throw new SecurityTokenException("Invalid token: role not found");
+            if (principal == null)
+                throw new SecurityTokenException("Invalid token");
 
-            return Enum.TryParse<UserTypes>(roleClaim, out var role) 
-                ? role 
-                : throw new SecurityTokenException("Invalid token: role invalid");
+            var roleClaim = principal.FindFirst(ClaimTypes.Role)?.Value
+                            ?? principal.FindFirst("role")?.Value;
+
+            if (!Enum.TryParse<UserTypes>(roleClaim, out var role))
+                throw new SecurityTokenException("Invalid token: role invalid");
+
+            return role;
         }
+
 
         // Private helper to validate and get claims principal
         private ClaimsPrincipal? GetPrincipalFromToken(string token)
         {
             var jwtSettings = _config.GetSection("JwtSettings");
-            var secret = jwtSettings["Secret"] ?? throw new ArgumentNullException("JwtSettings:Secret", "JWT secret key is not configured.");
+            var secret = jwtSettings["Secret"] ?? throw new ArgumentNullException("JwtSettings:Secret");
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret));
 
             var tokenHandler = new JwtSecurityTokenHandler();
@@ -80,15 +96,24 @@ namespace OrderProcessing.Application.Services
                     ValidIssuer = jwtSettings["Issuer"],
                     ValidAudience = jwtSettings["Audience"],
                     IssuerSigningKey = key,
-                    ClockSkew = TimeSpan.Zero // optional: remove default 5 min clock skew
+                    ClockSkew = TimeSpan.Zero
                 }, out SecurityToken validatedToken);
+
+                // Debug: print all claims
+                foreach (var claim in principal.Claims)
+                {
+                    Console.WriteLine($"{claim.Type}: {claim.Value}");
+                }
 
                 return principal;
             }
-            catch
+            catch (Exception ex)
             {
-                return null; // token invalid
+                Console.WriteLine("Token validation failed: " + ex.Message);
+                return null;
             }
         }
-    }
-}
+
+
+            }
+        }
