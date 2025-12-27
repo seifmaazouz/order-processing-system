@@ -1,19 +1,21 @@
-using OrderProcessing.Application.DTOs.User;
+using OrderProcessing.Application.DTOs.Requests;
 using OrderProcessing.Domain.Interfaces.Repositories;
 using OrderProcessing.Application.Interfaces;
 using OrderProcessing.Application.Security;
 using OrderProcessing.Domain.Entities;
 using OrderProcessing.Domain.ValueObjects;
 using OrderProcessing.Application.Exceptions;
+using OrderProcessing.Application.DTOs.User;
+
 
 namespace OrderProcessing.Application.Services
 {
-    public class UserServices : IUserService
+    public class AuthService : IAuthService
     {
         private readonly IUserRepository _userRepository;
         private readonly IPasswordHasher _passwordHasher;
         private readonly IJwtService _jwtService;
-        public UserServices(
+        public AuthService(
         IUserRepository userRepository,
         IPasswordHasher passwordHasher,
         IJwtService jwtService
@@ -68,49 +70,36 @@ namespace OrderProcessing.Application.Services
                 Role: user.Role.ToString() 
             );
         }
-        public async Task<AuthResultDto> LoginAdminAsync(LoginRequest request)
+        public async Task<UserDto> CreateAdminAsync(CreateUserRequest request)
         {
-            var user = await _userRepository.GetByUserNameAsync(request.Username);
-
-            if (user == null || !_passwordHasher.Verify(request.Password, user.PasswordHash))
-                throw new UnauthorizedAccessException("Invalid credentials");
-
-            if (user.Role != UserTypes.Admin) // check enum
-                throw new UnauthorizedAccessException("Only admins can login here");
-
-            // Generate JWT
-            var token = _jwtService.GenerateToken(user.Username, user.Role);
-
-            return new AuthResultDto(
-                AccessToken: token,
-                ExpiresAt: DateTime.UtcNow.AddMinutes(60),
-                Role: user.Role.ToString()
+            var existedUser=await  _userRepository.GetByUserNameAsync(request.Username);
+            if(existedUser is not null)
+            {
+                throw new InvalidOperationException("Username already exists");
+            }
+            string password=_passwordHasher.HashPassword(request.Password);
+            var user = new User(
+                 request.Username,
+                 request.Email,
+                 request.PhoneNumber,
+                 request.FirstName,
+                 request.LastName,
+                 password,
+                role: UserTypes.Customer
+            );
+            await _userRepository.AddAsync(user);
+            return new UserDto(
+                user.Username,
+                user.Email,
+                user.Role.ToString()
             );
         }
 
-
-        public Task DeleteAsync(int userId)
+        public Task<string> LogoutAsync(LogoutRequest request)
         {
             throw new NotImplementedException();
         }
 
-        public Task<IReadOnlyList<UserDto>> GetAllAsync()
-        {
-            throw new NotImplementedException();
-        }
-
-        public Task<UserDto> GetByUsernameAsync(string Username)
-        {
-            throw new NotImplementedException();
-        }
-
-
-
-        public Task<UserDto> UpdateAsync(UpdateUserRequest request)
-        {
-            throw new NotImplementedException();
-        }
     }
-
 
 }

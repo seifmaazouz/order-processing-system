@@ -110,7 +110,7 @@ namespace OrderProcessing.Infrastructure.Repositories
                     LastName = @LastName,
                     ShipAddress = @Address,
                     "Password" = @PasswordHash,
-                    "Role" = @Role
+                    "Role" = @Role::role_enum
                 WHERE username = @Username
             """;
 
@@ -124,7 +124,8 @@ namespace OrderProcessing.Infrastructure.Repositories
                 user.LastName,
                 user.Address,
                 user.PasswordHash,
-                Role = user.Role.ToString()
+                Role = user.Role.ToString(),
+                user.Username
             });
         }
 
