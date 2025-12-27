@@ -4,9 +4,10 @@ namespace OrderProcessing.Domain.Interfaces.Repositories
 {
     public interface ICreditCardRepository
     {
-        Task<CreditCard?> GetByNumberAsync(string CardNumber);
+        Task<CreditCard?> GetByNumberAsync(long CardNumber);
         Task<IEnumerable<CreditCard>> GetUserCardsAsync(string UserName);
         Task AddAsync(CreditCard card, string username);
-        Task DeleteAsync(string CardNumber);
+        Task DeleteAsync(long CardNumber, string Username);
+        Task<bool> ValidateCreditCardAsync(long cardNumber, DateTime expiryDate);
     }
 }

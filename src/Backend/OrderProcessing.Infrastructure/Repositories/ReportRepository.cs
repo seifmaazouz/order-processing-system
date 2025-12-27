@@ -1,4 +1,3 @@
-using System.Data;
 using Dapper;
 using OrderProcessing.Domain.Interfaces;
 using OrderProcessing.Domain.Models;
@@ -6,11 +5,11 @@ using OrderProcessing.Domain.Interfaces.Repositories;
 
 namespace OrderProcessing.Infrastructure.Repositories;
 
-public class ReportRepistory : IReportRepository
+public class ReportRepository : IReportRepository
 {
     private readonly IDbConnectionFactory _connectionFactory;
     
-    public ReportRepistory(IDbConnectionFactory connectionFactory)
+    public ReportRepository(IDbConnectionFactory connectionFactory)
     {
         _connectionFactory = connectionFactory;
     }
@@ -19,36 +18,67 @@ public class ReportRepistory : IReportRepository
     {
         using var connection = await _connectionFactory.CreateConnectionAsync();
 
-        var sql = 
+        var salesSql = 
         """
-            SELECT 
-                TO_CHAR(MIN(OrderDate), 'Month YYYY') AS Period,
-                COALESCE(SUM(TotalPrice), 0) AS TotalSalesAmount,
-                COUNT(*) AS TotalTransactionCount
+            SELECT OrderID, OrderDate, "Status", TotalPrice
             FROM "Order"
             WHERE "Status" = 'Confirmed' 
             AND OrderDate >= CURRENT_DATE - INTERVAL '1 month' 
             AND OrderDate <= CURRENT_DATE
         """;
 
-        return await connection.QuerySingleAsync<SalesReportReadModel>(sql);
+        // this select returns the total revenue from all the sales
+        var totalPriceSql =
+        """
+            SELECT SUM(TotalPrice) AS totalPrice
+            FROM "Order"
+            WHERE "Status" = 'Confirmed' 
+            AND OrderDate >= CURRENT_DATE - INTERVAL '1 month' 
+            AND OrderDate <= CURRENT_DATE
+        """;
+
+        var sales = await connection.QueryAsync(salesSql);
+        var totalPrice = await connection.QuerySingleAsync<decimal?>(totalPriceSql) ?? 0;
+
+        return new SalesReportReadModel
+        (
+            Period: "Previous Month",
+            TotalSalesAmount: totalPrice,
+            TotalTransactionCount: sales.Count()
+        );
     }
 
     public async Task<SalesReportReadModel> GetTotalSalesByDateAsync(DateOnly date)
     {
         using var connection = await _connectionFactory.CreateConnectionAsync();
-        var sql = 
+
+        // admin that inserts the date inserts it here
+        var salesSql = 
         """
-            SELECT 
-                TO_CHAR(@Date, 'YYYY-MM-DD') AS Period,
-                COALESCE(SUM(TotalPrice), 0) AS TotalSalesAmount,
-                COUNT(*) AS TotalTransactionCount
+            SELECT OrderID, OrderDate, "Status", TotalPrice
             FROM "Order"
-            WHERE "Status" = 'Confirmed' 
+            WHERE "Status" = 'Confirmed'
             AND OrderDate = @Date
         """;
 
-        return await connection.QuerySingleAsync<SalesReportReadModel>(sql, new { Date = date.ToDateTime(TimeOnly.MinValue) });
+        // this select returns the total revenue from all the sales on that day
+        var totalPriceSql =
+        """
+            SELECT SUM(TotalPrice) AS totalPrice
+            FROM "Order"
+            WHERE "Status" = 'Confirmed'
+            AND OrderDate = @Date
+        """;
+
+        var sales = await connection.QueryAsync(salesSql, new { Date = date.ToDateTime(TimeOnly.MinValue) });
+        var totalPrice = await connection.QuerySingleAsync<decimal?>(totalPriceSql, new { Date = date.ToDateTime(TimeOnly.MinValue) }) ?? 0;
+
+        return new SalesReportReadModel
+        (
+            Period: date.ToString("yyyy-MM-dd"),
+            TotalSalesAmount: totalPrice,
+            TotalTransactionCount: sales.Count()
+        );
     }
 
     public async Task<IEnumerable<TopCustomerReadModel>> GetTop5CustomersAsync()

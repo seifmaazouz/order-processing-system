@@ -4,6 +4,7 @@ using OrderProcessing.Application.Interfaces;
 using OrderProcessing.Application.Security;
 using OrderProcessing.Domain.Entities;
 using OrderProcessing.Domain.ValueObjects;
+using OrderProcessing.Application.Exceptions;
 
 namespace OrderProcessing.Application.Services
 {
@@ -32,7 +33,7 @@ namespace OrderProcessing.Application.Services
             var existedUser=await  _userRepository.GetByUserNameAsync(request.Username);
             if(existedUser is not null)
             {
-                throw new InvalidOperationException("Username already exists");
+                throw new DuplicateResourceException("Username already exists");
             }
             string password=_passwordHasher.HashPassword(request.Password);
             var user = new User(
