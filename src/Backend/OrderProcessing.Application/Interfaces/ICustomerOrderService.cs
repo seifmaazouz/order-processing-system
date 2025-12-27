@@ -1,9 +1,10 @@
-using OrderProcessing.Domain.Entities;
+using OrderProcessing.Application.DTOs.Order;
+
 
 namespace OrderProcessing.Application.Interfaces
 {
     public interface ICustomerOrderService
     {
-        Task<IReadOnlyList<CustomerOrder>> GetMyOrdersAsync(string token);
+        Task<IReadOnlyList<CustomerOrderDto>> GetMyOrdersAsync(string token);
     }
 }

@@ -44,10 +44,10 @@ namespace OrderProcessing.Infrastructure.Repositories
                     TotalPrice,
                     "Status",
                     OrderDate,
-                    Username
+                    CustName
                 FROM CustomerOrder
                 WHERE OrderID = @OrderID
-                  AND Username = @Username
+                  AND CustName = @Username
             """;
 
             using var connection = await _connectionFactory.CreateConnectionAsync();
@@ -134,20 +134,22 @@ namespace OrderProcessing.Infrastructure.Repositories
             Enum.TryParse<OrderStatus>(row.Status, true, out var status);
 
             return new CustomerOrder(
-                row.OrderNumber,
-                row.TotalPrice,
+                row.OrderID,
+                (float)row.TotalPrice,  // convert decimal to float if your domain uses float
                 status,
                 row.OrderDate,
-                row.Username
+                row.CustName
             );
         }
 
+
         private record OrderRow(
-            int OrderNumber,
-            float TotalPrice,
-            string Status,
+            int OrderID,
             DateOnly OrderDate,
-            string Username
+            string Status,
+            decimal TotalPrice,
+            string CustName
         );
+
     }
 }
