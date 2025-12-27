@@ -1,64 +1,105 @@
 using Microsoft.AspNetCore.Mvc;
 using OrderProcessing.Application.DTOs.User;
+using OrderProcessing.Application.DTOs.Requests;
 using OrderProcessing.Application.Interfaces;
+using System.Security.Authentication;
 
-namespace OrderProcessing.Api.Controllers
+namespace OrderProcessing.API.Controllers
 {
     [ApiController]
-    [Route("api/[controller]")]
-    public class UserController:ControllerBase
+    [Route("api/user")]
+    public class UserController : ControllerBase
     {
-         private readonly IUserService _userService;
+        private readonly IUserService _userService;
 
         public UserController(IUserService userService)
         {
             _userService = userService;
         }
-        [HttpPost("register")]
-        public async Task<IActionResult> Register([FromBody] CreateUserRequest request)
-        {
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
 
+        // GET api/user/details
+        [HttpGet("details")]
+        public async Task<IActionResult> GetDetails()
+        {
             try
             {
-                var user = await _userService.CreateAsync(request);
-                return CreatedAtAction(nameof(Register), new { username = user.Username }, user);
+                var token = GetBearerToken();
+                var details = await _userService.GetDetailsAsync(token);
+                return Ok(details);
             }
-            catch (InvalidOperationException ex)
+            catch (UnauthorizedAccessException ex)
             {
-                // e.g., username already exists
-                return Conflict(new { message = ex.Message });
+                return Unauthorized(new { message = ex.Message });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
             }
             catch (Exception ex)
             {
-                // unexpected errors
                 return StatusCode(500, new { message = ex.Message });
             }
         }
-        [HttpPost("login")]
-        public async Task<IActionResult> Login([FromBody] LoginRequest request)
-    {
-        if (!ModelState.IsValid)
-            return BadRequest(ModelState);
 
-        try
+        // POST api/user/change-password
+        [HttpPost("change-password")]
+        public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest request)
         {
-            // Call the application service to authenticate and generate JWT
-            AuthResultDto authResult = await _userService.LoginAsync(request);
+            try
+            {
+                var token = GetBearerToken();
+                await _userService.ChangePasswordAsync(request with { Token = token });
+                return Ok(new { message = "Password changed successfully." });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(new { message = ex.Message });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = ex.Message });
+            }
+        }
 
-            // Return token and expiry
-            return Ok(authResult);
-        }
-        catch (UnauthorizedAccessException)
+        // POST api/user/remove-card
+        [HttpPost("remove-card")]
+        public async Task<IActionResult> RemoveCard([FromBody] RemoveCardRequest request)
         {
-            return Unauthorized(new { message = "Invalid username or password" });
+            try
+            {
+                var token = GetBearerToken();
+                await _userService.RemoveCreditCardAsync(request with { Token = token });
+                return Ok(new { message = "Credit card removed successfully." });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(new { message = ex.Message });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = ex.Message });
+            }
         }
-        catch (Exception ex)
+
+        // Helper: Extract Bearer token from header
+        private string GetBearerToken()
         {
-            return StatusCode(500, new { message = "An error occurred", detail = ex.Message });
+            if (!Request.Headers.TryGetValue("Authorization", out var authHeader))
+                throw new UnauthorizedAccessException("Authorization header missing");
+
+            var token = authHeader.ToString().Replace("Bearer ", "").Trim();
+            if (string.IsNullOrWhiteSpace(token))
+                throw new UnauthorizedAccessException("Bearer token missing");
+
+            return token;
         }
-    }
-        
     }
 }

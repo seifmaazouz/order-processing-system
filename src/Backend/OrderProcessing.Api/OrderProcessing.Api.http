@@ -1,8 +1,8 @@
 @OrderProcessingApi_HostAddress = http://localhost:8080
-
-POST {{OrderProcessingApi_HostAddress}}/api/user/register
+# Register customer
+POST {{OrderProcessingApi_HostAddress}}/api/auth/register
 Content-Type: application/json
-Accept: application/json
+Accept: application/json"
 
 {
   "username": "mohamed.test11",
@@ -10,12 +10,12 @@ Accept: application/json
   "lastName": "Shal",
   "phoneNumber": "+201001234567",
   "email": "mohamed.test123@example.com",
-  "password": "StrongPassword123!",
-  "role": "Customer"
+  "password": "StrongPassword123!"
 }
 
 ####
-POST {{OrderProcessingApi_HostAddress}}/api/user/login
+# Login customer
+POST {{OrderProcessingApi_HostAddress}}/api/auth/login
 Content-Type: application/json
 Accept: application/json
 
@@ -24,3 +24,76 @@ Accept: application/json
   "password": "StrongPassword123!"
   
 }
+###
+# Login admin to get token
+POST {{OrderProcessingApi_HostAddress}}/api/auth/login
+Content-Type: application/json
+Accept: application/json
+
+{
+  "username": "admin1",
+  "password": "admin1"
+  
+}
+###
+# Register admin using customer
+POST {{OrderProcessingApi_HostAddress}}/api/auth/register-admin
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJtb2hhbWVkLnRlc3QxMSIsImh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vd3MvMjAwOC8wNi9pZGVudGl0eS9jbGFpbXMvcm9sZSI6IkN1c3RvbWVyIiwianRpIjoiZTIyZmI0YzEtYmY1Zi00NjZlLTk2ZmEtOGE4ZDUxNTg0ZWNjIiwiZXhwIjoxNzY2Nzg2MTY5LCJpc3MiOiJPcmRlclByb2Nlc3NpbmdBUEkiLCJhdWQiOiJPcmRlclByb2Nlc3NpbmdDbGllbnQifQ.51Foz7I_rSnXbrZAkJ2RplxQwx6fbaiUYeKDPhXSJ_s
+
+{
+  "username": "another.admin",
+  "firstName": "Another",
+  "lastName": "Admin",
+  "phoneNumber": "+201001234570",
+  "email": "another.admin@example.com",
+  "password": "AnotherStrongAdmin123!",
+}
+###
+# Register admin using admin
+POST {{OrderProcessingApi_HostAddress}}/api/auth/register-admin
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbjEiLCJodHRwOi8vc2NoZW1hcy5taWNyb3NvZnQuY29tL3dzLzIwMDgvMDYvaWRlbnRpdHkvY2xhaW1zL3JvbGUiOiJBZG1pbiIsImp0aSI6ImEwMTg1YmRiLWMxMTctNDdhMi05MzJmLTlhZjQwNDAxY2NmNyIsImV4cCI6MTc2Njc4NjIxMCwiaXNzIjoiT3JkZXJQcm9jZXNzaW5nQVBJIiwiYXVkIjoiT3JkZXJQcm9jZXNzaW5nQ2xpZW50In0.5pQ44KoxkmrRBrRkYYN94HlkebHDXWwVFE7r6J7teXY
+
+{
+  "username": "another.admi",
+  "firstName": "Anothe",
+  "lastName": "Admin",
+  "phoneNumber": "+201001234570",
+  "email": "another.admin@example.com",
+  "password": "AnotherStrongAdmin123!",
+  "role": "Admin"
+}
+####
+# Get user details
+GET {{OrderProcessingApi_HostAddress}}/api/user/details
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJtb2hhbWVkLnRlc3QxMSIsImh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vd3MvMjAwOC8wNi9pZGVudGl0eS9jbGFpbXMvcm9sZSI6IkN1c3RvbWVyIiwianRpIjoiNWIzZmRjMWQtMDgyYy00MDUyLWEzZmMtM2ZkZWVkYTlkNTk4IiwiZXhwIjoxNzY2ODAwODk0LCJpc3MiOiJPcmRlclByb2Nlc3NpbmdBUEkiLCJhdWQiOiJPcmRlclByb2Nlc3NpbmdDbGllbnQifQ.6JP4PAsTlw-OYsdQ6Z9AYA98hSfUzd0oN7U7vJIWROw
+###
+POST {{OrderProcessingApi_HostAddress}}/api/user/change-password
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJtb2hhbWVkLnRlc3QxMSIsImh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vd3MvMjAwOC8wNi9pZGVudGl0eS9jbGFpbXMvcm9sZSI6IkN1c3RvbWVyIiwianRpIjoiNWIzZmRjMWQtMDgyYy00MDUyLWEzZmMtM2ZkZWVkYTlkNTk4IiwiZXhwIjoxNzY2ODAwODk0LCJpc3MiOiJPcmRlclByb2Nlc3NpbmdBUEkiLCJhdWQiOiJPcmRlclByb2Nlc3NpbmdDbGllbnQifQ.6JP4PAsTlw-OYsdQ6Z9AYA98hSfUzd0oN7U7vJIWROw
+
+{
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJtb2hhbWVkLnRlc3QxMSIsImh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vd3MvMjAwOC8wNi9pZGVudGl0eS9jbGFpbXMvcm9sZSI6IkN1c3RvbWVyIiwianRpIjoiNWIzZmRjMWQtMDgyYy00MDUyLWEzZmMtM2ZkZWVkYTlkNTk4IiwiZXhwIjoxNzY2ODAwODk0LCJpc3MiOiJPcmRlclByb2Nlc3NpbmdBUEkiLCJhdWQiOiJPcmRlclByb2Nlc3NpbmdDbGllbnQifQ.6JP4PAsTlw-OYsdQ6Z9AYA98hSfUzd0oN7U7vJIWROw",
+  "oldPassword": "StrongPassword123!",
+  "newPassword": "NewPassword456!"
+}
+
+###
+
+# Remove credit card
+POST {{OrderProcessingApi_HostAddress}}/api/user/remove-card
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer <JWT_TOKEN>
+
+{
+  "token": "<JWT_TOKEN>",
+  "cardNumber": "4111111111111111"
+}
+

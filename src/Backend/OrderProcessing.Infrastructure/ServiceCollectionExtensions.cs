@@ -18,6 +18,10 @@ public static class ServiceCollectionExtensions
         // Register repositories
         services.AddScoped<IBookRepository, BookRepository>();
         services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped<IOrderRepository, OrderRepository>();
+        services.AddScoped<IReportRepository, ReportRepistory>();
+        services.AddScoped<ICreditCardRepository, CreditCardRepository>();
+
 
         return services;
     }

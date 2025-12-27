@@ -27,8 +27,9 @@ builder.Services.AddSwaggerGen();
 
 //JWT tokens
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
+var secretKey = Encoding.UTF8.GetBytes(jwtSettings["Secret"]);
 var secret = jwtSettings["Secret"] ?? throw new InvalidOperationException("JWT Secret is not configured.");
-var secretKey = Encoding.UTF8.GetBytes(secret);
+
 
 builder.Services.AddAuthentication(options =>
 {
@@ -50,10 +51,12 @@ builder.Services.AddAuthentication(options =>
 });
 
 // Register application services
-builder.Services.AddScoped<IUserService, UserServices>();
+builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
 builder.Services.AddScoped<IBookService, BookService>();
 builder.Services.AddScoped<IJwtService, JwtService>();
+builder.Services.AddScoped<IReportService, ReportService>();
+builder.Services.AddScoped<IUserService, UserService>();
 
 
 // Configure JSON options globally
@@ -125,7 +128,7 @@ if (app.Environment.IsDevelopment())
     {
         options.WithTitle("Order System API")
                .WithTheme(ScalarTheme.Moon)
-               .WithDefaultHttpClient(ScalarTarget.JavaScript, ScalarClient.HttpClient);
+               .WithDefaultHttpClient(ScalarTarget.JavaScript, ScalarClient.Axios);
     });
 
     // Swagger UI (optional) - Remove if team is comfortable with Scalar UI

@@ -1,17 +1,20 @@
-using OrderProcessing.Application.DTOs.User;
+using OrderProcessing.Application.DTOs.Requests;
 using OrderProcessing.Domain.Interfaces.Repositories;
 using OrderProcessing.Application.Interfaces;
 using OrderProcessing.Application.Security;
 using OrderProcessing.Domain.Entities;
+using OrderProcessing.Domain.ValueObjects;
+using OrderProcessing.Application.DTOs.User;
+
 
 namespace OrderProcessing.Application.Services
 {
-    public class UserServices : IUserService
+    public class AuthService : IAuthService
     {
         private readonly IUserRepository _userRepository;
         private readonly IPasswordHasher _passwordHasher;
         private readonly IJwtService _jwtService;
-        public UserServices(
+        public AuthService(
         IUserRepository userRepository,
         IPasswordHasher passwordHasher,
         IJwtService jwtService
@@ -41,7 +44,7 @@ namespace OrderProcessing.Application.Services
                  request.FirstName,
                  request.LastName,
                  password,
-                 request.Role
+                role: UserTypes.Customer
             );
             await _userRepository.AddAsync(user);
             return new UserDto(
@@ -50,22 +53,6 @@ namespace OrderProcessing.Application.Services
                 user.Role.ToString()
             );
         }
-
-        public Task DeleteAsync(int userId)
-        {
-            throw new NotImplementedException();
-        }
-
-        public Task<IReadOnlyList<UserDto>> GetAllAsync()
-        {
-            throw new NotImplementedException();
-        }
-
-        public Task<UserDto> GetByIdAsync(string Username)
-        {
-            throw new NotImplementedException();
-        }
-
         public async Task<AuthResultDto> LoginAsync(LoginRequest request)
         {
             var user = await _userRepository.GetByUserNameAsync(request.Username);
@@ -78,16 +65,40 @@ namespace OrderProcessing.Application.Services
 
             return new AuthResultDto(
                 AccessToken: token,
-                ExpiresAt: DateTime.UtcNow.AddMinutes(60) // hard coded
+                ExpiresAt: DateTime.UtcNow.AddMinutes(60),
+                Role: user.Role.ToString() 
+            );
+        }
+        public async Task<UserDto> CreateAdminAsync(CreateUserRequest request)
+        {
+            var existedUser=await  _userRepository.GetByUserNameAsync(request.Username);
+            if(existedUser is not null)
+            {
+                throw new InvalidOperationException("Username already exists");
+            }
+            string password=_passwordHasher.HashPassword(request.Password);
+            var user = new User(
+                 request.Username,
+                 request.Email,
+                 request.PhoneNumber,
+                 request.FirstName,
+                 request.LastName,
+                 password,
+                role: UserTypes.Customer
+            );
+            await _userRepository.AddAsync(user);
+            return new UserDto(
+                user.Username,
+                user.Email,
+                user.Role.ToString()
             );
         }
 
-
-        public Task<UserDto> UpdateAsync(UpdateUserRequest request)
+        public Task<string> LogoutAsync(LogoutRequest request)
         {
             throw new NotImplementedException();
         }
-    }
 
+    }
 
 }
