@@ -37,12 +37,20 @@ CREATE TABLE "User" (
     "Role" role_enum NOT NULL
 );
 
-CREATE TABLE "Order" (
+CREATE TABLE AdminOrder (
     OrderID SERIAL PRIMARY KEY,
     OrderDate DATE NOT NULL,
     "Status" order_status_enum,
     TotalPrice DECIMAL(10,2) NOT NULL,
     PubID INT NOT NULL REFERENCES Publisher(PubID),
+    CustName VARCHAR(50) NOT NULL REFERENCES "User"(Username)
+);
+
+CREATE TABLE CustomerOrder (
+    OrderID SERIAL PRIMARY KEY,
+    OrderDate DATE NOT NULL,
+    "Status" order_status_enum,
+    TotalPrice DECIMAL(10,2) NOT NULL,
     CustName VARCHAR(50) NOT NULL REFERENCES "User"(Username)
 );
 
@@ -52,19 +60,27 @@ CREATE TABLE CreditCard (
 );
 
 CREATE TABLE CardHolder (
-    CardNumber BIGINT REFERENCES CreditCard(CardNumber),
-    Username VARCHAR(50) REFERENCES "User"(Username),
+    CardNumber BIGINT REFERENCES CreditCard(CardNumber) ON DELETE CASCADE,
+    Username VARCHAR(50) REFERENCES "User"(Username) ON DELETE CASCADE,
     PRIMARY KEY (CardNumber, Username)
 );
 
 CREATE TABLE ShoppingCart (
     CartID SERIAL PRIMARY KEY,
-    CustName VARCHAR(50) NOT NULL REFERENCES "User"(Username)
+    CustName VARCHAR(50) NOT NULL REFERENCES "User"(Username) ON DELETE CASCADE
 );
 
-CREATE TABLE OrderItem (
+CREATE TABLE AdminOrderItem (
     ISBN VARCHAR(17) NOT NULL REFERENCES Book(ISBN),
-    OrderNum INT NOT NULL REFERENCES "Order"(OrderID),
+    OrderNum INT NOT NULL REFERENCES AdminOrder(OrderID) ON DELETE RESTRICT,
+    Quantity INT,
+    UnitPrice DECIMAL(10,2),
+    PRIMARY KEY (ISBN, OrderNum)
+);
+
+CREATE TABLE CustomerOrderItem (
+    ISBN VARCHAR(17) NOT NULL REFERENCES Book(ISBN),
+    OrderNum INT NOT NULL REFERENCES CustomerOrder(OrderID) ON DELETE RESTRICT,
     Quantity INT,
     UnitPrice DECIMAL(10,2),
     PRIMARY KEY (ISBN, OrderNum)
@@ -72,7 +88,7 @@ CREATE TABLE OrderItem (
 
 CREATE TABLE CartItem (
     ISBN VARCHAR(17) NOT NULL REFERENCES Book(ISBN),
-    CartID INT NOT NULL REFERENCES ShoppingCart(CartID),
+    CartID INT NOT NULL REFERENCES ShoppingCart(CartID) ON DELETE CASCADE,
     Quantity INT,
     UnitPrice DECIMAL(10,2),
     PRIMARY KEY (ISBN, CartID)
