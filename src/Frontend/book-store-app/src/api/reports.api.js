@@ -1,11 +1,12 @@
 import axios from 'axios';
+import API_BASE_URL from '../config/api.config.js';
 
-const API_BASE_URL = 'http://localhost:5174/api/reports';
+const REPORTS_URL = `${API_BASE_URL}/reports`;
 
 // a) Total sales for books in the previous month
 export const getTotalSalesPreviousMonth = async () => {
 	try {
-		const response = await axios.get(`${API_BASE_URL}/total-sales/previous-month`);
+		const response = await axios.get(`${REPORTS_URL}/total-sales/previous-month`);
 		return response.data;
 	} catch (error) {
 		console.error('Error fetching previous month sales:', error.response?.data);
@@ -16,7 +17,7 @@ export const getTotalSalesPreviousMonth = async () => {
 // b) Total sales for books on a certain day
 export const getTotalSalesByDate = async (date) => {
 	try {
-		const response = await axios.get(`${API_BASE_URL}/total-sales/by-date`, {
+		const response = await axios.get(`${REPORTS_URL}/total-sales/by-date`, {
 			params: { date }
 		});
 		return response.data;
@@ -29,7 +30,7 @@ export const getTotalSalesByDate = async (date) => {
 // c) Top 5 Customers (Last 3 Months)
 export const getTop5Customers = async () => {
 	try {
-		const response = await axios.get(`${API_BASE_URL}/top-5-customers`);
+		const response = await axios.get(`${REPORTS_URL}/top-5-customers`);
 		return response.data;
 	} catch (error) {
 		console.error('Error fetching top customers:', error.response?.data);
@@ -40,7 +41,7 @@ export const getTop5Customers = async () => {
 // d) Top 10 Selling Books (Last 3 Months)
 export const getTop10SellingBooks = async () => {
 	try {
-		const response = await axios.get(`${API_BASE_URL}/top-10-selling-books`);
+		const response = await axios.get(`${REPORTS_URL}/top-10-selling-books`);
 		return response.data;
 	} catch (error) {
 		console.error('Error fetching top selling books:', error.response?.data);
@@ -51,7 +52,7 @@ export const getTop10SellingBooks = async () => {
 // e) Total Number of Times a Specific Book Has Been Ordered (Replenishment)
 export const getBookReplenishmentCount = async (isbn) => {
 	try {
-		const response = await axios.get(`${API_BASE_URL}/book-order-count`, {
+		const response = await axios.get(`${REPORTS_URL}/book-order-count`, {
 			params: { isbn }
 		});
 		return response.data;

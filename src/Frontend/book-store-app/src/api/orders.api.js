@@ -1,9 +1,10 @@
 import axios from 'axios';
+import API_BASE_URL from '../config/api.config.js';
 
-const BASE_URL = 'http://localhost:8080/api/orders';
+const CUSTOMER_ORDERS_URL = `${API_BASE_URL}/orders`;
 
 export async function getOrders() {
-  const res = await axios.get(`${BASE_URL}`, {
+  const res = await axios.get(`${CUSTOMER_ORDERS_URL}`, {
     headers: { 'Content-Type': 'application/json' },
     withCredentials: true,
   });
@@ -11,7 +12,7 @@ export async function getOrders() {
 }
 
 export async function getOrderDetails(orderId) {
-  const res = await axios.get(`${BASE_URL}/${orderId}`, {
+  const res = await axios.get(`${CUSTOMER_ORDERS_URL}/${orderId}`, {
     headers: { 'Content-Type': 'application/json' },
     withCredentials: true,
   });

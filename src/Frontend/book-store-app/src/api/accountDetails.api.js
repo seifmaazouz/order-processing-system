@@ -1,6 +1,7 @@
 import axios from 'axios';
+import API_BASE_URL from '../config/api.config.js';
 
-const BASE_URL = 'http://localhost:8080/api/user';
+const USER_URL = `${API_BASE_URL}/user`;
 
 export async function getAccountDetails(token) {
   console.log('Token being sent:', token);
@@ -11,7 +12,7 @@ export async function getAccountDetails(token) {
     throw new Error('No access token found. Please login first.');
   }
   
-  const res = await axios.get(`${BASE_URL}/details`, {
+  const res = await axios.get(`${USER_URL}/details`, {
     headers: {
       'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json',
@@ -21,7 +22,7 @@ export async function getAccountDetails(token) {
 }
 
 export async function updateAccountDetails(payload, token) {
-  const res = await axios.put(`${BASE_URL}/details`, payload, {
+  const res = await axios.put(`${USER_URL}/details`, payload, {
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${token}`,
@@ -37,7 +38,7 @@ export async function changePassword(payload, token) {
     token: token
   };
   
-  const res = await axios.post(`${BASE_URL}/change-password`, requestBody, {
+  const res = await axios.post(`${USER_URL}/change-password`, requestBody, {
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${token}`,

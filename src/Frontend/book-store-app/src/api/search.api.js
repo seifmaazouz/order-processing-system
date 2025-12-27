@@ -1,4 +1,5 @@
 import axios from "axios";
+import API_BASE_URL from '../config/api.config.js';
 
 export async function searchBooks(query) {
   try {
@@ -10,7 +11,7 @@ export async function searchBooks(query) {
     console.log('Sending search request with params:', cleanParams);
 
     // Make GET request with query params
-    const response = await axios.get(`http://localhost:8080/api/books/search`, {
+    const response = await axios.get(`${API_BASE_URL}/books/search`, {
       params: cleanParams, // Axios automatically converts this object into URL query parameters
       headers: {
         "Content-Type": "application/json", // optional for GET, but fine to include

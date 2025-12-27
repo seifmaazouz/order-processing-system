@@ -1,10 +1,11 @@
 import axios from "axios";
+import API_BASE_URL from '../config/api.config.js';
 
-const BASE_URL = "http://localhost:8080/api/books";
+const BOOKS_URL = `${API_BASE_URL}/books`;
 
 export async function addBook(payload) {
   try {
-    const response = await axios.post(BASE_URL, payload, {
+    const response = await axios.post(BOOKS_URL, payload, {
       headers: {
         "Content-Type": "application/json",
       },
@@ -18,7 +19,7 @@ export async function addBook(payload) {
 
 export async function editBook(isbn, updates) {
   try {
-    const response = await axios.put(`${BASE_URL}/${isbn}`, updates, {
+    const response = await axios.put(`${BOOKS_URL}/${isbn}`, updates, {
       headers: {
         "Content-Type": "application/json",
       },
@@ -32,7 +33,11 @@ export async function editBook(isbn, updates) {
 
 export async function removeBook(isbn) {
   try {
-    const response = await axios.delete(`${BASE_URL}/${isbn}`);
+    const response = await axios.delete(`${BOOKS_URL}/${isbn}`, {
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
     return response.data;
   } catch (error) {
     console.error("Error removing book:", error.response?.data || error.message);

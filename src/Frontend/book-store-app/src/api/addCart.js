@@ -1,10 +1,11 @@
 import axios from "axios";
+import API_BASE_URL from '../config/api.config.js';
 
 // Check if the requested quantity is available
 export async function checkCartAvailability(bookId, quantity) {
   try {
     const response = await axios.post(
-      `http://localhost:8080/api/cart/check-availability`,
+      `${API_BASE_URL}/cart/check-availability`,
       {
         bookId,
         quantity,
@@ -23,7 +24,7 @@ export async function checkCartAvailability(bookId, quantity) {
 
 // Add item to cart (legacy function kept for compatibility)
 export async function addCart(data) {
-  const token = await axios.post(`http://localhost:8080/api/user/login`, data, {
+  const token = await axios.post(`${API_BASE_URL}/user/login`, data, {
     headers: {
       "Content-Type": "application/json",
     },

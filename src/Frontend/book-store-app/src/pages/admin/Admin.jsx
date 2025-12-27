@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faBookOpen, faShoppingBag, faChartBar, faArrowRightFromBracket, faFilter, faPlus } from '@fortawesome/free-solid-svg-icons';
 import BookCard from '../../components/dashboard/BookCard.jsx';
@@ -13,6 +13,7 @@ import 'react-toastify/dist/ReactToastify.css';
 import { dashboardCategories, categoryOptions } from '../../constants/categories.js';
 
 export default function Admin() {
+	const navigate = useNavigate();
 	const [books, setBooks] = useState([]);
 	const [showFilters, setShowFilters] = useState(false);
 		const [searchParams, setSearchParams] = useSearchParams();
@@ -296,24 +297,23 @@ const handleConfirmRemove = async () => {
 				<aside className="hidden md:flex w-72 flex-col justify-between border-r border-[#e6e0db] dark:border-[#443628] bg-background-light dark:bg-background-dark p-6 transition-all">
 					<div className="flex flex-col gap-8">
 						<div className="flex flex-col gap-1 px-2">
-							<h1 className="text-2xl font-black tracking-tighter text-text-main dark:text-white">Chapter One</h1>
+							
 							<p className="text-text-secondary text-sm font-medium">Admin Dashboard</p>
 						</div>
 						<nav className="flex flex-col gap-2">
 
-							<a href="/admin" className="flex items-center gap-3 px-4 py-3 rounded-full bg-[#f4ede7] dark:bg-[#3a2d20] shadow-sm">
+							<button onClick={() => navigate('/admin')} className="flex items-center gap-3 px-4 py-3 rounded-full bg-[#f4ede7] dark:bg-[#3a2d20] shadow-sm w-full text-left">
 								<FontAwesomeIcon icon={faBookOpen} className="text-text-main dark:text-primary" />
 								<p className="text-sm font-bold text-text-main dark:text-white">Inventory</p>
-							</a>
-							<a href="#" className="group flex items-center gap-3 px-4 py-3 rounded-full text-text-main dark:text-gray-200 hover:bg-[#efe9e3] dark:hover:bg-[#3a2d20] transition-colors">
+							</button>
+							<button onClick={() => navigate('/admin/orders')} className="group flex items-center gap-3 px-4 py-3 rounded-full text-text-main dark:text-gray-200 hover:bg-[#efe9e3] dark:hover:bg-[#3a2d20] transition-colors w-full text-left">
 								<FontAwesomeIcon icon={faShoppingBag} className="group-hover:scale-110 transition-transform" />
 								<p className="text-sm font-medium">Orders</p>
-							</a>
-
-							<a href="/admin/analytics" className="group flex items-center gap-3 px-4 py-3 rounded-full text-text-main dark:text-gray-200 hover:bg-[#efe9e3] dark:hover:bg-[#3a2d20] transition-colors">
+							</button>
+							<button onClick={() => navigate('/admin/analytics')} className="group flex items-center gap-3 px-4 py-3 rounded-full text-text-main dark:text-gray-200 hover:bg-[#efe9e3] dark:hover:bg-[#3a2d20] transition-colors w-full text-left">
 								<FontAwesomeIcon icon={faChartBar} className="group-hover:scale-110 transition-transform" />
 								<p className="text-sm font-medium">Analytics</p>
-							</a>
+							</button>
 						</nav>
 					</div>
 					<button className="flex w-full cursor-pointer items-center justify-center gap-2 overflow-hidden rounded-full h-12 px-6 bg-primary/10 hover:bg-primary/20 dark:bg-primary/20 dark:hover:bg-primary/30 text-text-main dark:text-primary text-sm font-bold transition-colors">
@@ -722,4 +722,5 @@ const handleConfirmRemove = async () => {
 		</div>
 	);
 }
+
 

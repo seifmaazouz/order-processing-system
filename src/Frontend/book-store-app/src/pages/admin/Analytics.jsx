@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faBookOpen, faShoppingBag, faChartBar, faArrowRightFromBracket, faCalendar, faSearch } from '@fortawesome/free-solid-svg-icons';
 import { useForm } from 'react-hook-form';
@@ -13,6 +14,7 @@ import {
 } from '../../api/reports.api.js';
 
 export default function Analytics() {
+	const navigate = useNavigate();
 	const [previousMonthSales, setPreviousMonthSales] = useState(null);
 	const [salesByDate, setSalesByDate] = useState(null);
 	const [topCustomers, setTopCustomers] = useState([]);
@@ -132,18 +134,18 @@ export default function Analytics() {
 							<p className="text-text-secondary text-sm font-medium">Admin Dashboard</p>
 						</div>
 						<nav className="flex flex-col gap-2">
-							<a href="/admin" className="group flex items-center gap-3 px-4 py-3 rounded-full text-text-main dark:text-gray-200 hover:bg-[#efe9e3] dark:hover:bg-[#3a2d20] transition-colors">
+							<button onClick={() => navigate('/admin')} className="group flex items-center gap-3 px-4 py-3 rounded-full text-text-main dark:text-gray-200 hover:bg-[#efe9e3] dark:hover:bg-[#3a2d20] transition-colors w-full text-left">
 								<FontAwesomeIcon icon={faBookOpen} className="group-hover:scale-110 transition-transform" />
 								<p className="text-sm font-medium">Inventory</p>
-							</a>
-							<a href="#" className="group flex items-center gap-3 px-4 py-3 rounded-full text-text-main dark:text-gray-200 hover:bg-[#efe9e3] dark:hover:bg-[#3a2d20] transition-colors">
+							</button>
+							<button onClick={() => navigate('/admin/orders')} className="group flex items-center gap-3 px-4 py-3 rounded-full text-text-main dark:text-gray-200 hover:bg-[#efe9e3] dark:hover:bg-[#3a2d20] transition-colors w-full text-left">
 								<FontAwesomeIcon icon={faShoppingBag} className="group-hover:scale-110 transition-transform" />
 								<p className="text-sm font-medium">Orders</p>
-							</a>
-							<a href="/admin/analytics" className="flex items-center gap-3 px-4 py-3 rounded-full bg-[#f4ede7] dark:bg-[#3a2d20] shadow-sm">
+							</button>
+							<button onClick={() => navigate('/admin/analytics')} className="flex items-center gap-3 px-4 py-3 rounded-full bg-[#f4ede7] dark:bg-[#3a2d20] shadow-sm w-full text-left">
 								<FontAwesomeIcon icon={faChartBar} className="text-text-main dark:text-primary" />
 								<p className="text-sm font-bold text-text-main dark:text-white">Analytics</p>
-							</a>
+							</button>
 						</nav>
 					</div>
 					<button className="flex w-full cursor-pointer items-center justify-center gap-2 overflow-hidden rounded-full h-12 px-6 bg-primary/10 hover:bg-primary/20 dark:bg-primary/20 dark:hover:bg-primary/30 text-text-main dark:text-primary text-sm font-bold transition-colors">

@@ -11,6 +11,6 @@ export default defineConfig({
   },
     server: {
     port: 5174,       // set your desired port here
-    strictPort: true, // fail if port is taken
+    strictPort: false, // fail if port is taken
   },
 });
