@@ -24,6 +24,8 @@ Accept: application/json
   "password": "StrongPassword123!"
   
 }
+
+
 ###
 # Login admin to get token
 POST {{OrderProcessingApi_HostAddress}}/api/auth/login
@@ -96,4 +98,22 @@ Authorization: Bearer <JWT_TOKEN>
   "token": "<JWT_TOKEN>",
   "cardNumber": "4111111111111111"
 }
+
+###
+# Login customer
+POST {{OrderProcessingApi_HostAddress}}/api/auth/login
+Content-Type: application/json
+Accept: application/json
+
+{
+  "username": "alice",
+  "password": "password123"
+  
+}
+####
+# Get my orders
+GET {{OrderProcessingApi_HostAddress}}/api/customerorder/my
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhbGljZSIsImh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vd3MvMjAwOC8wNi9pZGVudGl0eS9jbGFpbXMvcm9sZSI6IkN1c3RvbWVyIiwianRpIjoiY2I3MGUwNDktODJkNy00MzU2LThmYTktNTc4ODQ5YzQwYWI0IiwiZXhwIjoxNzY2ODE0NjM0LCJpc3MiOiJPcmRlclByb2Nlc3NpbmdBUEkiLCJhdWQiOiJPcmRlclByb2Nlc3NpbmdDbGllbnQifQ.kTnnUYHG9iG86BQTByf0QsFT0qnzYyw7JRG0zRcJaKg
 
