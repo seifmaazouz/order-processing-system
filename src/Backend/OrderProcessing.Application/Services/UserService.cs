@@ -54,10 +54,10 @@ namespace OrderProcessing.Application.Services
             );
         }
 
-        public async Task ChangePasswordAsync(ChangePasswordRequest request)
+        public async Task ChangePasswordAsync(string token, ChangePasswordRequest request)
         {
             // 1. Get username from token
-            var username = _jwtService.GetUsernameFromToken(request.Token);
+            var username = _jwtService.GetUsernameFromToken(token);
             if (string.IsNullOrEmpty(username))
                 throw new UnauthorizedAccessException("Invalid token.");
 
@@ -67,7 +67,7 @@ namespace OrderProcessing.Application.Services
                 throw new KeyNotFoundException("User not found.");
 
             // 3. Verify current password
-            if (!_passwordHasher.Verify(user.PasswordHash, request.OldPassword))
+            if (!_passwordHasher.Verify(request.OldPassword, user.PasswordHash))
                 throw new UnauthorizedAccessException("Current password is incorrect.");
 
             // 4. Hash new password
@@ -87,6 +87,19 @@ namespace OrderProcessing.Application.Services
 
             await _userRepository.UpdateAsync(updatedUser);
         }
+
+        public async Task AddCreditCardAsync(string token, OrderProcessing.Application.DTOs.CreditCard.AddCreditCardDto dto)
+        {
+            var username = _jwtService.GetUsernameFromToken(token);
+            if (string.IsNullOrEmpty(username))
+                throw new UnauthorizedAccessException("Invalid token.");
+
+            // Add credit card for user (service will validate and handle duplicates)
+            await _creditCardRepository.AddAsync(
+                new CreditCard(dto.CardNumber, DateOnly.FromDateTime(dto.ExpiryDate)),
+                username
+            );
+        }
         public async Task RemoveCreditCardAsync(RemoveCardRequest request)
         {
             // 1. Get username from token
@@ -94,15 +107,19 @@ namespace OrderProcessing.Application.Services
             if (string.IsNullOrEmpty(username))
                 throw new UnauthorizedAccessException("Invalid token.");
 
-            // 2. Check if the card exists and belongs to the user
+            // 2. Parse card number
+            if (!long.TryParse(request.CardNumber, out var cardNumLong))
+                throw new ArgumentException("Card number must be numeric.");
+
+            // 3. Check if the card exists and belongs to the user
             var userCards = await _creditCardRepository.GetUserCardsAsync(username);
-            var card = userCards.FirstOrDefault(c => c.CardNumber == request.CardNumber);
+            var card = userCards.FirstOrDefault(c => c.CardNumber == cardNumLong);
 
             if (card == null)
                 throw new KeyNotFoundException("Credit card not found for this user.");
 
-            // 3. Delete the card using repository
-            await _creditCardRepository.DeleteAsync(request.CardNumber);
+            // 4. Delete the card using repository (shared card scenario)
+            await _creditCardRepository.DeleteAsync(cardNumLong, username);
         }
 
     }

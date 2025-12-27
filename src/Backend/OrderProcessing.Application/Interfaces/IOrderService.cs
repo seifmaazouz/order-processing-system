@@ -1,3 +1,5 @@
+using OrderProcessing.Application.DTOs.Order;
+
 namespace OrderProcessing.Application.Interfaces
 {
     public interface IOrderService
