@@ -7,5 +7,6 @@ public record CreateUserRequest(
     string LastName,
     string PhoneNumber,
     string Email,
-    string Password
+    string Password,
+    string ShipAddress
 );

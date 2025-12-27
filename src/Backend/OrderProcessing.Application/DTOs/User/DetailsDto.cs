@@ -6,7 +6,7 @@ namespace OrderProcessing.Application.DTOs.User
         string LastName,
         string Email,
         string PhoneNumber,
-        List<string> Addresses,
+        string Address,
         List<CreditCardDto> CreditCards
     );
 }

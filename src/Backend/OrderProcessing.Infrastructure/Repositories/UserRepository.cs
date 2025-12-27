@@ -56,7 +56,7 @@ namespace OrderProcessing.Infrastructure.Repositories
                 row.LastName,
                 row.Password,
                 role,
-                row.ShipAddress
+                row.ShipAddress ?? string.Empty
             );
         }
 
@@ -71,6 +71,7 @@ namespace OrderProcessing.Infrastructure.Repositories
                     LastName,        
                     Email,
                     PhoneNumber,     
+                    ShipAddress,
                     "Role"
                 )
                 VALUES (
@@ -80,6 +81,7 @@ namespace OrderProcessing.Infrastructure.Repositories
                     @LastName,
                     @Email,
                     @PhoneNumber,
+                    @Address,
                     @Role::role_enum
                 )
             """;
