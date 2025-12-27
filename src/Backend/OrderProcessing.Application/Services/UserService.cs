@@ -88,18 +88,49 @@ namespace OrderProcessing.Application.Services
             await _userRepository.UpdateAsync(updatedUser);
         }
 
+        public async Task UpdateProfileAsync(string token, UpdateUserProfileDto dto)
+        {
+            var username = _jwtService.GetUsernameFromToken(token);
+            if (string.IsNullOrEmpty(username))
+                throw new UnauthorizedAccessException("Invalid token.");
+
+            var user = await _userRepository.GetByUserNameAsync(username);
+            if (user == null)
+                throw new KeyNotFoundException("User not found.");
+
+            // Update user with new values or keep existing ones
+            var updatedUser = new User(
+                user.Username,
+                dto.Email ?? user.Email,
+                dto.PhoneNumber ?? user.PhoneNumber,
+                dto.FirstName ?? user.FirstName,
+                dto.LastName ?? user.LastName,
+                user.PasswordHash,
+                user.Role,
+                dto.Address ?? user.Address
+            );
+
+            await _userRepository.UpdateAsync(updatedUser);
+        }
+
         public async Task AddCreditCardAsync(string token, OrderProcessing.Application.DTOs.CreditCard.AddCreditCardDto dto)
         {
             var username = _jwtService.GetUsernameFromToken(token);
             if (string.IsNullOrEmpty(username))
                 throw new UnauthorizedAccessException("Invalid token.");
 
-            // Add credit card for user (service will validate and handle duplicates)
+            // Check if user already has this card
+            var existingCards = await _creditCardRepository.GetUserCardsAsync(username);
+            if (existingCards.Any(c => c.CardNumber == dto.CardNumber))
+                throw new InvalidOperationException($"Credit card already exists for this user.");
+
+            // Add credit card for user
             await _creditCardRepository.AddAsync(
                 new CreditCard(dto.CardNumber, DateOnly.FromDateTime(dto.ExpiryDate)),
                 username
             );
         }
+
         public async Task RemoveCreditCardAsync(RemoveCardRequest request)
         {
             // 1. Get username from token
