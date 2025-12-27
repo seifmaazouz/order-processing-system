@@ -70,7 +70,7 @@ namespace OrderProcessing.Application.Services
                 user.LastName,
                 user.Email,
                 user.PhoneNumber,
-                user.Address != null ? new List<string> { user.Address } : new List<string>(),
+                user.Address,
                 creditCardDtos
             );
         }
