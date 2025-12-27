@@ -1,9 +1,8 @@
 using System.Security.Cryptography.X509Certificates;
 
-namespace OrderProcessing.Application.Requests
+namespace OrderProcessing.Application.DTOs.Requests
 {
     public record OrderItemRequest(
-        public int Quantity,
-        public int ISBN
-         );
+         int Quantity,
+         string ISBN);
 }

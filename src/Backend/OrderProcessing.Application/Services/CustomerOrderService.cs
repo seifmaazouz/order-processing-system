@@ -6,61 +6,74 @@ using OrderProcessing.Domain.Entities;
 using OrderProcessing.Domain.Interfaces.Repositories;
 using OrderProcessing.Domain.ValueObjects;
 
-namespace OrderProcessing.Application.Services
+public class CustomerOrderService : ICustomerOrderService
 {
-    public class CustomerOrderService : ICustomerOrderService
+    private readonly ICustomerOrderRepository _orderRepository;
+    private readonly IJwtService _jwtService;
+    private readonly IBookRepository _bookRepository; // new dependency
+
+    public CustomerOrderService(
+        ICustomerOrderRepository orderRepository,
+        IJwtService jwtService,
+        IBookRepository bookRepository)
     {
-        private readonly ICustomerOrderRepository _orderRepository;
-        private readonly IJwtService _jwtService;
+        _orderRepository = orderRepository;
+        _jwtService = jwtService;
+        _bookRepository = bookRepository;
+    }
+    public async Task<IReadOnlyList<CustomerOrderDto>> GetMyOrdersAsync(string token)
+    {
+        var username = _jwtService.GetUsernameFromToken(token);
+        
+        if (string.IsNullOrWhiteSpace(username))
+            throw new UnauthorizedAccessException("Invalid token.");
 
-        public CustomerOrderService(
-            ICustomerOrderRepository orderRepository,
-            IJwtService jwtService)
-        {
-            _orderRepository = orderRepository;
-            _jwtService = jwtService;
-        }
+        var orders = await _orderRepository.GetByUsernameAsync(username);
 
-        public async Task<IReadOnlyList<CustomerOrderDto>> GetMyOrdersAsync(string token)
-        {
-            
-            var username = _jwtService.GetUsernameFromToken(token);
-            if (string.IsNullOrWhiteSpace(username))
-                throw new UnauthorizedAccessException("Invalid token.");
-
-            var orders = await _orderRepository.GetByUsernameAsync(username);
-            var orderDtos = orders.Select(o => new CustomerOrderDto(
+        var orderDtos = orders
+            .Select(o => new CustomerOrderDto(
                 o.OrderNumber,
                 o.TotalPrice,
                 o.Status.ToString(),
                 o.OrderDate
-            )).ToList();
+            ))
+            .ToList();
 
-            return orderDtos;
-        }
-        public async Task<CustomerOrderDto> CreateOrderAsync(string token, CreateOrderRequest request)
+        return orderDtos;
+    }
+
+    public async Task<CustomerOrderDto> CreateOrderAsync(string token, CreateOrderRequest request)
+    {
+        var username = _jwtService.GetUsernameFromToken(token);
+        if (string.IsNullOrWhiteSpace(username))
+            throw new UnauthorizedAccessException("Invalid token.");
+
+        // Calculate total price
+        decimal totalPrice = 0;
+        foreach (var item in request.Items)
         {
-            var username = _jwtService.GetUsernameFromToken(token);
-            if (string.IsNullOrWhiteSpace(username))
-                throw new UnauthorizedAccessException("Invalid token.");
+            var product = await _bookRepository.GetByISBNAsync(item.ISBN);
+            if (product is null)
+                throw new InvalidOperationException($"Product with ISBN {item.ISBN} not found.");
 
-            // You can generate OrderNumber however you like, e.g., auto-increment from DB
-            var newOrder = new CustomerOrder(
-                orderNumber: 0, // let DB handle auto-increment if configured
-                totalPrice: request.TotalPrice,
-                status: OrderStatus.Pending,
-                orderDate: DateOnly.FromDateTime(DateTime.UtcNow),
-                username: username
-            );
-
-            await _orderRepository.AddAsync(newOrder);
-
-            return new CustomerOrderDto(
-                newOrder.OrderNumber,
-                newOrder.TotalPrice,
-                newOrder.Status.ToString(),
-                newOrder.OrderDate
-            );
+            totalPrice += product.SellingPrice * item.Quantity;
         }
+
+        var newOrder = new CustomerOrder(
+            orderNumber: 0, // let DB handle auto-increment
+            totalPrice: (float)totalPrice,
+            status: OrderStatus.Pending,
+            orderDate: DateOnly.FromDateTime(DateTime.UtcNow),
+            username: username
+        );
+
+        await _orderRepository.AddAsync(newOrder);
+
+        return new CustomerOrderDto(
+            newOrder.OrderNumber,
+            newOrder.TotalPrice,
+            newOrder.Status.ToString(),
+            newOrder.OrderDate
+        );
     }
 }

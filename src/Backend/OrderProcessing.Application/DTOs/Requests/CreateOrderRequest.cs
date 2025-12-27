@@ -1,3 +1,4 @@
+using OrderProcessing.Application.DTOs.Requests;
 using OrderProcessing.Domain.Entities;
 using OrderProcessing.Domain.ValueObjects;
 
