@@ -19,4 +19,7 @@ namespace OrderProcessing.Domain.Interfaces.Repositories;
 
         // Uitility method to check existence before adding a new book
         Task<bool> ExistsAsync(string isbn);
+        
+        // Update book quantity (for checkout)
+        Task UpdateBookQuantityAsync(string isbn, int quantityChange);
     }

@@ -269,4 +269,16 @@ public class BookRepository : IBookRepository
 
         return searchResults;
     }
+
+    public async Task UpdateBookQuantityAsync(string isbn, int quantityChange)
+    {
+        using var connection = await _connectionFactory.CreateConnectionAsync();
+        var sql =
+        """
+            UPDATE Book
+            SET Quantity = Quantity + @QuantityChange
+            WHERE ISBN = @ISBN
+        """;
+        await connection.ExecuteAsync(sql, new { ISBN = isbn, QuantityChange = quantityChange });
+    }
 }

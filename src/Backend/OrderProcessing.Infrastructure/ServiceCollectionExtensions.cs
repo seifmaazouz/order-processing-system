@@ -19,9 +19,9 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IBookRepository, BookRepository>();
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IOrderRepository, OrderRepository>();
-        services.AddScoped<IReportRepository, ReportRepistory>();
+        services.AddScoped<IReportRepository, ReportRepository>();
         services.AddScoped<ICreditCardRepository, CreditCardRepository>();
-
+        services.AddScoped<IShoppingCartRepository, ShoppingCartRepository>();
 
         return services;
     }

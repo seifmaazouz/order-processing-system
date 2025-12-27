@@ -35,7 +35,7 @@ public class BooksController : ControllerBase
         return TypedResults.Ok(books);
     }
 
-    // [Authorize (Roles = "Admin")]
+    [Authorize (Roles = "Admin")]
     [HttpPost]
     public async Task<Results<Created<BookDetailsDto>, BadRequest<ErrorResponse>, Conflict<ErrorResponse>>> AddBook([FromBody] CreateBookDto dto)
     {
@@ -43,7 +43,7 @@ public class BooksController : ControllerBase
         return TypedResults.Created($"/api/books/{createdBook.ISBN}", createdBook);
     }
 
-    // [Authorize (Roles = "Admin")]
+    [Authorize (Roles = "Admin")]
     [HttpPut("{isbn}")]
     public async Task<Results<NoContent, NotFound<ErrorResponse>, BadRequest<ErrorResponse>>> UpdateBook(string isbn, [FromBody] UpdateBookDto dto)
     {
@@ -51,7 +51,7 @@ public class BooksController : ControllerBase
         return TypedResults.NoContent();
     }
 
-    // [Authorize (Roles = "Admin")]
+    [Authorize (Roles = "Admin")]
     [HttpDelete("{isbn}")]
     public async Task<Results<NoContent, NotFound<ErrorResponse>>> DeleteBook(string isbn)
     {

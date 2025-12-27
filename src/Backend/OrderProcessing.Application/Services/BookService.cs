@@ -17,6 +17,12 @@ namespace OrderProcessing.Application.Services
 
         public async Task<BookDetailsDto> CreateBookAsync(CreateBookDto dto)
         {
+            // Validate ISBN and Title length
+            if (string.IsNullOrWhiteSpace(dto.ISBN) || dto.ISBN.Length > 17)
+                throw new BusinessRuleViolationException("ISBN must be non-empty and at most 17 characters.");
+            if (string.IsNullOrWhiteSpace(dto.Title) || dto.Title.Length > 100)
+                throw new BusinessRuleViolationException("Title must be non-empty and at most 100 characters.");
+
             var exists = await _bookRepository.ExistsAsync(dto.ISBN);
             if (exists) throw new DuplicateResourceException("Book", "ISBN", dto.ISBN);
 
@@ -44,6 +50,10 @@ namespace OrderProcessing.Application.Services
         {
             var book = await _bookRepository.GetByISBNAsync(isbn);
             if (book == null) throw new NotFoundException("Book", "ISBN", isbn);
+
+            // Validate Title length if updating
+            if (dto.Title != null && (string.IsNullOrWhiteSpace(dto.Title) || dto.Title.Length > 100))
+                throw new BusinessRuleViolationException("Title must be non-empty and at most 100 characters.");
 
             // Update fields
             book.UpdateDetails(
