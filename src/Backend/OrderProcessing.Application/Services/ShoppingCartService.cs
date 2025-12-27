@@ -60,8 +60,18 @@ public class ShoppingCartService : IShoppingCartService
         return cart.ToShoppingCartDetailsDto(itemsDto);
     }
 
-    public async Task AddItemToCartAsync(string username, AddCartItemDto addCartItemDto)
+    public async Task AddItemToCartAsync(string username, string isbn)
     {
+        int quantity = 1; // I changed to default 1 for now
+        
+        if (quantity <= 0)
+            throw new BusinessRuleViolationException("Quantity must be greater than 0");
+
+        // Fetch book to get price and validate it exists
+        var book = await _bookRepository.GetBookDetailsAsync(isbn);
+        if (book == null)
+            throw new NotFoundException("Book", "ISBN", isbn);
+
         var cart = await _shoppingCartRepository.GetCartByUsernameAsync(username);
         
         // Create cart if it doesn't exist
@@ -72,15 +82,18 @@ public class ShoppingCartService : IShoppingCartService
         }
 
         var cartItem = new CartItemReadModel(
-            addCartItemDto.ISBN,
-            addCartItemDto.Quantity,
-            addCartItemDto.UnitPrice
+            isbn,
+            quantity,
+            book.SellingPrice
         );
         await _shoppingCartRepository.AddCartItemAsync(cart.CartId, cartItem);
     }
 
     public async Task UpdateCartItemAsync(string username, UpdateCartItemDto updateCartItemDto)
     {
+        if (updateCartItemDto.Quantity <= 0)
+            throw new BusinessRuleViolationException("Quantity must be greater than 0");
+
         var cart = await _shoppingCartRepository.GetCartByUsernameAsync(username);
         if (cart == null)
         {
