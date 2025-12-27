@@ -20,16 +20,13 @@ DECLARE
     order_quantity INT := 50;
 BEGIN
     IF NEW.Quantity < NEW.Threshold AND OLD.Quantity >= OLD.Threshold THEN
-        INSERT INTO "Order"(OrderDate,"Status",TotalPrice,PubID,CustName)
-        VALUES (CURRENT_DATE,'Pending',order_quantity * NEW.SellingPrice,NEW.PubID, current_setting('myapp.current_user'));
 
-        INSERT INTO OrderItem(ISBN,OrderNum,Quantity,UnitPrice)
-        VALUES (
-            NEW.ISBN,
-            currval(pg_get_serial_sequence('"Order"','OrderID')),
-            order_quantity,
-            NEW.SellingPrice
-        );
+        INSERT INTO AdminOrder(OrderDate, "Status", TotalPrice, PubID, CustName)
+        VALUES (CURRENT_DATE, 'Pending', order_quantity * NEW.SellingPrice, NEW.PubID, current_setting('myapp.current_user'));
+
+        INSERT INTO AdminOrderItem(ISBN,OrderNum,Quantity,UnitPrice)
+        VALUES (NEW.ISBN, currval(pg_get_serial_sequence('AdminOrder','OrderID')), order_quantity, NEW.SellingPrice);
+        
     END IF;
     RETURN NEW;
 END;

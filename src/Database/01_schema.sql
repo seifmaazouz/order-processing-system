@@ -37,12 +37,20 @@ CREATE TABLE "User" (
     "Role" role_enum NOT NULL
 );
 
-CREATE TABLE "Order" (
+CREATE TABLE AdminOrder (
     OrderID SERIAL PRIMARY KEY,
     OrderDate DATE NOT NULL,
     "Status" order_status_enum,
     TotalPrice DECIMAL(10,2) NOT NULL,
     PubID INT NOT NULL REFERENCES Publisher(PubID),
+    CustName VARCHAR(50) NOT NULL REFERENCES "User"(Username)
+);
+
+CREATE TABLE CustomerOrder (
+    OrderID SERIAL PRIMARY KEY,
+    OrderDate DATE NOT NULL,
+    "Status" order_status_enum,
+    TotalPrice DECIMAL(10,2) NOT NULL,
     CustName VARCHAR(50) NOT NULL REFERENCES "User"(Username)
 );
 
@@ -62,9 +70,17 @@ CREATE TABLE ShoppingCart (
     CustName VARCHAR(50) NOT NULL REFERENCES "User"(Username)
 );
 
-CREATE TABLE OrderItem (
+CREATE TABLE AdminOrderItem (
     ISBN VARCHAR(17) NOT NULL REFERENCES Book(ISBN),
-    OrderNum INT NOT NULL REFERENCES "Order"(OrderID),
+    OrderNum INT NOT NULL REFERENCES AdminOrder(OrderID),
+    Quantity INT,
+    UnitPrice DECIMAL(10,2),
+    PRIMARY KEY (ISBN, OrderNum)
+);
+
+CREATE TABLE CustomerOrderItem (
+    ISBN VARCHAR(17) NOT NULL REFERENCES Book(ISBN),
+    OrderNum INT NOT NULL REFERENCES CustomerOrder(OrderID),
     Quantity INT,
     UnitPrice DECIMAL(10,2),
     PRIMARY KEY (ISBN, OrderNum)
