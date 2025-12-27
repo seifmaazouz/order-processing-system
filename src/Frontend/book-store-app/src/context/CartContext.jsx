@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useMemo, useState } from 'react';
-import { checkCartAvailability } from '../api/addCart.js';
+import { updateCartQuantity } from '../api/addCart.js';
+
 
 const CartContext = createContext(null);
 
@@ -14,16 +15,7 @@ export function CartProvider({ children }) {
     setIsLoading(true);
 
     try {
-      // Call API to check availability
-      const availability = await checkCartAvailability(book.id || book.isbn, 1);
-
-      if (!availability.ok) {
-        setError(availability.message || 'Item not available');
-        setIsLoading(false);
-        return false;
-      }
-
-      // If available, add to cart
+      // Add to cart directly
       setItems((prev) => {
         const existing = prev.find((item) => item.id === (book.id ?? book.isbn));
         if (existing) {
@@ -49,7 +41,7 @@ export function CartProvider({ children }) {
       setIsLoading(false);
       return true;
     } catch (err) {
-      const errorMsg = err?.message || 'Failed to check availability';
+      const errorMsg = err?.message || 'Failed to add to cart';
       setError(errorMsg);
       setIsLoading(false);
       return false;
@@ -60,12 +52,21 @@ export function CartProvider({ children }) {
     setItems((prev) => prev.filter((item) => item.id !== id));
   };
 
-  const updateQuantity = (id, quantity) => {
-    setItems((prev) =>
-      prev.map((item) =>
-        item.id === id ? { ...item, quantity: Math.max(1, quantity) } : item
-      )
-    );
+  const updateQuantity = async (id, quantity) => {
+    try {
+      // Call API to update quantity on backend
+      await updateCartQuantity(id, quantity);
+      
+      // Update local state
+      setItems((prev) =>
+        prev.map((item) =>
+          item.id === id ? { ...item, quantity: Math.max(1, quantity) } : item
+        )
+      );
+    } catch (error) {
+      console.error('Failed to update quantity:', error);
+      setError(error?.message || 'Failed to update quantity');
+    }
   };
 
   const clearCart = () => setItems([]);
