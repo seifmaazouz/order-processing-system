@@ -57,7 +57,7 @@ INSERT INTO BookAuthor (ISBN, AuthorName) VALUES
 
 INSERT INTO "User" (Username, "Password", FirstName, LastName, ShipAddress, Email, PhoneNumber, "Role")
 VALUES 
-('alice', 'password123', 'Alice', 'Smith', '123 Main St', 'alice@example.com', '1234567890', 'Customer'),
+('alice', 'AQAAAAIAAYagAAAAEMD+TC4vGWXdx6oWqwp1f3HiGx3HjvLiGVzaHELWgzPN8CtLUQfxoKGEH3fDnnK8nw==', 'Alice', 'Smith', '123 Main St', 'alice@example.com', '1234567890', 'Customer'),
 ('bob', 'securepass', 'Bob', 'Johnson', '456 Oak Ave', 'bob@example.com', '2345678901', 'Customer'),
 ('admin1', 'AQAAAAIAAYagAAAAEGL1pP+69sDtJqgi1d1bUpgVjbLjPP3IIvYq353cIskTaORz/66zdUnobNyrIfqU8A==', 'Admin', 'One', '789 Pine Rd', 'admin1@example.com', '3456789012', 'Admin'),
 ('admin2', 'adminpass', 'Admin', 'Two', '101 Maple St', 'admin2@example.com', '4567890123', 'Admin'),
