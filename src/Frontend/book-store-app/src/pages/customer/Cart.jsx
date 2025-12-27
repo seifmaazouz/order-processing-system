@@ -1,13 +1,25 @@
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faArrowLeft, faTrash } from '@fortawesome/free-solid-svg-icons';
+import { faArrowLeft, faTrash, faHome } from '@fortawesome/free-solid-svg-icons';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '../../context/CartContext.jsx';
-import Header from '../../components/shared/Header.jsx';
+import DashboardHeader from '../../components/dashboard/DashboardHeader.jsx';
 
 export default function Cart() {
   const navigate = useNavigate();
   const { items, summary, removeFromCart, updateQuantity, clearCart } = useCart();
+  const [showSettings, setShowSettings] = useState(false);
+  const settingsRef = useRef(null);
+
+  useEffect(() => {
+    function handleClick(e) {
+      if (settingsRef.current && !settingsRef.current.contains(e.target)) {
+        setShowSettings(false);
+      }
+    }
+    document.addEventListener('click', handleClick);
+    return () => document.removeEventListener('click', handleClick);
+  }, []);
 
   const handleQtyChange = (id, delta) => {
     const item = items.find((i) => i.id === id);
@@ -17,16 +29,30 @@ export default function Cart() {
 
   return (
     <div className="min-h-screen bg-background-light dark:bg-background-dark 
-    text-text-main-light dark:text-text-main-dark px-4 sm:px-8 py-8">
-        <Header />
+    text-text-main-light dark:text-text-main-dark">
+      <DashboardHeader
+        showSettings={showSettings}
+        onToggleSettings={setShowSettings}
+        settingsRef={settingsRef}
+        cartTotal={summary?.totalItems ?? 0}
+      />
+      <div className="px-4 sm:px-8 py-8">
       <div className="max-w-5xl mx-auto">
         <div className="flex items-center justify-between mb-6">
-          <button
-            onClick={() => navigate('/dashboard')}
-            className="flex items-center gap-2 text-sm font-semibold text-primary hover:text-primary/80"
-          >
-            <FontAwesomeIcon icon={faArrowLeft} /> Back to shop
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => navigate('/dashboard')}
+              className="flex items-center gap-2 px-4 py-2 text-sm font-semibold bg-primary text-white rounded-full hover:bg-primary/90 transition-colors"
+            >
+              <FontAwesomeIcon icon={faHome} /> Back to Home
+            </button>
+            <button
+              onClick={() => navigate('/dashboard')}
+              className="flex items-center gap-2 text-sm font-semibold text-primary hover:text-primary/80"
+            >
+              <FontAwesomeIcon icon={faArrowLeft} /> Back to shop
+            </button>
+          </div>
           {items.length > 0 && (
             <button
               onClick={clearCart}
@@ -119,6 +145,7 @@ export default function Cart() {
             </div>
           </div>
         )}
+      </div>
       </div>
     </div>
   );

@@ -14,5 +14,5 @@ COPY . .
 # Expose Vite dev server port
 EXPOSE 5174
 
-# Run Vite dev server on 0.0.0.0 so it's reachable from host
+# Run Vite dev server on 0.0.0.0 and explicit port 5174 so it matches docker-compose mapping
 CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]

@@ -23,8 +23,11 @@ export default function DashboardHeader({ showSettings, onToggleSettings, settin
   const handleLogout = () => {
     setShowLogoutConfirm(false);
     onToggleSettings(false);
+    localStorage.removeItem('access');
+    localStorage.removeItem('role');
+    localStorage.removeItem('userId');
     localStorage.removeItem('authToken');
-    navigate('/login');
+    navigate('/login', { replace: true });
   };
 
   return (

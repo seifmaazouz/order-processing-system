@@ -1,6 +1,5 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import bg from "../../assets/images/lgn-bg.png";
-import { useState } from "react";
 import { loginUsers } from "../../api/login.api.js";
 import LoginForm from "../../components/login-form/LoginForm";
 import { useNavigate } from "react-router-dom";
@@ -14,6 +13,17 @@ export default function Login() {
     const [incorrect, setIncorrect] = useState(false);
   const [resetForm, setResetForm] = useState(false);
 
+  // If user is already logged in, redirect based on role
+  useEffect(() => {
+    const access = localStorage.getItem("access");
+    const role = localStorage.getItem("role");
+
+    if (access && role) {
+      const target = role === "Admin" ? "/admin" : "/dashboard";
+      navigate(target, { replace: true });
+    }
+  }, [navigate]);
+
   const onSubmit = async (data) => {
     setLoading(true);
 
@@ -22,8 +32,10 @@ export default function Login() {
     console.log('Login data:', data);
       const res = await loginUsers(data);
       console.log('Login response:', res);
-    localStorage.setItem("role", res.data.role);
-    localStorage.setItem("access", res.data.accessToken);
+
+      // Store auth info
+      localStorage.setItem("role", res.data.role);
+      localStorage.setItem("access", res.data.accessToken);
       
       console.log('Access token:', res.data?.accessToken);
       
@@ -48,7 +60,11 @@ export default function Login() {
         
         draggable: true,
       });
-      navigate('/dashboard');
+
+      // Redirect based on role
+      const role = res.data.role;
+      const target = role === "Admin" ? "/admin" : "/dashboard";
+      navigate(target, { replace: true });
     } catch (err) {
         console.error('Login error:', err);
       setResetForm(true);

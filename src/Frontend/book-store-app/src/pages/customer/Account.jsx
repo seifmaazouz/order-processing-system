@@ -1,17 +1,23 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useForm } from 'react-hook-form';
+import { useNavigate } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faUser, faKey, faChevronDown } from '@fortawesome/free-solid-svg-icons';
-import Header from '../../components/shared/Header.jsx';
+import { faUser, faKey, faChevronDown, faHome } from '@fortawesome/free-solid-svg-icons';
 import PasswordInput from '../../components/shared/PasswordInput.jsx';
 import { getAccountDetails, updateAccountDetails, changePassword } from '../../api/accountDetails.api.js';
+import DashboardHeader from '../../components/dashboard/DashboardHeader.jsx';
+import { useCart } from '../../context/CartContext.jsx';
 
 export default function Account() {
+  const navigate = useNavigate();
   const [loadingDetails, setLoadingDetails] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [details, setDetails] = useState(null);
   const [isPasswordOpen, setIsPasswordOpen] = useState(false);
   const [toast, setToast] = useState(null);
+  const [showSettings, setShowSettings] = useState(false);
+  const settingsRef = useRef(null);
+  const { summary } = useCart();
   const { register, handleSubmit, reset } = useForm();
   const {
     register: registerPwd,
@@ -52,6 +58,17 @@ export default function Account() {
     }
     load();
   }, [reset]);
+
+  useEffect(() => {
+    function handleClick(e) {
+      if (settingsRef.current && !settingsRef.current.contains(e.target)) {
+        setShowSettings(false);
+      }
+    }
+
+    document.addEventListener('click', handleClick);
+    return () => document.removeEventListener('click', handleClick);
+  }, []);
 
   const onSaveProfile = async (formData) => {
     try {
@@ -114,10 +131,23 @@ export default function Account() {
   return (
     <div className="min-h-screen bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark">
       {/* Shared Header */}
-      <Header />
+            <DashboardHeader
+              showSettings={showSettings}
+              onToggleSettings={setShowSettings}
+              settingsRef={settingsRef}
+              cartTotal={summary?.totalItems ?? 0}
+            />
 
       <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-        <h1 className="text-3xl font-bold mb-6">Account</h1>
+        <div className="flex items-center justify-between mb-6">
+          <button
+            onClick={() => navigate('/dashboard')}
+            className="flex items-center gap-2 px-4 py-2 text-sm font-semibold bg-primary text-white rounded-full hover:bg-primary/90 transition-colors"
+          >
+            <FontAwesomeIcon icon={faHome} /> Back to Home
+          </button>
+          <h1 className="text-3xl font-bold">Account</h1>
+        </div>
 
         {/* Personal Details */}
         <section className="mb-10 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-surface-dark p-6 shadow-sm">

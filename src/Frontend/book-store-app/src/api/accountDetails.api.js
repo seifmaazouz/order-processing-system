@@ -22,7 +22,16 @@ export async function getAccountDetails(token) {
 }
 
 export async function updateAccountDetails(payload, token) {
-  const res = await axios.put(`${USER_URL}/details`, payload, {
+  // Backend expects: { address, email, firstName, lastName, phoneNumber }
+  const requestBody = {
+    address: payload.address ?? null,
+    email: payload.email ?? null,
+    firstName: payload.firstName ?? null,
+    lastName: payload.lastName ?? null,
+    phoneNumber: payload.phoneNumber ?? null,
+  };
+
+  const res = await axios.put(`${USER_URL}/profile`, requestBody, {
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${token}`,
