@@ -2,7 +2,7 @@ namespace OrderProcessing.Application.DTOs.User
 {
     public record CreditCardDto
     (
-        string CardNumber,
+        long CardNumber,
         string ExpiryMonth,
         string ExpiryYear
     );
