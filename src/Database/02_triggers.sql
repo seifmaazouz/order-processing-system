@@ -18,6 +18,7 @@ CREATE OR REPLACE FUNCTION auto_order_on_threshold()
 RETURNS TRIGGER AS $$
 DECLARE
     order_quantity INT := 50;
+    new_order_id INT;
 BEGIN
     -- Only trigger when quantity drops from above threshold to below threshold
     IF NEW.Quantity < NEW.Threshold AND OLD.Quantity >= OLD.Threshold THEN
@@ -33,6 +34,7 @@ BEGIN
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
+
 
 CREATE TRIGGER trg_auto_order_on_threshold
 AFTER UPDATE OF Quantity
