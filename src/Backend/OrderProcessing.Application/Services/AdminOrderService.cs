@@ -21,45 +21,6 @@ namespace OrderProcessing.Application.Services
             _bookRepository = bookRepository;
         }
 
-        public async Task<int> PlacePublisherOrderAsync(string adminUsername, int publisherId, List<AdminOrderItemDto> items)
-        {
-            if (items == null || items.Count == 0)
-                throw new BusinessRuleViolationException("Order must contain at least one item");
-
-            // Calculate total price
-            decimal totalPrice = 0;
-            var orderItems = new List<AdminOrderItem>();
-
-            foreach (var item in items)
-            {
-                var book = await _bookRepository.GetByISBNAsync(item.ISBN);
-                if (book == null)
-                    throw new NotFoundException("Book", "ISBN", item.ISBN);
-
-                totalPrice += item.Quantity * item.UnitPrice;
-                orderItems.Add(new AdminOrderItem(item.ISBN, 0, item.Quantity, item.UnitPrice));
-            }
-
-            // Create admin order
-            var order = new AdminOrder(
-                orderId: 0,
-                orderDate: DateOnly.FromDateTime(DateTime.UtcNow),
-                status: OrderStatus.Pending,
-                totalPrice: totalPrice,
-                publisherId: publisherId,
-                username: adminUsername
-            );
-
-            var orderId = await _adminOrderRepository.AddAsync(order, orderItems);
-
-            // Update book quantities (add to stock when order arrives)
-            foreach (var item in items)
-            {
-                await _bookRepository.UpdateBookQuantityAsync(item.ISBN, item.Quantity);
-            }
-
-            return orderId;
-        }
 
         public async Task<List<AdminOrderDto>> GetAllOrdersAsync()
         {
@@ -77,7 +38,7 @@ namespace OrderProcessing.Application.Services
                     order.Status,
                     order.TotalPrice,
                     order.PublisherId,
-                    order.Username,
+                    order.ConfirmedBy,
                     itemDtos
                 ));
             }
@@ -100,12 +61,12 @@ namespace OrderProcessing.Application.Services
                 order.Status,
                 order.TotalPrice,
                 order.PublisherId,
-                order.Username,
+                order.ConfirmedBy,
                 itemDtos
             );
         }
 
-        public async Task UpdateOrderStatusAsync(int orderId, string status)
+        public async Task UpdateOrderStatusAsync(int orderId, string status, string? adminUsername = null)
         {
             var order = await _adminOrderRepository.GetByOrderIdAsync(orderId);
             if (order == null)
@@ -115,17 +76,26 @@ namespace OrderProcessing.Application.Services
             if (!Enum.TryParse<OrderStatus>(status, ignoreCase: true, out var orderStatus))
                 throw new ArgumentException($"Invalid order status: {status}");
 
-            // If status is being changed to Confirmed, add stock to books
+            // If status is being changed to Confirmed, add stock to books and set confirmed by
             if (status.Equals("Confirmed", StringComparison.OrdinalIgnoreCase) && order.Status != OrderStatus.Confirmed)
             {
+                if (string.IsNullOrEmpty(adminUsername))
+                    throw new ArgumentException("Admin username is required when confirming an order");
+
                 var orderItems = await _adminOrderRepository.GetOrderItemsAsync(orderId);
                 foreach (var item in orderItems)
                 {
                     await _bookRepository.UpdateBookQuantityAsync(item.ISBN, item.Quantity);
                 }
-            }
 
-            await _adminOrderRepository.UpdateStatusAsync(orderId, orderStatus.ToString());
+                // Update status and confirmed by
+                await _adminOrderRepository.UpdateStatusAndConfirmedByAsync(orderId, orderStatus.ToString(), adminUsername);
+            }
+            else
+            {
+                // For other status changes, just update the status
+                await _adminOrderRepository.UpdateStatusAsync(orderId, orderStatus.ToString());
+            }
         }
     }
 }

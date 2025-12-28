@@ -33,10 +33,6 @@ public class CustomerOrderService : ICustomerOrderService
 
         var orders = await _orderRepository.GetByUsernameAsync(username);
 
-        // Get user's shipping address from profile
-        var userDetails = await _userService.GetDetailsAsync(token);
-        var shippingAddress = userDetails.Address;
-
         var orderDtos = new List<CustomerOrderDto>();
 
         foreach (var order in orders)
@@ -58,12 +54,13 @@ public class CustomerOrderService : ICustomerOrderService
                 ));
             }
 
+            // Use shipping address from order (snapshot at order time)
             orderDtos.Add(new CustomerOrderDto(
                 order.OrderNumber,
                 order.TotalPrice,
                 order.Status,
                 order.OrderDate,
-                shippingAddress,
+                order.ShippingAddress,
                 itemDtos
             ));
         }
@@ -107,7 +104,8 @@ public class CustomerOrderService : ICustomerOrderService
             totalPrice: totalPrice,
             status: OrderStatus.Pending,
             orderDate: DateOnly.FromDateTime(DateTime.UtcNow),
-            username: username
+            username: username,
+            shippingAddress: shippingAddress
         );
 
         var orderId = await _orderRepository.AddAsync(newOrder, orderItems);

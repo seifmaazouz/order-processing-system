@@ -24,11 +24,11 @@ export async function getAccountDetails(token) {
 export async function updateAccountDetails(payload, token) {
   // Backend expects: { address, email, firstName, lastName, phoneNumber }
   const requestBody = {
-    address: payload.shipAddress ?? null,
-    email: payload.email ?? null,
-    firstName: payload.firstName ?? null,
-    lastName: payload.lastName ?? null,
-    phoneNumber: payload.phoneNumber ?? null,
+    address: payload.shipAddress,
+    email: payload.email,
+    firstName: payload.firstName,
+    lastName: payload.lastName,
+    phoneNumber: payload.phoneNumber,
   };
 
   const res = await axios.put(`${USER_URL}/profile`, requestBody, {
@@ -37,7 +37,7 @@ export async function updateAccountDetails(payload, token) {
       'Authorization': `Bearer ${token}`,
     },
   });
-  return res.data; // { ok: true, message }
+  return { ok: true, message: 'Profile updated successfully' }; // Backend returns 204 No Content on success
 }
 
 export async function logout(token) {

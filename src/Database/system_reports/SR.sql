@@ -50,4 +50,4 @@ LIMIT 10;
 --e)
 SELECT SUM(Quantity) AS Total_Books_Ordered
 FROM AdminOrderItem
-WHERE ISBN = 'insert_ISBN_here';
+WHERE ISBN = 'insert_ISBN_here'

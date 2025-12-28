@@ -12,6 +12,7 @@ import { useForm } from 'react-hook-form';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { dashboardCategories, categoryOptions } from '../../constants/categories.js';
+import LogoutConfirmation from '../../components/shared/LogoutConfirmation.jsx';
 
 export default function Admin() {
 	const navigate = useNavigate();
@@ -26,6 +27,7 @@ export default function Admin() {
 	const [removingBook, setRemovingBook] = useState(null);
 	const [showRemoveModal, setShowRemoveModal] = useState(false);
 	const [showAddModal, setShowAddModal] = useState(false);
+	const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 	const filtersRef = useRef(null);
 	
 	const { register, handleSubmit, watch, setValue } = useForm({
@@ -66,6 +68,8 @@ export default function Admin() {
 
 	// Logout: clear auth data and redirect to login
 	const handleLogout = async () => {
+		setShowLogoutConfirm(false);
+
 		try {
 			const token = localStorage.getItem('access');
 			if (token) {
@@ -81,6 +85,8 @@ export default function Admin() {
 		localStorage.removeItem('access');
 		localStorage.removeItem('role');
 		localStorage.removeItem('userId');
+		localStorage.removeItem('authToken');
+
 		navigate('/login', { replace: true });
 	};
 
@@ -332,8 +338,7 @@ const handleConfirmRemove = async () => {
 				<aside className="hidden md:flex w-72 flex-col justify-between border-r border-[#e6e0db] dark:border-[#443628] bg-background-light dark:bg-background-dark p-6 transition-all">
 					<div className="flex flex-col gap-8">
 						<div className="flex flex-col gap-1 px-2">
-							
-							<p className="text-text-secondary text-sm font-medium">Admin Dashboard</p>
+							<h1 className="text-2xl font-bold text-text-main dark:text-white">Admin Dashboard</h1>
 						</div>
 						<nav className="flex flex-col gap-2">
 
@@ -352,11 +357,11 @@ const handleConfirmRemove = async () => {
 						</nav>
 					</div>
 					<button
-						onClick={handleLogout}
-						className="flex w-full cursor-pointer items-center justify-center gap-2 overflow-hidden rounded-full h-12 px-6 bg-primary/10 hover:bg-primary/20 dark:bg-primary/20 dark:hover:bg-primary/30 text-text-main dark:text-primary text-sm font-bold transition-colors"
+						onClick={() => setShowLogoutConfirm(true)}
+						className="flex w-full cursor-pointer items-center justify-center gap-2 overflow-hidden rounded-full h-12 px-6 bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:hover:bg-red-900/30 text-red-600 dark:text-red-400 text-sm font-bold transition-colors"
 					>
-						<FontAwesomeIcon icon={faArrowRightFromBracket} className="text-[18px]" />
-						<span className="truncate">Log Out</span>
+						<FontAwesomeIcon icon={faArrowRightFromBracket} />
+						<span>Logout</span>
 					</button>
 				</aside>
 
@@ -783,6 +788,12 @@ const handleConfirmRemove = async () => {
 						</div>
 					</div>
 				)}
+
+				<LogoutConfirmation
+					isOpen={showLogoutConfirm}
+					onConfirm={handleLogout}
+					onCancel={() => setShowLogoutConfirm(false)}
+				/>
 			</div>
 		</div>
 	);

@@ -87,26 +87,26 @@ INSERT INTO CartItem (ISBN, CartID, Quantity, UnitPrice) VALUES
 ('978-0-123456-01-0', 1, 1, 50.00),
 ('978-0-123456-02-7', 2, 3, 70.00);
 
-INSERT INTO AdminOrder (OrderDate, "Status", TotalPrice, PubID, CustName) VALUES
+INSERT INTO AdminOrder (OrderDate, "Status", TotalPrice, PubID, ConfirmedBy) VALUES
 ('2020-01-15','Confirmed',170.00,1,'admin1'),
 ('2020-03-22','Confirmed',60.00,2,'admin2'),
-('2021-05-10','Pending',175.00,3,'admin1'),
+('2021-05-10','Pending',175.00,3,NULL),
 ('2021-07-18','Confirmed',50.00,1,'admin2'),
 ('2022-09-05','Confirmed',200.00,2,'admin1'),
 ('2022-11-12','Confirmed',150.00,3,'admin2'),
 ('2023-02-28','Confirmed',150.00,1,'admin1'),
-('2023-04-14','Pending',70.00,2,'admin2'),
+('2023-04-14','Pending',70.00,2,NULL),
 ('2023-06-30','Confirmed',160.00,3,'admin1'),
 ('2023-08-25','Confirmed',55.00,1,'admin2'),
 ('2024-10-08','Confirmed',120.00,2,'admin1'),
 ('2024-12-01','Confirmed',115.00,3,'admin2'),
-('2020-02-20','Pending',80.00,1,'admin1'),
+('2020-02-20','Pending',80.00,1,NULL),
 ('2020-04-17','Confirmed',160.00,2,'admin2'),
 ('2021-06-09','Confirmed',70.00,3,'admin1'),
 ('2021-08-21','Confirmed',165.00,1,'admin2'),
 ('2022-10-03','Confirmed',120.00,2,'admin1'),
 ('2022-12-19','Confirmed',90.00,3,'admin2'),
-('2023-01-11','Pending',195.00,1,'admin1'),
+('2023-01-11','Pending',195.00,1,NULL),
 ('2024-11-27','Confirmed',60.00,2,'admin2');
 
 INSERT INTO AdminOrderItem (ISBN, OrderNum, Quantity, UnitPrice) VALUES
@@ -141,27 +141,27 @@ INSERT INTO AdminOrderItem (ISBN, OrderNum, Quantity, UnitPrice) VALUES
 ('978-0-123456-05-8',19,1,55.00),
 ('978-0-123456-03-4',20,1,60.00);
 
-INSERT INTO CustomerOrder (OrderDate, "Status", TotalPrice, CustName) VALUES
-('2025-12-01','Confirmed',150.00,'alice'),
-('2025-12-02','Confirmed',210.00,'bob'),
-('2025-11-28','Pending',120.00,'charlie'),
-('2025-11-30','Confirmed',90.00,'alice'),
-('2025-11-25','Canceled',50.00,'bob'),
-('2025-12-10','Confirmed',200.00,'charlie'),
-('2025-10-15','Confirmed',75.00,'alice'),
-('2025-10-20','Confirmed',180.00,'bob'),
-('2025-12-05','Confirmed',60.00,'charlie'),
-('2025-12-07','Confirmed',130.00,'bob'),
-('2025-11-15','Confirmed',110.00,'alice'),
-('2025-11-18','Pending',140.00,'charlie'),
-('2025-12-12','Confirmed',95.00,'alice'),
-('2025-12-13','Confirmed',85.00,'bob'),
-('2025-12-14','Confirmed',120.00,'charlie'),
-('2025-12-15','Confirmed',150.00,'alice'),
-('2025-12-16','Pending',90.00,'bob'),
-('2025-12-17','Confirmed',175.00,'charlie'),
-('2025-12-18','Confirmed',60.00,'alice'),
-('2025-12-19','Confirmed',80.00,'bob');
+INSERT INTO CustomerOrder (OrderDate, "Status", TotalPrice, CustName, ShippingAddress) VALUES
+('2025-12-01','Confirmed',150.00,'alice','123 Main St'),
+('2025-12-02','Confirmed',210.00,'bob','456 Oak Ave'),
+('2025-11-28','Pending',120.00,'charlie','202 Elm St'),
+('2025-11-30','Confirmed',90.00,'alice','123 Main St'),
+('2025-11-25','Canceled',50.00,'bob','456 Oak Ave'),
+('2025-12-10','Confirmed',200.00,'charlie','202 Elm St'),
+('2025-10-15','Confirmed',75.00,'alice','123 Main St'),
+('2025-10-20','Confirmed',180.00,'bob','456 Oak Ave'),
+('2025-12-05','Confirmed',60.00,'charlie','202 Elm St'),
+('2025-12-07','Confirmed',130.00,'bob','456 Oak Ave'),
+('2025-11-15','Confirmed',110.00,'alice','123 Main St'),
+('2025-11-18','Pending',140.00,'charlie','202 Elm St'),
+('2025-12-12','Confirmed',95.00,'alice','123 Main St'),
+('2025-12-13','Confirmed',85.00,'bob','456 Oak Ave'),
+('2025-12-14','Confirmed',120.00,'charlie','202 Elm St'),
+('2025-12-15','Confirmed',150.00,'alice','123 Main St'),
+('2025-12-16','Pending',90.00,'bob','456 Oak Ave'),
+('2025-12-17','Confirmed',175.00,'charlie','202 Elm St'),
+('2025-12-18','Confirmed',60.00,'alice','123 Main St'),
+('2025-12-19','Confirmed',80.00,'bob','456 Oak Ave');
 
 INSERT INTO CustomerOrderItem (ISBN, OrderNum, Quantity, UnitPrice) VALUES
 ('978-0-123456-01-0',1,2,50.00),

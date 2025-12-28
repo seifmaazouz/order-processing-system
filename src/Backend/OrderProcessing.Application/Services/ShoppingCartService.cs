@@ -15,17 +15,20 @@ public class ShoppingCartService : IShoppingCartService
     private readonly IBookRepository _bookRepository;
     private readonly ICreditCardRepository _creditCardRepository;
     private readonly ICustomerOrderRepository _orderRepository;
+    private readonly IUserRepository _userRepository;
 
     public ShoppingCartService(
         IShoppingCartRepository shoppingCartRepository, 
         IBookRepository bookRepository,
         ICreditCardRepository creditCardRepository,
-        ICustomerOrderRepository orderRepository)
+        ICustomerOrderRepository orderRepository,
+        IUserRepository userRepository)
     {
         _shoppingCartRepository = shoppingCartRepository;
         _bookRepository = bookRepository;
         _creditCardRepository = creditCardRepository;
         _orderRepository = orderRepository;
+        _userRepository = userRepository;
     }
 
     public async Task<ShoppingCartDetailsDto> GetCartDetailsAsync(string username)
@@ -156,6 +159,19 @@ public class ShoppingCartService : IShoppingCartService
         if (cart == null || cart.CartItems.Count == 0) 
             throw new BusinessRuleViolationException("Cannot checkout an empty cart");
 
+        // Get shipping address from checkout DTO or user profile
+        string shippingAddress = checkoutDto.ShippingAddress ?? "";
+        if (string.IsNullOrWhiteSpace(shippingAddress))
+        {
+            var user = await _userRepository.GetByUserNameAsync(username);
+            if (user == null)
+                throw new NotFoundException("User", "username", username);
+            
+            shippingAddress = user.Address ?? "";
+            if (string.IsNullOrWhiteSpace(shippingAddress))
+                throw new BusinessRuleViolationException("Shipping address is required. Please provide a shipping address or update your profile.");
+        }
+
         // Parse expiry date from string (accepts YYYY-MM-DD or ISO format)
         if (string.IsNullOrWhiteSpace(checkoutDto.ExpiryDate))
             throw new BusinessRuleViolationException("Expiry date is required.");
@@ -203,9 +219,9 @@ public class ShoppingCartService : IShoppingCartService
             new CustomerOrderItem(item.ISBN, 0, item.Quantity, item.UnitPrice)
         ).ToList();
 
-        // Create customer order with items
+        // Create customer order with items and shipping address snapshot
         var orderId = await _orderRepository.AddAsync(
-            new CustomerOrder(0, totalPrice, OrderStatus.Confirmed, DateOnly.FromDateTime(DateTime.Now), username),
+            new CustomerOrder(0, totalPrice, OrderStatus.Confirmed, DateOnly.FromDateTime(DateTime.Now), username, shippingAddress),
             orderItems
         );
 

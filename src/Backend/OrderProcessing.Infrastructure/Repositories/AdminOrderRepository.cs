@@ -24,7 +24,7 @@ namespace OrderProcessing.Infrastructure.Repositories
                     "Status" as status,
                     totalprice,
                     pubid,
-                    custname
+                    confirmedby
                 FROM adminorder
                 ORDER BY orderdate DESC
             """;
@@ -44,8 +44,8 @@ namespace OrderProcessing.Infrastructure.Repositories
                     var status = row.status ?? row.Status;
                     var totalPrice = row.totalprice ?? row.TotalPrice;
                     var pubId = row.pubid ?? row.PubID ?? row.PublisherId;
-                    var custName = row.custname ?? row.CustName ?? row.Username;
-                    
+                    var confirmedBy = row.confirmedby ?? row.ConfirmedBy ?? row.confirmedBy;
+
                     // Validate required fields
                     if (orderId == null)
                         throw new InvalidOperationException("Order ID is null");
@@ -57,8 +57,6 @@ namespace OrderProcessing.Infrastructure.Repositories
                         throw new InvalidOperationException("Total price is null");
                     if (pubId == null)
                         throw new InvalidOperationException("Publisher ID is null");
-                    if (custName == null)
-                        throw new InvalidOperationException("Customer name is null");
                     
                     // Convert orderDate to DateOnly
                     DateOnly orderDateOnly = default;
@@ -114,7 +112,7 @@ namespace OrderProcessing.Infrastructure.Repositories
                         orderStatus,
                         Convert.ToDecimal(totalPrice),
                         Convert.ToInt32(pubId),
-                        custName.ToString()
+                        confirmedBy?.ToString()
                     ));
                 }
                 catch (Exception ex)
@@ -138,7 +136,7 @@ namespace OrderProcessing.Infrastructure.Repositories
                     "Status" as status,
                     totalprice,
                     pubid,
-                    custname
+                    confirmedby
                 FROM adminorder
                 WHERE orderid = @OrderId
             """;
@@ -159,7 +157,7 @@ namespace OrderProcessing.Infrastructure.Repositories
             var status = row.status ?? row.Status;
             var totalPrice = row.totalprice ?? row.TotalPrice;
             var pubId = row.pubid ?? row.PubID ?? row.PublisherId;
-            var custName = row.custname ?? row.CustName ?? row.Username;
+            var confirmedBy = row.confirmedby ?? row.ConfirmedBy ?? row.confirmedBy;
             
             // Convert orderDate to DateOnly
             DateOnly orderDateOnly = default;
@@ -198,15 +196,15 @@ namespace OrderProcessing.Infrastructure.Repositories
                 orderStatus,
                 Convert.ToDecimal(totalPrice),
                 Convert.ToInt32(pubId),
-                custName?.ToString() ?? ""
+                confirmedBy?.ToString()
             );
         }
 
         public async Task<int> AddAsync(AdminOrder order, List<AdminOrderItem> items)
         {
             const string orderSql = """
-                INSERT INTO adminorder (orderdate, status, totalprice, pubid, custname)
-                VALUES (@OrderDate, @Status, @TotalPrice, @PublisherId, @Username)
+                INSERT INTO adminorder (orderdate, status, totalprice, pubid, confirmedby)
+                VALUES (@OrderDate, @Status, @TotalPrice, @PublisherId, @ConfirmedBy)
                 RETURNING orderid
             """;
 
@@ -228,7 +226,7 @@ namespace OrderProcessing.Infrastructure.Repositories
                         Status = order.Status.ToString(),
                         order.TotalPrice,
                         order.PublisherId,
-                        order.Username
+                        order.ConfirmedBy
                     },
                     transaction
                 );
@@ -271,6 +269,22 @@ namespace OrderProcessing.Infrastructure.Repositories
             await connection.ExecuteAsync(
                 sql,
                 new { OrderId = orderId, Status = status }
+            );
+        }
+
+        public async Task UpdateStatusAndConfirmedByAsync(int orderId, string status, string confirmedBy)
+        {
+            const string sql = """
+                UPDATE adminorder
+                SET "Status" = @Status, confirmedby = @ConfirmedBy
+                WHERE orderid = @OrderId
+            """;
+
+            using var connection = await _connectionFactory.CreateConnectionAsync();
+
+            await connection.ExecuteAsync(
+                sql,
+                new { OrderId = orderId, Status = status, ConfirmedBy = confirmedBy }
             );
         }
 

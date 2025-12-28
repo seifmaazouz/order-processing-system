@@ -46,12 +46,16 @@ export default function Account() {
         }
         
         const data = await getAccountDetails(token);
-        // Backend returns addresses as array, but we store it as shipAddress in state
+        // Backend returns PascalCase fields, normalize to camelCase
         const normalizedData = {
           ...data,
-          shipAddress: Array.isArray(data.addresses) && data.addresses.length > 0 
-            ? data.addresses[0] 
-            : (data.shipAddress || '')
+          username: data.Username || data.username || '',
+          firstName: data.FirstName || data.firstName || '',
+          lastName: data.LastName || data.lastName || '',
+          email: data.Email || data.email || '',
+          phoneNumber: data.PhoneNumber || data.phoneNumber || '',
+          shipAddress: data.Address || data.address || '',
+          creditCards: data.CreditCards || data.creditCards || []
         };
         setDetails(normalizedData);
         console.log('Fetched account details:', normalizedData);
@@ -104,7 +108,8 @@ export default function Account() {
         setToast({ type: 'error', message: res?.message || 'Update failed' });
       }
     } catch (err) {
-      setToast({ type: 'error', message: err?.message || 'Update failed' });
+      const errorMessage = err?.response?.data?.error || err?.response?.data?.message || err?.message || 'Update failed';
+      setToast({ type: 'error', message: errorMessage });
     } finally {
       setTimeout(() => setToast(null), 3000);
     }
@@ -170,9 +175,13 @@ export default function Account() {
       const data = await getAccountDetails(token);
       const normalizedData = {
         ...data,
-        shipAddress: Array.isArray(data.addresses) && data.addresses.length > 0 
-          ? data.addresses[0] 
-          : (data.shipAddress || '')
+        username: data.Username || data.username || '',
+        firstName: data.FirstName || data.firstName || '',
+        lastName: data.LastName || data.lastName || '',
+        email: data.Email || data.email || '',
+        phoneNumber: data.PhoneNumber || data.phoneNumber || '',
+        shipAddress: data.Address || data.address || '',
+        creditCards: data.CreditCards || data.creditCards || []
       };
       setDetails(normalizedData);
     } catch (err) {
@@ -194,9 +203,13 @@ export default function Account() {
       const data = await getAccountDetails(token);
       const normalizedData = {
         ...data,
-        shipAddress: Array.isArray(data.addresses) && data.addresses.length > 0 
-          ? data.addresses[0] 
-          : (data.shipAddress || '')
+        username: data.Username || data.username || '',
+        firstName: data.FirstName || data.firstName || '',
+        lastName: data.LastName || data.lastName || '',
+        email: data.Email || data.email || '',
+        phoneNumber: data.PhoneNumber || data.phoneNumber || '',
+        shipAddress: data.Address || data.address || '',
+        creditCards: data.CreditCards || data.creditCards || []
       };
       setDetails(normalizedData);
     } catch (err) {

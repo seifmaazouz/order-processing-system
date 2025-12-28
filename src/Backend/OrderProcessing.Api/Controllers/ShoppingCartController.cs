@@ -1,7 +1,10 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
+using OrderProcessing.Api.Models;
 using OrderProcessing.Application.DTOs.ShoppingCart;
+using OrderProcessing.Application.DTOs.Responses;
 using OrderProcessing.Application.Interfaces;
 
 namespace OrderProcessing.Api.Controllers;
@@ -27,50 +30,50 @@ public class ShoppingCartController : ControllerBase
     }
 
     [HttpPost("add-item/{isbn}")]
-    public async Task<ActionResult> AddItemToCart(string isbn)
+    public async Task<Results<Ok, UnauthorizedHttpResult, NotFound<ErrorResponse>, BadRequest<ErrorResponse>>> AddItemToCart(string isbn)
     {
         var username = GetCurrentUsername();
         await _shoppingCartService.AddItemToCartAsync(username, isbn);
-        return Ok();
+        return TypedResults.Ok();
     }
 
     [HttpPut("update-item/{isbn}")]
-    public async Task<ActionResult> UpdateItemQuantity(string isbn, [FromBody] int quantity)
+    public async Task<Results<Ok, UnauthorizedHttpResult, NotFound<ErrorResponse>, BadRequest<ErrorResponse>>> UpdateItemQuantity(string isbn, [FromBody] int quantity)
     {
         var username = GetCurrentUsername();
         await _shoppingCartService.UpdateCartItemAsync(username, isbn, quantity);
-        return Ok();
+        return TypedResults.Ok();
     }
 
     [HttpDelete("remove-item/{isbn}")]
-    public async Task<ActionResult> RemoveItemFromCart(string isbn)
+    public async Task<Results<NoContent, UnauthorizedHttpResult, NotFound<ErrorResponse>>> RemoveItemFromCart(string isbn)
     {
         var username = GetCurrentUsername();
         await _shoppingCartService.RemoveItemFromCartAsync(username, isbn);
-        return NoContent();
+        return TypedResults.NoContent();
     }
 
     [HttpGet]
-    public async Task<ActionResult<ShoppingCartDetailsDto>> GetCartDetails()
+    public async Task<Results<Ok<ShoppingCartDetailsDto>, UnauthorizedHttpResult>> GetCartDetails()
     {
         var username = GetCurrentUsername();
         var cartDetails = await _shoppingCartService.GetCartDetailsAsync(username);
-        return Ok(cartDetails);
+        return TypedResults.Ok(cartDetails);
     }
 
     [HttpDelete]
-    public async Task<ActionResult> ClearCart()
+    public async Task<Results<NoContent, UnauthorizedHttpResult>> ClearCart()
     {
         var username = GetCurrentUsername();
         await _shoppingCartService.ClearCartAsync(username);
-        return NoContent();
+        return TypedResults.NoContent();
     }
 
     [HttpPost("checkout")]
-    public async Task<ActionResult<int>> CheckoutCart([FromBody] CheckoutDto dto)
+    public async Task<Results<Ok<CheckoutResponse>, UnauthorizedHttpResult, BadRequest<ErrorResponse>>> CheckoutCart([FromBody] CheckoutDto dto)
     {
         var username = GetCurrentUsername();
         var orderId = await _shoppingCartService.CheckoutAsync(username, dto);
-        return Ok(new { OrderId = orderId });
+        return TypedResults.Ok(new CheckoutResponse(orderId));
     }
 }

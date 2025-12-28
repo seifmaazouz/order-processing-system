@@ -23,7 +23,8 @@ namespace OrderProcessing.Infrastructure.Repositories
                     OrderDate,
                     "Status",
                     TotalPrice,
-                    Custname
+                    Custname,
+                    ShippingAddress
                 FROM CustomerOrder
                 WHERE CustName = @Username
                 ORDER BY OrderDate DESC
@@ -44,7 +45,8 @@ namespace OrderProcessing.Infrastructure.Repositories
                     TotalPrice,
                     "Status",
                     OrderDate,
-                    CustName
+                    CustName,
+                    ShippingAddress
                 FROM CustomerOrder
                 WHERE OrderID = @OrderID
                   AND CustName = @Username
@@ -67,13 +69,15 @@ namespace OrderProcessing.Infrastructure.Repositories
                     "Status",
                     TotalPrice,
                     CustName,
-                    OrderDate
+                    OrderDate,
+                    ShippingAddress
                 )
                 VALUES (
                     @Status::order_status_enum,
                     @TotalPrice,
                     @CustName,
-                    @OrderDate
+                    @OrderDate,
+                    @ShippingAddress
                 )
                 RETURNING OrderID
             """;
@@ -93,7 +97,8 @@ namespace OrderProcessing.Infrastructure.Repositories
                     Status = order.Status.ToString(),
                     order.TotalPrice,
                     CustName = order.Username,
-                    OrderDate = order.OrderDate.ToDateTime(TimeOnly.MinValue)
+                    OrderDate = order.OrderDate.ToDateTime(TimeOnly.MinValue),
+                    order.ShippingAddress
                 }, transaction);
 
                 if (items != null && items.Count > 0)
@@ -188,7 +193,8 @@ namespace OrderProcessing.Infrastructure.Repositories
                 row.TotalPrice,
                 status,
                 row.OrderDate,
-                row.CustName
+                row.CustName,
+                row.ShippingAddress ?? string.Empty
             );
         }
 
@@ -198,7 +204,8 @@ namespace OrderProcessing.Infrastructure.Repositories
             DateOnly OrderDate,
             string Status,
             decimal TotalPrice,
-            string CustName
+            string CustName,
+            string? ShippingAddress
         );
 
         private record OrderItemRow(

@@ -43,7 +43,7 @@ CREATE TABLE AdminOrder (
     "Status" order_status_enum,
     TotalPrice DECIMAL(10,2) NOT NULL,
     PubID INT NOT NULL REFERENCES Publisher(PubID),
-    CustName VARCHAR(50) NOT NULL REFERENCES "User"(Username)
+    ConfirmedBy VARCHAR(50) REFERENCES "User"(Username)
 );
 
 CREATE TABLE CustomerOrder (
@@ -51,7 +51,8 @@ CREATE TABLE CustomerOrder (
     OrderDate DATE NOT NULL,
     "Status" order_status_enum,
     TotalPrice DECIMAL(10,2) NOT NULL,
-    CustName VARCHAR(50) NOT NULL REFERENCES "User"(Username)
+    CustName VARCHAR(50) NOT NULL REFERENCES "User"(Username),
+    ShippingAddress VARCHAR(500) NOT NULL
 );
 
 CREATE TABLE CreditCard (

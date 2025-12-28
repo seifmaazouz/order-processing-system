@@ -5,6 +5,7 @@ using OrderProcessing.Application.Interfaces;
 using OrderProcessing.Domain.Interfaces.Repositories;
 using OrderProcessing.Application.Security;
 using OrderProcessing.Application.DTOs.Order;
+using OrderProcessing.Application.Exceptions;
 
 namespace OrderProcessing.Application.Services
 {
@@ -39,10 +40,6 @@ namespace OrderProcessing.Application.Services
             if (string.IsNullOrEmpty(username))
                 throw new UnauthorizedAccessException("Invalid token.");
 
-            // Get user details for shipping address
-            var userDetails = await GetDetailsAsync(token);
-            var shippingAddress = userDetails.Address;
-
             // Get all orders for this user
             var orders = await _customerOrderRepository.GetByUsernameAsync(username);
             
@@ -67,12 +64,13 @@ namespace OrderProcessing.Application.Services
                     ));
                 }
 
+                // Use shipping address from order (snapshot at order time)
                 orderDtos.Add(new CustomerOrderDto(
                     order.OrderNumber,
                     order.TotalPrice,
                     order.Status,
                     order.OrderDate,
-                    shippingAddress,
+                    order.ShippingAddress,
                     itemDtos
                 ));
             }
@@ -153,12 +151,22 @@ namespace OrderProcessing.Application.Services
                 throw new KeyNotFoundException("User not found.");
 
             // Update user with new values or keep existing ones
+            // Only use existing value if new value is null (not sent), otherwise use the new value (including empty strings)
+            var firstName = dto.FirstName ?? user.FirstName;
+            var lastName = dto.LastName ?? user.LastName;
+
+            // Validate required fields are not empty
+            if (string.IsNullOrWhiteSpace(firstName))
+                throw new BusinessRuleViolationException("First name is required.");
+            if (string.IsNullOrWhiteSpace(lastName))
+                throw new BusinessRuleViolationException("Last name is required.");
+
             var updatedUser = new User(
                 user.Username,
                 dto.Email ?? user.Email,
                 dto.PhoneNumber ?? user.PhoneNumber,
-                dto.FirstName ?? user.FirstName,
-                dto.LastName ?? user.LastName,
+                firstName,
+                lastName,
                 user.PasswordHash,
                 user.Role,
                 dto.Address ?? user.Address

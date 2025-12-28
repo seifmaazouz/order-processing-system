@@ -9,7 +9,7 @@ namespace OrderProcessing.Domain.Entities
         public OrderStatus Status { get; private set; }
         public decimal TotalPrice { get; private set; }
         public int PublisherId { get; private set; }
-        public string Username { get; private set; }
+        public string? ConfirmedBy { get; private set; }
 
         public AdminOrder(
             int orderId,
@@ -17,19 +17,25 @@ namespace OrderProcessing.Domain.Entities
             OrderStatus status,
             decimal totalPrice,
             int publisherId,
-            string username)
+            string? confirmedBy = null)
         {
             OrderId = orderId;
             OrderDate = orderDate;
             Status = status;
             TotalPrice = totalPrice;
             PublisherId = publisherId;
-            Username = username;
+            ConfirmedBy = confirmedBy;
         }
 
         public void ChangeStatus(OrderStatus newStatus)
         {
             Status = newStatus;
+        }
+
+        public void ConfirmBy(string adminUsername)
+        {
+            Status = OrderStatus.Confirmed;
+            ConfirmedBy = adminUsername;
         }
     }
 }

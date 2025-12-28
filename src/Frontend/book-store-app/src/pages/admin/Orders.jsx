@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faBookOpen, faShoppingBag, faChartBar, faArrowRightFromBracket, faCheckCircle, faFilter } from '@fortawesome/free-solid-svg-icons';
@@ -17,6 +18,7 @@ export default function AdminOrders() {
 	const [showConfirmModal, setShowConfirmModal] = useState(false);
 	const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 	const [selectedOrder, setSelectedOrder] = useState(null);
+
 
 	useEffect(() => {
 		fetchOrders();
@@ -71,6 +73,7 @@ export default function AdminOrders() {
 			console.error('Confirm order error:', error.response?.data);
 		}
 	};
+
 
 	const handleLogout = async () => {
 		setShowLogoutConfirm(false);
@@ -150,25 +153,25 @@ export default function AdminOrders() {
 					{/* Header */}
 					<header className="border-b border-[#e6e0db] bg-background-light">
 						<div className="px-6 py-6">
-							<div className="flex items-center justify-between mb-4">
-								<div>
-									<h2 className="text-2xl font-bold text-text-main">Order Management</h2>
-									<p className="text-sm text-text-secondary mt-1">Confirm replenishment orders from publishers</p>
+								<div className="flex items-center justify-between mb-4">
+									<div>
+										<h2 className="text-2xl font-bold text-text-main">Order Management</h2>
+										<p className="text-sm text-text-secondary mt-1">Confirm automatic replenishment orders from publishers</p>
+									</div>
+									<div className="flex items-center gap-3">
+										<FontAwesomeIcon icon={faFilter} className="text-text-secondary" />
+										<select
+											value={statusFilter}
+											onChange={(e) => setStatusFilter(e.target.value)}
+											className="h-10 px-4 rounded-full bg-surface-light border border-gray-200 focus:ring-2 focus:ring-primary outline-none text-sm font-medium"
+										>
+											<option value="All">All Orders</option>
+											<option value="Pending">Pending</option>
+											<option value="Confirmed">Confirmed</option>
+											<option value="Cancelled">Cancelled</option>
+										</select>
+									</div>
 								</div>
-								<div className="flex items-center gap-3">
-									<FontAwesomeIcon icon={faFilter} className="text-text-secondary" />
-									<select
-										value={statusFilter}
-										onChange={(e) => setStatusFilter(e.target.value)}
-										className="h-10 px-4 rounded-full bg-surface-light border border-gray-200 focus:ring-2 focus:ring-primary outline-none text-sm font-medium"
-									>
-										<option value="All">All Orders</option>
-										<option value="Pending">Pending</option>
-										<option value="Confirmed">Confirmed</option>
-										<option value="Cancelled">Cancelled</option>
-									</select>
-								</div>
-							</div>
 						</div>
 					</header>
 
@@ -187,7 +190,8 @@ export default function AdminOrders() {
 													<th className="text-left py-4 px-6 text-sm font-bold">Order Date</th>
 													<th className="text-left py-4 px-6 text-sm font-bold">Publisher ID</th>
 													<th className="text-right py-4 px-6 text-sm font-bold">Total Price</th>
-													<th className="text-left py-4 px-6 text-sm font-bold">Admin</th>
+													<th className="text-left py-4 px-6 text-sm font-bold">Ordered by</th>
+													<th className="text-left py-4 px-6 text-sm font-bold">Confirmed by</th>
 													<th className="text-center py-4 px-6 text-sm font-bold">Status</th>
 													<th className="text-center py-4 px-6 text-sm font-bold">Action</th>
 												</tr>
@@ -199,7 +203,16 @@ export default function AdminOrders() {
 														<td className="py-4 px-6 text-sm">{order.orderDate ? new Date(order.orderDate).toLocaleDateString() : 'N/A'}</td>
 														<td className="py-4 px-6 text-sm text-text-secondary">#{order.publisherId}</td>
 														<td className="py-4 px-6 text-right font-bold text-primary">${order.totalPrice?.toFixed(2) || '0.00'}</td>
-														<td className="py-4 px-6 text-sm">{order.username || 'N/A'}</td>
+														<td className="py-4 px-6 text-sm">
+															<span className="text-blue-600 font-medium">System / Auto Trigger</span>
+														</td>
+														<td className="py-4 px-6 text-sm">
+															{order.confirmedBy ? (
+																<span className="text-green-600 font-medium">{order.confirmedBy}</span>
+															) : (
+																<span className="text-gray-400">—</span>
+															)}
+														</td>
 														<td className="py-4 px-6 text-center">
 															<span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(order.status)}`}>
 																{order.status}
@@ -301,6 +314,7 @@ export default function AdminOrders() {
 						</div>
 					</div>
 				)}
+
 
 				<LogoutConfirmation
 					isOpen={showLogoutConfirm}

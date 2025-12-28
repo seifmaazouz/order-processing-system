@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text.Json;
+using OrderProcessing.Api.Models;
 using OrderProcessing.Application.Exceptions;
 using OrderProcessing.Domain.Exceptions;
 
@@ -50,7 +51,7 @@ public class GlobalExceptionHandlingMiddleware
         context.Response.ContentType = "application/json";
         context.Response.StatusCode = (int)statusCode;
 
-        var response = new { error = message, statusCode = (int)statusCode };
+        var response = new ErrorResponse(message, (int)statusCode);
         return context.Response.WriteAsync(JsonSerializer.Serialize(response));
     }
 

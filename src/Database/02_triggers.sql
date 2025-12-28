@@ -18,25 +18,12 @@ CREATE OR REPLACE FUNCTION auto_order_on_threshold()
 RETURNS TRIGGER AS $$
 DECLARE
     order_quantity INT := 50;
-    admin_username VARCHAR(50) := 'admin1'; -- Default admin user
 BEGIN
     -- Only trigger when quantity drops from above threshold to below threshold
     IF NEW.Quantity < NEW.Threshold AND OLD.Quantity >= OLD.Threshold THEN
-        -- Try to get admin username from session setting, fallback to 'admin1' if not set
-        BEGIN
-            admin_username := current_setting('myapp.current_user', true);
-            -- If setting exists but is empty, use 'admin1'
-            IF admin_username IS NULL OR admin_username = '' THEN
-                admin_username := 'admin1';
-            END IF;
-        EXCEPTION WHEN OTHERS THEN
-            -- Setting doesn't exist, use 'admin1'
-            admin_username := 'admin1';
-        END;
-
-        -- Create admin order with the determined username
-        INSERT INTO AdminOrder(OrderDate, "Status", TotalPrice, PubID, CustName)
-        VALUES (CURRENT_DATE, 'Pending', order_quantity * NEW.SellingPrice, NEW.PubID, admin_username);
+        -- Create automatic admin order
+        INSERT INTO AdminOrder(OrderDate, "Status", TotalPrice, PubID, ConfirmedBy)
+        VALUES (CURRENT_DATE, 'Pending', order_quantity * NEW.SellingPrice, NEW.PubID, NULL);
 
         -- Create admin order item
         INSERT INTO AdminOrderItem(ISBN, OrderNum, Quantity, UnitPrice)
