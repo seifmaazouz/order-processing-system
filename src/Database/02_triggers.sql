@@ -18,19 +18,23 @@ CREATE OR REPLACE FUNCTION auto_order_on_threshold()
 RETURNS TRIGGER AS $$
 DECLARE
     order_quantity INT := 50;
+    new_order_id INT;
 BEGIN
-    IF NEW.Quantity < NEW.Threshold AND OLD.Quantity >= OLD.Threshold THEN
+    IF NEW.Quantity < NEW.Threshold
+       AND OLD.Quantity >= OLD.Threshold THEN
 
         INSERT INTO AdminOrder(OrderDate, "Status", TotalPrice, PubID, CustName)
-        VALUES (CURRENT_DATE, 'Pending', order_quantity * NEW.SellingPrice, NEW.PubID, current_setting('myapp.current_user'));
+        VALUES(CURRENT_DATE, 'Pending', order_quantity * NEW.SellingPrice, NEW.PubID, 'admin2')
+        RETURNING OrderID INTO new_order_id;
 
-        INSERT INTO AdminOrderItem(ISBN,OrderNum,Quantity,UnitPrice)
-        VALUES (NEW.ISBN, currval(pg_get_serial_sequence('AdminOrder','OrderID')), order_quantity, NEW.SellingPrice);
-        
+        INSERT INTO AdminOrderItem(ISBN, OrderNum, Quantity, UnitPrice)
+        VALUES(NEW.ISBN, new_order_id, order_quantity, NEW.SellingPrice);
+
     END IF;
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
+
 
 CREATE TRIGGER trg_auto_order_on_threshold
 AFTER UPDATE OF Quantity
