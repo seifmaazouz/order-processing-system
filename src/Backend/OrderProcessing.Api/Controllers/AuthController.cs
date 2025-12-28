@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
+using OrderProcessing.Api.Models;
 using OrderProcessing.Application.DTOs.User;
 using OrderProcessing.Application.DTOs.Requests;
 using OrderProcessing.Application.Interfaces;
@@ -9,7 +10,7 @@ namespace OrderProcessing.Api.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class AuthController:ControllerBase
+    public class AuthController : ControllerBase
     {
          private readonly IAuthService _userService;
 
@@ -17,88 +18,35 @@ namespace OrderProcessing.Api.Controllers
         {
             _userService = userService;
         }
-        [HttpPost("register")]
-        public async Task<IActionResult> Register([FromBody] CreateUserRequest request)
-        {
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
 
-            try
+        [HttpPost("register")]
+        public async Task<Results<Created<UserDto>, BadRequest<ErrorResponse>, Conflict<ErrorResponse>>> Register([FromBody] CreateUserRequest request)
             {
                 var user = await _userService.CreateAsync(request);
-                return Created(string.Empty, user);
+            return TypedResults.Created($"/api/user/{user.Username}", user);
             }
-            catch (InvalidOperationException ex)
-            {
-                // e.g., username already exists
-                return Conflict(new { message = ex.Message });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { message = ex.Message });
-            }
-        }
-        [HttpPost("login")]
-        public async Task<IActionResult> Login([FromBody] LoginRequest request)
-        {
-        if (!ModelState.IsValid)
-            return BadRequest(ModelState);
 
-        try
+        [HttpPost("login")]
+        public async Task<Results<Ok<AuthResultDto>, BadRequest<ErrorResponse>, UnauthorizedHttpResult>> Login([FromBody] LoginRequest request)
         {
-            AuthResultDto authResult = await _userService.LoginAsync(request);
-            return Ok(authResult);
-        }
-        catch (UnauthorizedAccessException)
-        {
-            return Unauthorized(new { message = "Invalid username or password" });
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, new { message = "An error occurred", detail = ex.Message });
-        }
+            var authResult = await _userService.LoginAsync(request);
+            return TypedResults.Ok(authResult);
         }
     
     [HttpPost("register-admin")]
-    [Authorize(Roles ="Admin")]
-        public async Task<IActionResult> RegisterAdmin([FromBody] CreateUserRequest request)
-        {
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
-
-            try
+        [Authorize(Roles = "Admin")]
+        public async Task<Results<Created<UserDto>, BadRequest<ErrorResponse>, Conflict<ErrorResponse>>> RegisterAdmin([FromBody] CreateUserRequest request)
             {
                 var user = await _userService.CreateAdminAsync(request);
-                return Created(string.Empty, user);
-            }
-            catch (InvalidOperationException ex)
-            {
-                // e.g., username already exists
-                return Conflict(new { message = ex.Message });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { message = ex.Message });
-            }
+            return TypedResults.Created($"/api/user/{user.Username}", user);
         }
 
         [HttpPost("logout")]
-        public async Task<IActionResult> Logout()
-        {
-            try
+        public async Task<Ok> Logout()
             {
                 var token = GetBearerToken();
-                var message = await _userService.LogoutAsync(token);
-                return Ok(new { message });
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                return Unauthorized(new { message = ex.Message });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { message = ex.Message });
-            }
+            await _userService.LogoutAsync(token);
+            return TypedResults.Ok();
         }
 
         private string GetBearerToken()

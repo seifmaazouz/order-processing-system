@@ -7,11 +7,15 @@ public record SalesReportReadModel
     long TotalTransactionCount
 );
 
-public record TopCustomerReadModel
-(
-    string CustomerName,
-    decimal TotalSpent
-);
+public class TopCustomerReadModel
+{
+    public string? CustomerName { get; set; }
+    public decimal TotalSpent { get; set; }
+    public string? Email { get; set; }
+
+    // Parameterless constructor for Dapper
+    public TopCustomerReadModel() { }
+}
 
 public record TopSellingBookReadModel
 (

@@ -62,8 +62,14 @@ namespace OrderProcessing.Application.Services
         public async Task<AuthResultDto> LoginAsync(LoginRequest request)
         {
             var user = await _userRepository.GetByUserNameAsync(request.Username);
-            
-            if (user == null || !_passwordHasher.Verify(request.Password, user.PasswordHash))
+
+            if (user == null)
+                throw new UnauthorizedAccessException("Invalid credentials");
+
+            bool passwordValid = !string.IsNullOrEmpty(user.PasswordHash) &&
+                               _passwordHasher.Verify(request.Password, user.PasswordHash);
+
+            if (!passwordValid)
                 throw new UnauthorizedAccessException("Invalid credentials");
 
             // Generate JWT
@@ -72,7 +78,7 @@ namespace OrderProcessing.Application.Services
             return new AuthResultDto(
                 AccessToken: token,
                 ExpiresAt: DateTime.UtcNow.AddMinutes(60),
-                Role: user.Role.ToString() 
+                Role: user.Role.ToString()
             );
         }
         public async Task<UserDto> CreateAdminAsync(CreateUserRequest request)

@@ -24,11 +24,11 @@ export async function getAccountDetails(token) {
 export async function updateAccountDetails(payload, token) {
   // Backend expects: { address, email, firstName, lastName, phoneNumber }
   const requestBody = {
-    address: payload.shipAddress ?? null,
-    email: payload.email ?? null,
-    firstName: payload.firstName ?? null,
-    lastName: payload.lastName ?? null,
-    phoneNumber: payload.phoneNumber ?? null,
+    address: payload.shipAddress,
+    email: payload.email,
+    firstName: payload.firstName,
+    lastName: payload.lastName,
+    phoneNumber: payload.phoneNumber,
   };
 
   const res = await axios.put(`${USER_URL}/profile`, requestBody, {
@@ -37,7 +37,17 @@ export async function updateAccountDetails(payload, token) {
       'Authorization': `Bearer ${token}`,
     },
   });
-  return res.data; // { ok: true, message }
+  return { ok: true, message: 'Profile updated successfully' }; // Backend returns 204 No Content on success
+}
+
+export async function logout(token) {
+  const res = await axios.post(`${API_BASE_URL}/auth/logout`, {}, {
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+  });
+  return res.data; // { message }
 }
 
 export async function changePassword(payload, token) {
@@ -54,4 +64,45 @@ export async function changePassword(payload, token) {
     },
   });
   return res.data; // { ok: true, message }
+}
+
+export async function addCreditCard(cardNumber, expiryDate, token) {
+  // Validate and parse card number
+  const cleanedCardNumber = cardNumber.replace(/\s/g, '');
+  if (!cleanedCardNumber || cleanedCardNumber.length < 13 || cleanedCardNumber.length > 19) {
+    throw new Error('Card number must be between 13 and 19 digits');
+  }
+  
+  const cardNumberInt = parseInt(cleanedCardNumber, 10);
+  if (isNaN(cardNumberInt) || cardNumberInt <= 0) {
+    throw new Error('Invalid card number');
+  }
+  
+  const requestBody = {
+    CardNumber: cardNumberInt,
+    ExpiryDate: expiryDate
+  };
+  
+  const res = await axios.post(`${USER_URL}/add-credit-card`, requestBody, {
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+  });
+  return res.data; // { message: "Credit card added successfully." }
+}
+
+export async function removeCreditCard(cardNumber, token) {
+  const requestBody = {
+    cardNumber: cardNumber,
+    token: token
+  };
+  
+  const res = await axios.post(`${USER_URL}/remove-card`, requestBody, {
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+  });
+  return res.data; // { message: "Credit card removed successfully." }
 }

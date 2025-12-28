@@ -10,6 +10,7 @@ import {
   faArrowRightFromBracket,
 } from '@fortawesome/free-solid-svg-icons';
 import LogoutConfirmation from '../shared/LogoutConfirmation.jsx';
+import { logout } from '../../api/accountDetails.api.js';
 
 export default function DashboardHeader({ showSettings, onToggleSettings, settingsRef, cartTotal }) {
   const navigate = useNavigate();
@@ -20,23 +21,37 @@ export default function DashboardHeader({ showSettings, onToggleSettings, settin
     navigate(path);
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     setShowLogoutConfirm(false);
     onToggleSettings(false);
+
+    try {
+      const token = localStorage.getItem('access');
+      if (token) {
+        // Call backend logout to clear cart and invalidate session
+        await logout(token);
+      }
+    } catch (error) {
+      console.warn('Backend logout failed:', error);
+      // Continue with local cleanup even if backend call fails
+    }
+
+    // Clear local authentication data
     localStorage.removeItem('access');
     localStorage.removeItem('role');
     localStorage.removeItem('userId');
     localStorage.removeItem('authToken');
+
     navigate('/login', { replace: true });
   };
 
   return (
     <>
-    <header className="w-full px-6 py-4 flex items-center justify-between sticky top-0 z-50 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-md">
+    <header className="w-full px-6 py-4 flex items-center justify-between sticky top-0 z-50 bg-background-light/80 backdrop-blur-md">
       {/* Logo */}
       <div className="flex items-center gap-3">
-        <div className="size-10 bg-primary rounded-full flex items-center justify-center text-background-dark">
-          <FontAwesomeIcon icon={faBook} className="text-[20px] text-background-dark" />
+        <div className="size-10 bg-primary rounded-full flex items-center justify-center text-white">
+          <FontAwesomeIcon icon={faBook} className="text-[20px] text-white" />
         </div>
         <h2 className="text-xl font-bold tracking-tight hidden sm:block">
           Bookstore
@@ -48,36 +63,36 @@ export default function DashboardHeader({ showSettings, onToggleSettings, settin
         <div className="relative" ref={settingsRef}>
           <button
             onClick={() => onToggleSettings(!showSettings)}
-            className="flex items-center gap-2 px-4 h-10 rounded-full bg-surface-light dark:bg-surface-dark border border-gray-200 dark:border-gray-700 hover:border-primary/50 transition-colors shadow-sm group"
+            className="flex items-center gap-2 px-4 h-10 rounded-full bg-white border border-gray-200 hover:border-primary/50 transition-colors shadow-sm group"
           >
-            <FontAwesomeIcon icon={faCog} className="text-gray-500 dark:text-gray-400 group-hover:text-primary text-[20px]" />
+            <FontAwesomeIcon icon={faCog} className="text-gray-500 group-hover:text-primary text-[20px]" />
             <span className="text-sm font-semibold hidden sm:inline">
               Settings
             </span>
           </button>
 
           {showSettings && (
-            <div className="absolute right-0 mt-2 w-48 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-surface-dark shadow-lg overflow-hidden z-50">
+            <div className="absolute right-0 mt-2 w-48 rounded-lg border border-gray-200 bg-white shadow-lg overflow-hidden z-50">
               <button
                 type="button"
                 onClick={() => handleNavigate('/account')}
-                className="w-full flex items-center gap-2 px-4 py-3 text-sm font-semibold text-left hover:bg-primary/10 dark:hover:bg-primary/20 transition-colors"
+                className="w-full flex items-center gap-2 px-4 py-3 text-sm font-semibold text-left hover:bg-primary/10 transition-colors"
               >
-                <FontAwesomeIcon icon={faUser} className="text-gray-500 dark:text-gray-300" />
+                <FontAwesomeIcon icon={faUser} className="text-gray-500" />
                 Account
               </button>
               <button
                 type="button"
                 onClick={() => handleNavigate('/orders')}
-                className="w-full flex items-center gap-2 px-4 py-3 text-sm font-semibold text-left hover:bg-primary/10 dark:hover:bg-primary/20 transition-colors"
+                className="w-full flex items-center gap-2 px-4 py-3 text-sm font-semibold text-left hover:bg-primary/10 transition-colors"
               >
-                <FontAwesomeIcon icon={faBoxOpen} className="text-gray-500 dark:text-gray-300" />
+                <FontAwesomeIcon icon={faBoxOpen} className="text-gray-500" />
                 Orders
               </button>
               <button
                 type="button"
                 onClick={() => setShowLogoutConfirm(true)}
-                className="w-full flex items-center gap-2 px-4 py-3 text-sm font-semibold text-left hover:bg-red-100 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400 transition-colors"
+                className="w-full flex items-center gap-2 px-4 py-3 text-sm font-semibold text-left hover:bg-red-100 text-red-600 transition-colors"
               >
                 <FontAwesomeIcon icon={faArrowRightFromBracket} />
                 Logout
@@ -88,11 +103,11 @@ export default function DashboardHeader({ showSettings, onToggleSettings, settin
 
         <button
           onClick={() => navigate('/cart')}
-          className="flex items-center gap-2 px-4 h-10 rounded-full bg-primary text-background-dark font-bold hover:bg-primary/90 transition-colors shadow-sm relative"
+          className="flex items-center gap-2 px-4 h-10 rounded-full bg-primary text-white font-bold hover:bg-primary/90 transition-colors shadow-sm relative"
         >
-          <FontAwesomeIcon icon={faShoppingCart} className="text-[20px]" />
-          <span className="text-sm hidden sm:inline text-background-dark">Cart</span>
-          <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-background-dark text-white text-[10px] ring-2 ring-background-light dark:ring-background-dark">
+          <FontAwesomeIcon icon={faShoppingCart} className="text-[20px] text-white" />
+          <span className="text-sm hidden sm:inline text-white">Cart</span>
+          <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-white text-primary text-[10px] font-bold ring-2 ring-background-light">
             {cartTotal}
           </span>
         </button>

@@ -44,6 +44,7 @@ public static class BookMappingExtensions
             Year = model.PublicationYear,
             Price = model.SellingPrice,
             Stock = model.Quantity,
+            Threshold = model.Threshold,
             Category = Enum.Parse<CategoryType>(model.CategoryName),
             Publisher = model.PublisherName,
             Authors = model.AuthorNames?.Split(",", StringSplitOptions.RemoveEmptyEntries)

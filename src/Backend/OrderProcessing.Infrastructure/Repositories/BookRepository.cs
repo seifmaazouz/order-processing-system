@@ -160,24 +160,45 @@ public class BookRepository : IBookRepository
         return result.HasValue;
     }
 
-    public async Task<BookDetailsReadModel?> GetBookDetailsAsync(string isbn)
-    {
-        using var connection = await _connectionFactory.CreateConnectionAsync();
+        public async Task<BookDetailsReadModel?> GetBookDetailsAsync(string isbn)
+        {
+            using var connection = await _connectionFactory.CreateConnectionAsync();
 
-        var sql = 
-        """
-            SELECT b.ISBN, b.Title, b.PublicationYear, b.SellingPrice, b.Quantity, b.Threshold,
-                b.Category AS CategoryName, p.PubName AS PublisherName, STRING_AGG(ba.AuthorName, ', ') AS AuthorNames
-            FROM Book b
-            JOIN Publisher p ON b.PubID = p.PubID
-            JOIN BookAuthor ba ON b.ISBN = ba.ISBN
-            WHERE b.ISBN = @ISBN
-            GROUP BY b.ISBN, b.Title, b.PublicationYear, b.SellingPrice, b.Quantity, b.Threshold, b.Category, p.PubName
-        """;
+            var sql =
+            """
+                SELECT b.ISBN, b.Title, b.PublicationYear, b.SellingPrice, b.Quantity, b.Threshold,
+                    b.Category AS CategoryName, p.PubName AS PublisherName,
+                    COALESCE(STRING_AGG(ba.AuthorName, ', '), '') AS AuthorNames
+                FROM Book b
+                JOIN Publisher p ON b.PubID = p.PubID
+                LEFT JOIN BookAuthor ba ON b.ISBN = ba.ISBN
+                WHERE b.ISBN = @ISBN
+                GROUP BY b.ISBN, b.Title, b.PublicationYear, b.SellingPrice, b.Quantity, b.Threshold, b.Category, p.PubName
+            """;
 
-        var bookDetails = await connection.QuerySingleOrDefaultAsync<BookDetailsReadModel>(sql, new { ISBN = isbn });
-        return bookDetails;
-    }
+            var bookDetails = await connection.QuerySingleOrDefaultAsync<BookDetailsReadModel>(sql, new { ISBN = isbn });
+            return bookDetails;
+        }
+
+        public async Task<Dictionary<string, BookDetailsReadModel>> GetBookDetailsAsync(IEnumerable<string> isbns)
+        {
+            using var connection = await _connectionFactory.CreateConnectionAsync();
+
+            var sql =
+            """
+                SELECT b.ISBN, b.Title, b.PublicationYear, b.SellingPrice, b.Quantity, b.Threshold,
+                    b.Category AS CategoryName, p.PubName AS PublisherName,
+                    COALESCE(STRING_AGG(ba.AuthorName, ', '), '') AS AuthorNames
+                FROM Book b
+                JOIN Publisher p ON b.PubID = p.PubID
+                LEFT JOIN BookAuthor ba ON b.ISBN = ba.ISBN
+                WHERE b.ISBN = ANY(@ISBNs)
+                GROUP BY b.ISBN, b.Title, b.PublicationYear, b.SellingPrice, b.Quantity, b.Threshold, b.Category, p.PubName
+            """;
+
+            var bookDetails = await connection.QueryAsync<BookDetailsReadModel>(sql, new { ISBNs = isbns.ToArray() });
+            return bookDetails.ToDictionary(b => b.ISBN);
+        }
 
     public async Task<IEnumerable<BookDetailsReadModel>> GetAllBookDetailsAsync()
     {
@@ -186,10 +207,11 @@ public class BookRepository : IBookRepository
         var sql = 
         """
             SELECT b.ISBN, b.Title, b.PublicationYear, b.SellingPrice, b.Quantity, b.Threshold,
-                b.Category AS CategoryName, p.PubName AS PublisherName, STRING_AGG(ba.AuthorName, ', ') AS AuthorNames
+                b.Category AS CategoryName, p.PubName AS PublisherName, 
+                COALESCE(STRING_AGG(ba.AuthorName, ', '), '') AS AuthorNames
             FROM Book b
             JOIN Publisher p ON b.PubID = p.PubID
-            JOIN BookAuthor ba ON b.ISBN = ba.ISBN
+            LEFT JOIN BookAuthor ba ON b.ISBN = ba.ISBN
             GROUP BY b.ISBN, b.Title, b.PublicationYear, b.SellingPrice, b.Quantity, b.Threshold, b.Category, p.PubName
         """;
 
@@ -203,10 +225,11 @@ public class BookRepository : IBookRepository
         var sql = 
         """
             SELECT b.ISBN, b.Title, b.PublicationYear, b.SellingPrice, b.Quantity, b.Threshold,
-                b.Category AS CategoryName, p.PubName AS PublisherName, STRING_AGG(ba.AuthorName, ', ') AS AuthorNames
+                b.Category AS CategoryName, p.PubName AS PublisherName, 
+                COALESCE(STRING_AGG(ba.AuthorName, ', '), '') AS AuthorNames
             FROM Book b
             JOIN Publisher p ON b.PubID = p.PubID
-            JOIN BookAuthor ba ON b.ISBN = ba.ISBN
+            LEFT JOIN BookAuthor ba ON b.ISBN = ba.ISBN
             WHERE b.Quantity < b.Threshold
             GROUP BY b.ISBN, b.Title, b.PublicationYear, b.SellingPrice, b.Quantity, b.Threshold, b.Category, p.PubName
         """;
@@ -222,10 +245,11 @@ public class BookRepository : IBookRepository
         var searchSql =
         """
             SELECT b.ISBN, b.Title, b.PublicationYear, b.SellingPrice, b.Quantity, b.Threshold,
-                b.Category AS CategoryName, p.PubName AS PublisherName, STRING_AGG(ba.AuthorName, ', ') AS AuthorNames
+                b.Category AS CategoryName, p.PubName AS PublisherName, 
+                COALESCE(STRING_AGG(ba.AuthorName, ', '), '') AS AuthorNames
             FROM Book b
             JOIN Publisher p ON b.PubID = p.PubID
-            JOIN BookAuthor ba ON b.ISBN = ba.ISBN
+            LEFT JOIN BookAuthor ba ON b.ISBN = ba.ISBN
             WHERE 1 = 1
         """;
 
@@ -280,5 +304,24 @@ public class BookRepository : IBookRepository
             WHERE ISBN = @ISBN
         """;
         await connection.ExecuteAsync(sql, new { ISBN = isbn, QuantityChange = quantityChange });
+    }
+
+    // Batch update book quantities (for optimized checkout)
+    public async Task UpdateBookQuantitiesAsync(Dictionary<string, int> quantityChanges)
+    {
+        if (quantityChanges.Count == 0)
+            return;
+
+        using var connection = await _connectionFactory.CreateConnectionAsync();
+
+        var sql =
+        """
+            UPDATE Book
+            SET Quantity = Quantity + @QuantityChange
+            WHERE ISBN = @ISBN
+        """;
+
+        var parameters = quantityChanges.Select(kvp => new { ISBN = kvp.Key, QuantityChange = kvp.Value });
+        await connection.ExecuteAsync(sql, parameters);
     }
 }

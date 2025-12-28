@@ -9,13 +9,13 @@ export default function ResultsGrid({ results, lastQueryLabel }) {
   const [selectedIndex, setSelectedIndex] = useState(null);
   const [toast, setToast] = useState(null);
   const selectedBook = selectedIndex !== null && results ? results[selectedIndex] : null;
-  const { addToCart, error, isLoading } = useCart();
+  const { addToCart, error, isLoading, items } = useCart();
 
   if (!results || results.length === 0) return null;
 
   const getStockStatus = (book) => {
-    // Assume stockLevel property; adjust based on your data structure
-    const stock = book.stockLevel || book.stock || 10; // default to 10 if not provided
+    // Handle both PascalCase and camelCase
+    const stock = book.Stock || book.stock || book.stockLevel || 10; // default to 10 if not provided
     if (stock === 0) return { label: 'Out of Stock', color: 'bg-gray-100 text-gray-600', textColor: 'text-gray-500' };
       if (stock <= 2) return { label: `only ${stock} left`, color: 'bg-red-200 text-red-600', textColor: 'text-red-500' };
     if (stock <= 5) return { label: `only ${stock} left`, color: 'bg-orange-100 text-orange-600', textColor: 'text-orange-500' };
@@ -39,11 +39,17 @@ export default function ResultsGrid({ results, lastQueryLabel }) {
     });
   };
 
+  const isInCart = (book) => {
+    const bookIsbn = book.ISBN || book.isbn || book.id;
+    return items.some(item => item.id === bookIsbn);
+  };
+
   const handleAddToCart = async (book) => {
     try {
       const success = await addToCart(book);
       if (success) {
-        setToast({ type: 'success', message: `"${book.title}" added to cart!` });
+        const bookTitle = book.Title || book.title || 'Book';
+        setToast({ type: 'success', message: `"${bookTitle}" added to cart!` });
         setTimeout(() => setToast(null), 3000);
       } else {
         setToast({ type: 'error', message: error || 'Failed to add item' });
@@ -67,12 +73,13 @@ export default function ResultsGrid({ results, lastQueryLabel }) {
 
           return (
             <BookCard
-              key={book.id || book.isbn}
+              key={book.id || book.isbn || book.ISBN}
               book={book}
               status={status}
               onSelect={() => setSelectedIndex(idx)}
               onAddToCart={() => handleAddToCart(book)}
               isLoading={isLoading}
+              isInCart={isInCart(book)}
             />
           );
         })}
@@ -104,7 +111,7 @@ export default function ResultsGrid({ results, lastQueryLabel }) {
               <div className="absolute left-0 top-0 bottom-0 w-24 group/left">
                 <button
                   onClick={handlePrev}
-                  className="absolute left-2 top-1/2 -translate-y-1/2 h-10 w-10 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-700 hover:bg-gray-200 dark:hover:bg-gray-700 shadow-lg opacity-0 group-hover/left:opacity-100 transition-opacity duration-200 flex items-center justify-center"
+                  className="absolute left-2 top-1/2 -translate-y-1/2 h-10 w-10 rounded-full bg-gray-100 text-gray-700 border border-gray-300 hover:bg-gray-200 shadow-lg opacity-0 group-hover/left:opacity-100 transition-opacity duration-200 flex items-center justify-center"
                   aria-label="Previous"
                 >
                   <FontAwesomeIcon icon={faArrowAltCircleLeft} />
@@ -115,7 +122,7 @@ export default function ResultsGrid({ results, lastQueryLabel }) {
               <div className="absolute right-0 top-0 bottom-0 w-24 group/right">
                 <button
                   onClick={handleNext}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 h-10 w-10 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-700 hover:bg-gray-200 dark:hover:bg-gray-700 shadow-lg opacity-0 group-hover/right:opacity-100 transition-opacity duration-200 flex items-center justify-center"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 h-10 w-10 rounded-full bg-gray-100 text-gray-700 border border-gray-300 hover:bg-gray-200 shadow-lg opacity-0 group-hover/right:opacity-100 transition-opacity duration-200 flex items-center justify-center"
                   aria-label="Next"
                 >
                   <FontAwesomeIcon icon={faArrowAltCircleRight} />
@@ -125,7 +132,7 @@ export default function ResultsGrid({ results, lastQueryLabel }) {
             {/* Close button (top-right) */}
             <button
               onClick={() => setSelectedIndex(null)}
-              className="absolute top-3 right-3 h-10 w-10 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 font-bold"
+              className="absolute top-3 right-3 h-10 w-10 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 font-bold"
               aria-label="Close"
             >
               <FontAwesomeIcon icon={faClose}/>
@@ -149,49 +156,49 @@ export default function ResultsGrid({ results, lastQueryLabel }) {
 
                 {/* Header */}
                 <div className="flex flex-col gap-2 mb-6">
-                  <h3 className="text-2xl font-bold text-gray-900 dark:text-white">{selectedBook.title}</h3>
-                  {selectedBook.authors && selectedBook.authors.length > 0 && (
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      <span className="font-semibold">Authors:</span> {Array.isArray(selectedBook.authors) ? selectedBook.authors.join(', ') : selectedBook.authors}
+                  <h3 className="text-2xl font-bold text-gray-900">{selectedBook.Title || selectedBook.title}</h3>
+                  {(selectedBook.Authors || selectedBook.authors) && (selectedBook.Authors || selectedBook.authors).length > 0 && (
+                    <p className="text-sm text-gray-600">
+                      <span className="font-semibold">Authors:</span> {Array.isArray(selectedBook.Authors || selectedBook.authors) ? (selectedBook.Authors || selectedBook.authors).join(', ') : (selectedBook.Authors || selectedBook.authors)}
                     </p>
                   )}
                 </div>
 
             {/* Details Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6 text-sm">
-              {selectedBook.isbn && (
-                <div className="flex justify-between border border-gray-100 dark:border-gray-800 rounded-md px-3 py-2">
-                  <span className="text-gray-600 dark:text-gray-400">ISBN</span>
-                  <span className="font-semibold text-gray-900 dark:text-white">{selectedBook.isbn}</span>
+              {(selectedBook.ISBN || selectedBook.isbn) && (
+                <div className="flex justify-between border border-gray-100 rounded-md px-3 py-2">
+                  <span className="text-gray-600">ISBN</span>
+                  <span className="font-semibold text-gray-900">{selectedBook.ISBN || selectedBook.isbn}</span>
                 </div>
               )}
-              {selectedBook.year && (
-                <div className="flex justify-between border border-gray-100 dark:border-gray-800 rounded-md px-3 py-2">
-                  <span className="text-gray-600 dark:text-gray-400">Year</span>
-                  <span className="font-semibold text-gray-900 dark:text-white">{selectedBook.year}</span>
+              {(selectedBook.Year || selectedBook.year) && (
+                <div className="flex justify-between border border-gray-100 rounded-md px-3 py-2">
+                  <span className="text-gray-600">Year</span>
+                  <span className="font-semibold text-gray-900">{selectedBook.Year || selectedBook.year}</span>
                 </div>
               )}
-              {selectedBook.category && (
-                <div className="flex justify-between border border-gray-100 dark:border-gray-800 rounded-md px-3 py-2">
-                  <span className="text-gray-600 dark:text-gray-400">Category</span>
-                  <span className="font-semibold text-gray-900 dark:text-white">{selectedBook.category}</span>
+              {(selectedBook.Category || selectedBook.category) && (
+                <div className="flex justify-between border border-gray-100 rounded-md px-3 py-2">
+                  <span className="text-gray-600">Category</span>
+                  <span className="font-semibold text-gray-900">{selectedBook.Category || selectedBook.category}</span>
                 </div>
               )}
-              {selectedBook.publisher && (
-                <div className="flex justify-between border border-gray-100 dark:border-gray-800 rounded-md px-3 py-2">
-                  <span className="text-gray-600 dark:text-gray-400">Publisher</span>
-                  <span className="font-semibold text-gray-900 dark:text-white">{selectedBook.publisher}</span>
+              {(selectedBook.Publisher || selectedBook.publisher) && (
+                <div className="flex justify-between border border-gray-100 rounded-md px-3 py-2">
+                  <span className="text-gray-600">Publisher</span>
+                  <span className="font-semibold text-gray-900">{selectedBook.Publisher || selectedBook.publisher}</span>
                 </div>
               )}
-              {selectedBook.stock !== undefined && (
-                <div className="flex justify-between border border-gray-100 dark:border-gray-800 rounded-md px-3 py-2">
-                  <span className="text-gray-600 dark:text-gray-400">Stock</span>
-                  <span className="font-semibold text-gray-900 dark:text-white">{selectedBook.stock} units</span>
+              {(selectedBook.Stock !== undefined || selectedBook.stock !== undefined) && (
+                <div className="flex justify-between border border-gray-100 rounded-md px-3 py-2">
+                  <span className="text-gray-600">Stock</span>
+                  <span className="font-semibold text-gray-900">{(selectedBook.Stock || selectedBook.stock)} units</span>
                 </div>
               )}
               {selectedBook.isAvailable !== undefined && (
-                <div className="flex justify-between border border-gray-100 dark:border-gray-800 rounded-md px-3 py-2">
-                  <span className="text-gray-600 dark:text-gray-400">Available</span>
+                <div className="flex justify-between border border-gray-100 rounded-md px-3 py-2">
+                  <span className="text-gray-600">Available</span>
                   <span className={`font-semibold ${selectedBook.isAvailable ? 'text-green-600' : 'text-red-600'}`}>
                     {selectedBook.isAvailable ? 'Yes' : 'No'}
                   </span>
@@ -200,25 +207,33 @@ export default function ResultsGrid({ results, lastQueryLabel }) {
             </div>
 
             {/* Price + Action */}
-            <div className="flex items-center justify-between border-t border-gray-200 dark:border-gray-700 pt-4 mt-2">
-              {selectedBook.price && (
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                  ${parseFloat(selectedBook.price).toFixed(2)}
+            <div className="flex items-center justify-between border-t border-gray-200 pt-4 mt-2">
+              {(selectedBook.Price || selectedBook.price) && (
+                <p className="text-2xl font-bold text-gray-900">
+                  ${parseFloat(selectedBook.Price || selectedBook.price).toFixed(2)}
                 </p>
               )}
 
               <div className="flex items-center gap-3 ml-auto">
                 <button
                   onClick={() => handleAddToCart(selectedBook)}
-                  disabled={selectedBook.stock === 0 || isLoading}
+                  disabled={(selectedBook.Stock || selectedBook.stock || 0) === 0 || isLoading || isInCart(selectedBook)}
                   className={`flex items-center gap-2 px-5 py-2 rounded-full text-white font-semibold shadow-md ${
-                    selectedBook.stock === 0 || isLoading
+                    isInCart(selectedBook)
+                      ? 'bg-green-500 cursor-not-allowed'
+                      : (selectedBook.Stock || selectedBook.stock || 0) === 0 || isLoading
                       ? 'bg-gray-400 cursor-not-allowed'
                       : 'bg-orange-500 hover:bg-orange-600'
                   }`}
                 >
                   <FontAwesomeIcon icon={faShoppingCart} className="text-sm" />
-                  {isLoading ? 'Adding...' : selectedBook.stock === 0 ? 'Unavailable' : 'Add to Cart'}
+                  {isInCart(selectedBook)
+                    ? 'In Cart'
+                    : isLoading
+                    ? 'Adding...'
+                    : (selectedBook.Stock || selectedBook.stock || 0) === 0
+                    ? 'Unavailable'
+                    : 'Add to Cart'}
                 </button>
               </div>
             </div>

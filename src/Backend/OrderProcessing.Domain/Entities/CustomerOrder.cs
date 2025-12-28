@@ -9,23 +9,27 @@ namespace OrderProcessing.Domain.Entities
         public OrderStatus Status { private set; get; }
         public DateOnly OrderDate { private set; get; }
         public string Username { private set; get; }
+        public string ShippingAddress { private set; get; }
+        
         public CustomerOrder(
             int orderNumber,
             decimal totalPrice,
             OrderStatus status,
             DateOnly orderDate,
-            string username)
+            string username,
+            string shippingAddress)
         {
             OrderNumber = orderNumber;
             TotalPrice = totalPrice;
             Status = status;
             OrderDate = orderDate;
             Username = username;
+            ShippingAddress = shippingAddress;
         }
+        
         public void ChangeStatus(OrderStatus newStatus)
         {
             Status = newStatus;
         }
-
     }
 }

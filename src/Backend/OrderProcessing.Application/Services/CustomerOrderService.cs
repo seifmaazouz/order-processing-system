@@ -11,33 +11,59 @@ public class CustomerOrderService : ICustomerOrderService
     private readonly ICustomerOrderRepository _orderRepository;
     private readonly IJwtService _jwtService;
     private readonly IBookRepository _bookRepository; // new dependency
+    private readonly IUserService _userService; // new dependency
 
     public CustomerOrderService(
         ICustomerOrderRepository orderRepository,
         IJwtService jwtService,
-        IBookRepository bookRepository)
+        IBookRepository bookRepository,
+        IUserService userService)
     {
         _orderRepository = orderRepository;
         _jwtService = jwtService;
         _bookRepository = bookRepository;
+        _userService = userService;
     }
     public async Task<IReadOnlyList<CustomerOrderDto>> GetMyOrdersAsync(string token)
     {
         var username = _jwtService.GetUsernameFromToken(token);
-        
+
         if (string.IsNullOrWhiteSpace(username))
             throw new UnauthorizedAccessException("Invalid token.");
 
         var orders = await _orderRepository.GetByUsernameAsync(username);
 
-        var orderDtos = orders
-            .Select(o => new CustomerOrderDto(
-                o.OrderNumber,
-                o.TotalPrice,
-                o.Status,
-                o.OrderDate
-            ))
-            .ToList();
+        var orderDtos = new List<CustomerOrderDto>();
+
+        foreach (var order in orders)
+        {
+            // Get order items
+            var orderItems = await _orderRepository.GetOrderItemsAsync(order.OrderNumber);
+            
+            // Get book details for each item
+            var itemDtos = new List<OrderItemDto>();
+            foreach (var item in orderItems)
+            {
+                var book = await _bookRepository.GetBookDetailsAsync(item.ISBN);
+                // If book details not found, use ISBN as title fallback
+                itemDtos.Add(new OrderItemDto(
+                    item.ISBN,
+                    book?.Title ?? item.ISBN,
+                    item.Quantity,
+                    item.UnitPrice
+                ));
+            }
+
+            // Use shipping address from order (snapshot at order time)
+            orderDtos.Add(new CustomerOrderDto(
+                order.OrderNumber,
+                order.TotalPrice,
+                order.Status,
+                order.OrderDate,
+                order.ShippingAddress,
+                itemDtos
+            ));
+        }
 
         return orderDtos;
     }
@@ -48,15 +74,29 @@ public class CustomerOrderService : ICustomerOrderService
         if (string.IsNullOrWhiteSpace(username))
             throw new UnauthorizedAccessException("Invalid token.");
 
-        // Calculate total price
+        // Get user's shipping address from profile if not provided
+        string shippingAddress = request.ShippingAddress ?? "";
+        if (string.IsNullOrWhiteSpace(shippingAddress))
+        {
+            var userDetails = await _userService.GetDetailsAsync(token);
+            shippingAddress = userDetails.Address ?? "";
+            if (string.IsNullOrWhiteSpace(shippingAddress))
+                throw new InvalidOperationException("Shipping address is required. Please update your profile with a shipping address.");
+        }
+
+        // Calculate total price and create order items
         decimal totalPrice = 0;
+        var orderItems = new List<CustomerOrderItem>();
+        
         foreach (var item in request.Items)
         {
             var product = await _bookRepository.GetByISBNAsync(item.ISBN);
             if (product is null)
                 throw new InvalidOperationException($"Product with ISBN {item.ISBN} not found.");
 
-            totalPrice += product.SellingPrice * item.Quantity;
+            var unitPrice = product.SellingPrice;
+            totalPrice += unitPrice * item.Quantity;
+            orderItems.Add(new CustomerOrderItem(item.ISBN, 0, item.Quantity, unitPrice));
         }
 
         var newOrder = new CustomerOrder(
@@ -64,16 +104,34 @@ public class CustomerOrderService : ICustomerOrderService
             totalPrice: totalPrice,
             status: OrderStatus.Pending,
             orderDate: DateOnly.FromDateTime(DateTime.UtcNow),
-            username: username
+            username: username,
+            shippingAddress: shippingAddress
         );
 
-        await _orderRepository.AddAsync(newOrder);
+        var orderId = await _orderRepository.AddAsync(newOrder, orderItems);
+
+        // Get order items with book details for response
+        var orderItemsFromDb = await _orderRepository.GetOrderItemsAsync(orderId);
+        var itemDtos = new List<OrderItemDto>();
+        foreach (var item in orderItemsFromDb)
+        {
+            var book = await _bookRepository.GetBookDetailsAsync(item.ISBN);
+            // If book details not found, use ISBN as title fallback
+            itemDtos.Add(new OrderItemDto(
+                item.ISBN,
+                book?.Title ?? item.ISBN,
+                item.Quantity,
+                item.UnitPrice
+            ));
+        }
 
         return new CustomerOrderDto(
-            newOrder.OrderNumber,
+            orderId,
             newOrder.TotalPrice,
             newOrder.Status,
-            newOrder.OrderDate
+            newOrder.OrderDate,
+            shippingAddress,
+            itemDtos
         );
     }
 }

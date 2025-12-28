@@ -1,7 +1,10 @@
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
+using OrderProcessing.Api.Models;
 using OrderProcessing.Application.DTOs.Order;
 using OrderProcessing.Application.DTOs.Requests;
+using OrderProcessing.Application.DTOs.Responses;
 using OrderProcessing.Application.Interfaces;
 
 namespace OrderProcessing.Api.Controllers
@@ -18,37 +21,32 @@ namespace OrderProcessing.Api.Controllers
             _adminOrderService = adminOrderService;
         }
 
-        [HttpPost]
-        public async Task<ActionResult<int>> PlacePublisherOrder([FromBody] PlacePublisherOrderRequest request)
-        {
-            var username = User.Identity?.Name ?? throw new UnauthorizedAccessException("User not authenticated");
-            
-            var orderId = await _adminOrderService.PlacePublisherOrderAsync(username, request.PublisherId, request.Items);
-            return Ok(new { OrderId = orderId });
-        }
 
         [HttpGet]
-        public async Task<ActionResult<List<AdminOrderDto>>> GetAllOrders()
+        public async Task<Ok<List<AdminOrderDto>>> GetAllOrders()
         {
             var orders = await _adminOrderService.GetAllOrdersAsync();
-            return Ok(orders);
+            return TypedResults.Ok(orders);
         }
 
         [HttpGet("{orderId}")]
-        public async Task<ActionResult<AdminOrderDto>> GetOrderById(int orderId)
+        public async Task<Results<Ok<AdminOrderDto>, NotFound<ErrorResponse>>> GetOrderById(int orderId)
         {
             var order = await _adminOrderService.GetOrderByIdAsync(orderId);
             if (order == null)
-                return NotFound($"Order {orderId} not found");
+                return TypedResults.NotFound(new ErrorResponse($"Order {orderId} not found.", 404));
 
-            return Ok(order);
+            return TypedResults.Ok(order);
         }
 
         [HttpPut("{orderId}/status")]
-        public async Task<ActionResult> UpdateOrderStatus(int orderId, [FromBody] UpdateOrderStatusRequest request)
+        public async Task<Results<NoContent, NotFound<ErrorResponse>, BadRequest<ErrorResponse>>> UpdateOrderStatus(int orderId, [FromBody] UpdateOrderStatusRequest request)
         {
-            await _adminOrderService.UpdateOrderStatusAsync(orderId, request.Status);
-            return NoContent();
+            var username = User.Identity?.Name
+                ?? throw new UnauthorizedAccessException("User not authenticated");
+
+            await _adminOrderService.UpdateOrderStatusAsync(orderId, request.Status, username);
+            return TypedResults.NoContent();
         }
     }
 }

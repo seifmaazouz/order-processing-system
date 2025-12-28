@@ -5,7 +5,7 @@ namespace OrderProcessing.Application.Mappings;
 
 public static class ShoppingCartMappingExtensions
 {
-    public static CartItemDetailsDto ToCartItemDetailsDto(this CartItemReadModel item, string title, List<string> authors)
+    public static CartItemDetailsDto ToCartItemDetailsDto(this CartItemReadModel item, string title, List<string> authors, int stock)
     {
         return new CartItemDetailsDto(
             item.ISBN,
@@ -13,7 +13,8 @@ public static class ShoppingCartMappingExtensions
             authors,
             item.Quantity,
             item.UnitPrice,
-            item.Quantity * item.UnitPrice
+            item.Quantity * item.UnitPrice,
+            stock
         );
     }
 

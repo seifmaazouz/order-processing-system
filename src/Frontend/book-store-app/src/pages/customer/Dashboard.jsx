@@ -26,7 +26,12 @@ export default function Dashboard() {
   const [showSettings, setShowSettings] = useState(false);
   const settingsRef = useRef(null);
   const navigate = useNavigate();
-  const { summary } = useCart();
+  const { summary, loadCart } = useCart();
+  
+  // Reload cart when dashboard mounts to ensure it's fresh
+  useEffect(() => {
+    loadCart();
+  }, [loadCart]);
 
   const { register, handleSubmit, watch, setValue } = useForm({
     defaultValues: {
@@ -82,7 +87,21 @@ export default function Dashboard() {
       setLastQueryLabel(summary);
 
       const results = await searchBooks(query);
-      setSearchResults(results);
+      // Normalize book data: backend returns PascalCase, frontend expects camelCase
+      const normalizedResults = Array.isArray(results) ? results.map(book => ({
+        id: book.ISBN || book.isbn || book.id,
+        isbn: book.ISBN || book.isbn,
+        title: book.Title || book.title,
+        year: book.Year || book.year,
+        price: book.Price || book.price,
+        stock: book.Stock || book.stock,
+        stockLevel: book.Stock || book.stock || book.stockLevel,
+        category: book.Category || book.category,
+        publisher: book.Publisher || book.publisher,
+        authors: book.Authors || book.authors || [],
+        isAvailable: book.IsAvailable !== undefined ? book.IsAvailable : (book.Stock || book.stock || 0) > 0
+      })) : [];
+      setSearchResults(normalizedResults);
       setHasSearched(true);
       setShowFilters(false);
     } catch (err) {
@@ -116,7 +135,7 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="light min-h-screen flex flex-col bg-background-light dark:bg-background-dark font-display text-text-main-light dark:text-text-main-dark transition-colors duration-300">
+    <div className="min-h-screen flex flex-col bg-background-light font-display text-text-main transition-colors duration-300">
       <DashboardHeader
         showSettings={showSettings}
         onToggleSettings={setShowSettings}

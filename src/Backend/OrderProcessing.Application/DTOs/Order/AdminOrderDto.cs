@@ -8,7 +8,8 @@ public record AdminOrderDto(
     OrderStatus Status,
     decimal TotalPrice,
     int PublisherId,
-    string Username
+    string? ConfirmedBy,
+    IReadOnlyList<AdminOrderItemDto> Items
 );
 
 public record AdminOrderItemDto(

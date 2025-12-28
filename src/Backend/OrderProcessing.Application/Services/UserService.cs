@@ -1,4 +1,3 @@
-// ...existing code...
 using OrderProcessing.Application.DTOs.User;
 using OrderProcessing.Application.DTOs.Requests;
 using OrderProcessing.Domain.Entities;
@@ -6,6 +5,7 @@ using OrderProcessing.Application.Interfaces;
 using OrderProcessing.Domain.Interfaces.Repositories;
 using OrderProcessing.Application.Security;
 using OrderProcessing.Application.DTOs.Order;
+using OrderProcessing.Application.Exceptions;
 
 namespace OrderProcessing.Application.Services
 {
@@ -16,19 +16,22 @@ namespace OrderProcessing.Application.Services
         private readonly IJwtService _jwtService;
         private readonly IPasswordHasher _passwordHasher;
         private readonly ICustomerOrderRepository _customerOrderRepository;
+        private readonly IBookRepository _bookRepository;
 
         public UserService(
             IUserRepository userRepository,
             ICreditCardRepository creditCardRepository,
             IJwtService jwtService,
             IPasswordHasher passwordHasher,
-            ICustomerOrderRepository customerOrderRepository)
+            ICustomerOrderRepository customerOrderRepository,
+            IBookRepository bookRepository)
         {
             _userRepository = userRepository;
             _creditCardRepository = creditCardRepository;
             _jwtService = jwtService;
             _passwordHasher = passwordHasher;
             _customerOrderRepository = customerOrderRepository;
+            _bookRepository = bookRepository;
         }
 
         public async Task<IEnumerable<CustomerOrderDto>> GetPastOrdersAsync(string token)
@@ -39,12 +42,40 @@ namespace OrderProcessing.Application.Services
 
             // Get all orders for this user
             var orders = await _customerOrderRepository.GetByUsernameAsync(username);
-            return orders.Select(o => new CustomerOrderDto(
-                o.OrderNumber,
-                o.TotalPrice,
-                o.Status,
-                o.OrderDate
-            )).ToList();
+            
+            var orderDtos = new List<CustomerOrderDto>();
+
+            foreach (var order in orders)
+            {
+                // Get order items
+                var orderItems = await _customerOrderRepository.GetOrderItemsAsync(order.OrderNumber);
+                
+                // Get book details for each item
+                var itemDtos = new List<OrderItemDto>();
+                foreach (var item in orderItems)
+                {
+                    var book = await _bookRepository.GetBookDetailsAsync(item.ISBN);
+                    // If book details not found, use ISBN as title fallback
+                    itemDtos.Add(new OrderItemDto(
+                        item.ISBN,
+                        book?.Title ?? item.ISBN,
+                        item.Quantity,
+                        item.UnitPrice
+                    ));
+                }
+
+                // Use shipping address from order (snapshot at order time)
+                orderDtos.Add(new CustomerOrderDto(
+                    order.OrderNumber,
+                    order.TotalPrice,
+                    order.Status,
+                    order.OrderDate,
+                    order.ShippingAddress,
+                    itemDtos
+                ));
+            }
+
+            return orderDtos;
         }
 
         public async Task<DetailsDto> GetDetailsAsync(string token)
@@ -120,12 +151,22 @@ namespace OrderProcessing.Application.Services
                 throw new KeyNotFoundException("User not found.");
 
             // Update user with new values or keep existing ones
+            // Only use existing value if new value is null (not sent), otherwise use the new value (including empty strings)
+            var firstName = dto.FirstName ?? user.FirstName;
+            var lastName = dto.LastName ?? user.LastName;
+
+            // Validate required fields are not empty
+            if (string.IsNullOrWhiteSpace(firstName))
+                throw new BusinessRuleViolationException("First name is required.");
+            if (string.IsNullOrWhiteSpace(lastName))
+                throw new BusinessRuleViolationException("Last name is required.");
+
             var updatedUser = new User(
                 user.Username,
                 dto.Email ?? user.Email,
                 dto.PhoneNumber ?? user.PhoneNumber,
-                dto.FirstName ?? user.FirstName,
-                dto.LastName ?? user.LastName,
+                firstName,
+                lastName,
                 user.PasswordHash,
                 user.Role,
                 dto.Address ?? user.Address
@@ -140,6 +181,31 @@ namespace OrderProcessing.Application.Services
             if (string.IsNullOrEmpty(username))
                 throw new UnauthorizedAccessException("Invalid token.");
 
+            // Parse expiry date from string (accepts YYYY-MM-DD or ISO format)
+            if (string.IsNullOrWhiteSpace(dto.ExpiryDate))
+                throw new InvalidOperationException("Expiry date is required.");
+
+            DateOnly expiryDateOnly;
+            
+            // Parse expiry date - only accept YYYY-MM-DD format to avoid DateTime conversion issues
+            if (!DateOnly.TryParse(dto.ExpiryDate, out expiryDateOnly))
+            {
+                // If direct parsing fails, try to extract date from ISO string format
+                if (dto.ExpiryDate.Contains('T'))
+                {
+                    // Extract just the date part from ISO format (YYYY-MM-DDTHH:mm:ss...)
+                    var datePart = dto.ExpiryDate.Split('T')[0];
+                    if (!DateOnly.TryParse(datePart, out expiryDateOnly))
+                    {
+                        throw new InvalidOperationException($"Invalid expiry date format: {dto.ExpiryDate}. Expected YYYY-MM-DD format.");
+                    }
+                }
+                else
+                {
+                    throw new InvalidOperationException($"Invalid expiry date format: {dto.ExpiryDate}. Expected YYYY-MM-DD format.");
+                }
+            }
+
             // Check if user already has this card
             var existingCards = await _creditCardRepository.GetUserCardsAsync(username);
             if (existingCards.Any(c => c.CardNumber == dto.CardNumber))
@@ -147,7 +213,7 @@ namespace OrderProcessing.Application.Services
 
             // Add credit card for user
             await _creditCardRepository.AddAsync(
-                new CreditCard(dto.CardNumber, DateOnly.FromDateTime(dto.ExpiryDate)),
+                new CreditCard(dto.CardNumber, expiryDateOnly),
                 username
             );
         }

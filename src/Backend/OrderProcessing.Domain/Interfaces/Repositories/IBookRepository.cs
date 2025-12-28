@@ -16,10 +16,12 @@ namespace OrderProcessing.Domain.Interfaces.Repositories;
         Task<IEnumerable<BookDetailsReadModel>> GetAllBookDetailsAsync();
         Task<IEnumerable<BookDetailsReadModel>> GetBooksBelowStockThresholdAsync();
         Task<IEnumerable<BookDetailsReadModel>> SearchBooksAsync(BookSearchFilter filter);
+        Task<Dictionary<string, BookDetailsReadModel>> GetBookDetailsAsync(IEnumerable<string> isbns);
 
         // Uitility method to check existence before adding a new book
         Task<bool> ExistsAsync(string isbn);
         
         // Update book quantity (for checkout)
         Task UpdateBookQuantityAsync(string isbn, int quantityChange);
+        Task UpdateBookQuantitiesAsync(Dictionary<string, int> quantityChanges);
     }

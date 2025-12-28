@@ -23,7 +23,8 @@ namespace OrderProcessing.Infrastructure.Repositories
                     OrderDate,
                     "Status",
                     TotalPrice,
-                    Custname
+                    Custname,
+                    ShippingAddress
                 FROM CustomerOrder
                 WHERE CustName = @Username
                 ORDER BY OrderDate DESC
@@ -44,7 +45,8 @@ namespace OrderProcessing.Infrastructure.Repositories
                     TotalPrice,
                     "Status",
                     OrderDate,
-                    CustName
+                    CustName,
+                    ShippingAddress
                 FROM CustomerOrder
                 WHERE OrderID = @OrderID
                   AND CustName = @Username
@@ -60,35 +62,67 @@ namespace OrderProcessing.Infrastructure.Repositories
             return row is null ? null : Map(row);
         }
 
-        public async Task<int> AddAsync(CustomerOrder order)
+        public async Task<int> AddAsync(CustomerOrder order, List<CustomerOrderItem> items)
         {
-            const string sql = """
+            const string orderSql = """
                 INSERT INTO CustomerOrder (
                     "Status",
                     TotalPrice,
                     CustName,
-                    OrderDate
+                    OrderDate,
+                    ShippingAddress
                 )
                 VALUES (
                     @Status::order_status_enum,
                     @TotalPrice,
                     @CustName,
-                    @OrderDate
+                    @OrderDate,
+                    @ShippingAddress
                 )
                 RETURNING OrderID
             """;
 
+            const string itemSql = """
+                INSERT INTO CustomerOrderItem (ISBN, OrderNum, Quantity, UnitPrice)
+                VALUES (@ISBN, @OrderNum, @Quantity, @UnitPrice)
+            """;
+
             using var connection = await _connectionFactory.CreateConnectionAsync();
+            using var transaction = connection.BeginTransaction();
 
-            var orderId = await connection.ExecuteScalarAsync<int>(sql, new
+            try
             {
-                Status = order.Status.ToString(),
-                order.TotalPrice,
-                CustName = order.Username,
-                order.OrderDate
-            });
+                var orderId = await connection.ExecuteScalarAsync<int>(orderSql, new
+                {
+                    Status = order.Status.ToString(),
+                    order.TotalPrice,
+                    CustName = order.Username,
+                    OrderDate = order.OrderDate.ToDateTime(TimeOnly.MinValue),
+                    order.ShippingAddress
+                }, transaction);
 
-            return orderId;
+                if (items != null && items.Count > 0)
+                {
+                    foreach (var item in items)
+                    {
+                        await connection.ExecuteAsync(itemSql, new
+                        {
+                            item.ISBN,
+                            OrderNum = orderId,
+                            item.Quantity,
+                            item.UnitPrice
+                        }, transaction);
+                    }
+                }
+
+                transaction.Commit();
+                return orderId;
+            }
+            catch
+            {
+                transaction.Rollback();
+                throw;
+            }
         }
 
 
@@ -96,7 +130,7 @@ namespace OrderProcessing.Infrastructure.Repositories
         {
             const string sql = """
                 UPDATE CustomerOrder
-                SET "Status" = @"Status"::order_status_enum
+                SET "Status" = @Status::order_status_enum
                 WHERE OrderID = @OrderID
                   AND CustName = @CustName
             """;
@@ -106,9 +140,29 @@ namespace OrderProcessing.Infrastructure.Repositories
             await connection.ExecuteAsync(sql, new
             {
                 OrderID = orderNumber,
-                Custname = username,
-                Status = OrderStatus.Cancelled.ToString() // example default
+                CustName = username,
+                Status = OrderStatus.Canceled.ToString()
             });
+        }
+
+        public async Task<IReadOnlyList<CustomerOrderItem>> GetOrderItemsAsync(int orderNumber)
+        {
+            const string sql = """
+                SELECT ISBN, OrderNum, Quantity, UnitPrice
+                FROM CustomerOrderItem
+                WHERE OrderNum = @OrderNum
+            """;
+
+            using var connection = await _connectionFactory.CreateConnectionAsync();
+
+            var rows = await connection.QueryAsync<OrderItemRow>(sql, new { OrderNum = orderNumber });
+
+            return rows.Select(row => new CustomerOrderItem(
+                row.ISBN,
+                row.OrderNum,
+                row.Quantity,
+                row.UnitPrice
+            )).ToList();
         }
 
         public async Task DeleteAsync(int orderNumber, string username)
@@ -139,7 +193,8 @@ namespace OrderProcessing.Infrastructure.Repositories
                 row.TotalPrice,
                 status,
                 row.OrderDate,
-                row.CustName
+                row.CustName,
+                row.ShippingAddress ?? string.Empty
             );
         }
 
@@ -149,7 +204,15 @@ namespace OrderProcessing.Infrastructure.Repositories
             DateOnly OrderDate,
             string Status,
             decimal TotalPrice,
-            string CustName
+            string CustName,
+            string? ShippingAddress
+        );
+
+        private record OrderItemRow(
+            string ISBN,
+            int OrderNum,
+            int Quantity,
+            decimal UnitPrice
         );
 
     }

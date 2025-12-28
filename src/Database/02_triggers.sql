@@ -20,15 +20,15 @@ DECLARE
     order_quantity INT := 50;
     new_order_id INT;
 BEGIN
-    IF NEW.Quantity < NEW.Threshold
-       AND OLD.Quantity >= OLD.Threshold THEN
+    -- Only trigger when quantity drops from above threshold to below threshold
+    IF NEW.Quantity < NEW.Threshold AND OLD.Quantity >= OLD.Threshold THEN
+        -- Create automatic admin order
+        INSERT INTO AdminOrder(OrderDate, "Status", TotalPrice, PubID, ConfirmedBy)
+        VALUES (CURRENT_DATE, 'Pending', order_quantity * NEW.SellingPrice, NEW.PubID, NULL);
 
-        INSERT INTO AdminOrder(OrderDate, "Status", TotalPrice, PubID, CustName)
-        VALUES(CURRENT_DATE, 'Pending', order_quantity * NEW.SellingPrice, NEW.PubID, 'admin2')
-        RETURNING OrderID INTO new_order_id;
-
+        -- Create admin order item
         INSERT INTO AdminOrderItem(ISBN, OrderNum, Quantity, UnitPrice)
-        VALUES(NEW.ISBN, new_order_id, order_quantity, NEW.SellingPrice);
+        VALUES (NEW.ISBN, currval(pg_get_serial_sequence('AdminOrder','OrderID')), order_quantity, NEW.SellingPrice);
 
     END IF;
     RETURN NEW;

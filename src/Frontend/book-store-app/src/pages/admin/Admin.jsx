@@ -7,10 +7,12 @@ import SearchBar from '../../components/dashboard/SearchBar.jsx';
 import FiltersDropdown from '../../components/dashboard/FiltersDropdown.jsx';
 import { searchBooks } from '../../api/search.api.js';
 import { addBook, editBook, removeBook } from '../../api/books.api.js';
+import { logout } from '../../api/accountDetails.api.js';
 import { useForm } from 'react-hook-form';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { dashboardCategories, categoryOptions } from '../../constants/categories.js';
+import LogoutConfirmation from '../../components/shared/LogoutConfirmation.jsx';
 
 export default function Admin() {
 	const navigate = useNavigate();
@@ -25,6 +27,7 @@ export default function Admin() {
 	const [removingBook, setRemovingBook] = useState(null);
 	const [showRemoveModal, setShowRemoveModal] = useState(false);
 	const [showAddModal, setShowAddModal] = useState(false);
+	const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 	const filtersRef = useRef(null);
 	
 	const { register, handleSubmit, watch, setValue } = useForm({
@@ -54,6 +57,7 @@ export default function Admin() {
 			title: '',
 			sellingPrice: '',
 			quantity: 0,
+			threshold: 0,
 			year: 0,
 			authors: [],
 			category: '',
@@ -63,10 +67,26 @@ export default function Admin() {
 	});
 
 	// Logout: clear auth data and redirect to login
-	const handleLogout = () => {
+	const handleLogout = async () => {
+		setShowLogoutConfirm(false);
+
+		try {
+			const token = localStorage.getItem('access');
+			if (token) {
+				// Call backend logout to clear cart and invalidate session
+				await logout(token);
+			}
+		} catch (error) {
+			console.warn('Backend logout failed:', error);
+			// Continue with local cleanup even if backend call fails
+		}
+
+		// Clear local authentication data
 		localStorage.removeItem('access');
 		localStorage.removeItem('role');
 		localStorage.removeItem('userId');
+		localStorage.removeItem('authToken');
+
 		navigate('/login', { replace: true });
 	};
 
@@ -112,14 +132,20 @@ export default function Admin() {
 
 	useEffect(() => {
 		function handleClick(e) {
-			const clickOutsideFilters = filtersRef.current && !filtersRef.current.contains(e.target);
-			if (clickOutsideFilters) {
+			// Don't close filters if clicking inside any modal
+			const isClickInModal = e.target.closest('.fixed.inset-0.z-50');
+			if (isClickInModal) {
+				return;
+			}
+			
+			// Only handle filter dropdown clicks when it's actually visible
+			if (showFilters && filtersRef.current && !filtersRef.current.contains(e.target)) {
 				setShowFilters(false);
 			}
 		}
 		document.addEventListener('click', handleClick);
 		return () => document.removeEventListener('click', handleClick);
-	}, []);
+	}, [showFilters]);
 
 	const toggleCategory = (label) => {
 		setSelectedCategory((prev) => (prev === label ? '' : label));
@@ -147,6 +173,7 @@ export default function Admin() {
 			title: book.title ?? '',
 			sellingPrice: book.price ?? '',
 			quantity: book.stock ?? 0,
+			threshold: book.threshold ?? 0,
 			year: book.year ?? 0,
 			authors: book.authors ?? [],
 			category: book.category ?? '',
@@ -158,24 +185,30 @@ export default function Admin() {
 
 	const handleSaveEdit = handleSubmitEdit(async (formData) => {
 		if (!editingBook) return;
+		console.log('Editing book:', editingBook);
+		console.log('Editing book ISBN:', editingBook.isbn);
 		const sellingPrice = formData.sellingPrice ? Math.max(0, Number(formData.sellingPrice)) : null;
 		const quantity = formData.quantity !== '' ? Math.max(0, Number(formData.quantity)) : null;
+		const threshold = formData.threshold !== '' ? Math.max(0, Number(formData.threshold)) : null;
 		const validAuthors = formData.authors.filter(a => a.trim() !== '');
 		try {
 			const payload = {
 				...(formData.title && { title: formData.title }),
 				...(sellingPrice !== null && sellingPrice > 0 && { sellingPrice }),
 				...(quantity !== null && { quantity }),
+				...(threshold !== null && { threshold }),
 				...(formData.year && { publicationYear: Number(formData.year) }),
 				...(validAuthors.length > 0 && { authors: validAuthors }),
 				...(formData.publisher && { publisher: formData.publisher }),
 			};
+			console.log('Edit payload:', payload);
 			const updated = await editBook(editingBook.isbn, payload);
-			const updatedBook = { 
-				...editingBook, 
+			const updatedBook = {
+				...editingBook,
 				title: formData.title || editingBook.title,
 				price: sellingPrice || editingBook.price,
 				stock: quantity !== null ? quantity : editingBook.stock,
+				threshold: formData.threshold !== null ? formData.threshold : editingBook.threshold,
 				year: formData.year || editingBook.year,
 				authors: validAuthors.length > 0 ? validAuthors : editingBook.authors,
 				publisher: formData.publisher || editingBook.publisher,
@@ -305,8 +338,7 @@ const handleConfirmRemove = async () => {
 				<aside className="hidden md:flex w-72 flex-col justify-between border-r border-[#e6e0db] dark:border-[#443628] bg-background-light dark:bg-background-dark p-6 transition-all">
 					<div className="flex flex-col gap-8">
 						<div className="flex flex-col gap-1 px-2">
-							
-							<p className="text-text-secondary text-sm font-medium">Admin Dashboard</p>
+							<h1 className="text-2xl font-bold text-text-main dark:text-white">Admin Dashboard</h1>
 						</div>
 						<nav className="flex flex-col gap-2">
 
@@ -325,14 +357,29 @@ const handleConfirmRemove = async () => {
 						</nav>
 					</div>
 					<button
-						onClick={handleLogout}
-						className="flex w-full cursor-pointer items-center justify-center gap-2 overflow-hidden rounded-full h-12 px-6 bg-primary/10 hover:bg-primary/20 dark:bg-primary/20 dark:hover:bg-primary/30 text-text-main dark:text-primary text-sm font-bold transition-colors"
+						onClick={() => setShowLogoutConfirm(true)}
+						className="flex w-full cursor-pointer items-center justify-center gap-2 overflow-hidden rounded-full h-12 px-6 bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:hover:bg-red-900/30 text-red-600 dark:text-red-400 text-sm font-bold transition-colors"
 					>
+						<FontAwesomeIcon icon={faArrowRightFromBracket} />
+						<span>Logout</span>
+					</button>
+				</aside>
 
 				{/* Edit Modal */}
 				{showEditModal && (
-					<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
-						<div className="w-full max-w-lg rounded-2xl bg-white dark:bg-surface-dark p-6 shadow-2xl border border-gray-200 dark:border-gray-700">
+					<div 
+						className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4"
+						onClick={(e) => {
+							// Close modal if clicking the backdrop
+							if (e.target === e.currentTarget) {
+								handleCancelDialogs();
+							}
+						}}
+					>
+						<div 
+							className="w-full max-w-lg rounded-2xl bg-white dark:bg-surface-dark p-6 shadow-2xl border border-gray-200 dark:border-gray-700"
+							onClick={(e) => e.stopPropagation()}
+						>
 							<h3 className="text-xl font-bold mb-4 text-text-main dark:text-white">Edit Book</h3>
 							<div className="space-y-4">
 								<div>
@@ -344,7 +391,7 @@ const handleConfirmRemove = async () => {
 									/>
 									{errorsEdit.title && <p className="text-red-500 text-xs mt-1">{errorsEdit.title.message}</p>}
 								</div>
-								<div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+								<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 									<div>
 										<label className="text-sm font-semibold">Selling Price<span className="text-red-500">*</span></label>
 										<input
@@ -358,20 +405,6 @@ const handleConfirmRemove = async () => {
 											className="mt-1 w-full h-10 px-3 rounded-md bg-surface-light dark:bg-surface-dark border border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-primary outline-none"
 										/>
 										{errorsEdit.sellingPrice && <p className="text-red-500 text-xs mt-1">{errorsEdit.sellingPrice.message}</p>}
-									</div>
-									<div>
-										<label className="text-sm font-semibold">Quantity<span className="text-red-500">*</span></label>
-										<input
-											type="number"
-											min="0"
-											{...registerEdit('quantity', { 
-												required: 'Quantity is required',
-												valueAsNumber: true,
-												min: { value: 0, message: 'Quantity cannot be negative' }
-											})}
-											className="mt-1 w-full h-10 px-3 rounded-md bg-surface-light dark:bg-surface-dark border border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-primary outline-none"
-										/>
-										{errorsEdit.quantity && <p className="text-red-500 text-xs mt-1">{errorsEdit.quantity.message}</p>}
 									</div>
 									<div>
 										<label className="text-sm font-semibold">Year<span className="text-red-500">*</span></label>
@@ -388,6 +421,36 @@ const handleConfirmRemove = async () => {
 											className="mt-1 w-full h-10 px-3 rounded-md bg-surface-light dark:bg-surface-dark border border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-primary outline-none"
 										/>
 										{errorsEdit.year && <p className="text-red-500 text-xs mt-1">{errorsEdit.year.message}</p>}
+									</div>
+								</div>
+								<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+									<div>
+										<label className="text-sm font-semibold">Quantity<span className="text-red-500">*</span></label>
+										<input
+											type="number"
+											min="0"
+											{...registerEdit('quantity', { 
+												required: 'Quantity is required',
+												valueAsNumber: true,
+												min: { value: 0, message: 'Quantity cannot be negative' }
+											})}
+											className="mt-1 w-full h-10 px-3 rounded-md bg-surface-light dark:bg-surface-dark border border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-primary outline-none"
+										/>
+										{errorsEdit.quantity && <p className="text-red-500 text-xs mt-1">{errorsEdit.quantity.message}</p>}
+									</div>
+									<div>
+										<label className="text-sm font-semibold">Threshold<span className="text-red-500">*</span></label>
+										<input
+											type="number"
+											min="0"
+											{...registerEdit('threshold', { 
+												required: 'Threshold is required',
+												valueAsNumber: true,
+												min: { value: 0, message: 'Threshold cannot be negative' }
+											})}
+											className="mt-1 w-full h-10 px-3 rounded-md bg-surface-light dark:bg-surface-dark border border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-primary outline-none"
+										/>
+										{errorsEdit.threshold && <p className="text-red-500 text-xs mt-1">{errorsEdit.threshold.message}</p>}
 									</div>
 								</div>
 
@@ -459,7 +522,7 @@ const handleConfirmRemove = async () => {
 				{showRemoveModal && (
 					<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
 						<div className="w-full max-w-md rounded-2xl bg-white dark:bg-surface-dark p-6 shadow-2xl border border-gray-200 dark:border-gray-700">
-							<h3 className="text-xl font-bold mb-3 text-text-main dark:text-white">Remove Book</h3>
+							<h3 className="text-xl font-bold mb-4 text-text-main dark:text-white">Remove Book</h3>
 							<p className="text-sm text-text-secondary dark:text-gray-300 mb-6">
 								Are you sure you want to remove
 								{' '}
@@ -482,10 +545,6 @@ const handleConfirmRemove = async () => {
 						</div>
 					</div>
 				)}
-						<FontAwesomeIcon icon={faArrowRightFromBracket} className="text-[18px]" />
-						<span className="truncate">Log Out</span>
-					</button>
-				</aside>
 
 				{/* Main Content */}
 				<main className="flex-1 flex flex-col h-full overflow-hidden relative">
@@ -493,7 +552,7 @@ const handleConfirmRemove = async () => {
 					<header className="w-full px-8 py-8 md:py-10 bg-background-light dark:bg-background-dark z-10">
 						<div className="flex flex-col gap-4 max-w-[1400px] mx-auto">
 							<div className="flex flex-col gap-2">
-								<h2 className="text-text-main dark:text-white text-4xl font-black tracking-tight leading-tight">Inventory Management</h2>
+								<h2 className="text-2xl font-bold text-text-main dark:text-white">Inventory Management</h2>
 								<p className="text-text-secondary text-base dark:text-gray-400 font-normal">View and manage your book catalog</p>
 							</div>
 							<div className="flex flex-col w-full gap-4">
@@ -729,6 +788,12 @@ const handleConfirmRemove = async () => {
 						</div>
 					</div>
 				)}
+
+				<LogoutConfirmation
+					isOpen={showLogoutConfirm}
+					onConfirm={handleLogout}
+					onCancel={() => setShowLogoutConfirm(false)}
+				/>
 			</div>
 		</div>
 	);

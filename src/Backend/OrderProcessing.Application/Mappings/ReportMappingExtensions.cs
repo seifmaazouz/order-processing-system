@@ -9,7 +9,7 @@ public static class ReportMappingExtensions
         new(model.Period, model.TotalSalesAmount, model.TotalTransactionCount);
 
     public static TopCustomerDto ToDto(this TopCustomerReadModel model) =>
-        new(model.CustomerName, model.TotalSpent);
+        new(model.CustomerName ?? "Unknown", model.TotalSpent, model.Email ?? "");
 
     public static TopSellingBookDto ToDto(this TopSellingBookReadModel model) =>
         new(model.ISBN, model.Title, model.TotalCopiesSold);

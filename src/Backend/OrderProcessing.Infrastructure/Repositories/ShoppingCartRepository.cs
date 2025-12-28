@@ -16,13 +16,13 @@ public class ShoppingCartRepository : IShoppingCartRepository
 
     public async Task<ShoppingCartReadModel?> GetCartByUsernameAsync(string username)
     {
-        var connection = await _connectionFactory.CreateConnectionAsync();
+        using var connection = await _connectionFactory.CreateConnectionAsync();
         var sql =
         """
-            SELECT sc.CartId, sc.CustName, ci.ISBN, ci.Quantity, ci.UnitPrice
-            FROM "shoppingcart" sc
-            LEFT JOIN "cartitem" ci ON sc.CartId = ci.CartId
-            WHERE sc.CustName = @Username
+            SELECT sc.cartid as CartId, sc.custname as CustName, ci.isbn as ISBN, ci.quantity as Quantity, ci.unitprice as UnitPrice
+            FROM shoppingcart sc
+            LEFT JOIN cartitem ci ON sc.cartid = ci.cartid
+            WHERE sc.custname = @Username
         """;
 
         var cartItems = new List<CartItemReadModel>();
@@ -32,11 +32,16 @@ public class ShoppingCartRepository : IShoppingCartRepository
         var result = await connection.QueryAsync<dynamic>(sql, new { Username = username });
         foreach (var row in result)
         {
-            cartId ??= row.CartId;
-            custNameResult ??= row.CustName;
-            if (row.ISBN != null)
+            // Handle both PascalCase and camelCase from Dapper
+            cartId ??= row.CartId ?? row.cartid ?? row.CartID;
+            custNameResult ??= row.CustName ?? row.custname;
+            var isbn = row.ISBN ?? row.isbn;
+            var quantity = row.Quantity ?? row.quantity;
+            var unitPrice = row.UnitPrice ?? row.unitprice;
+            
+            if (isbn != null)
             {
-                cartItems.Add(new CartItemReadModel((string)row.ISBN, (int)row.Quantity, (decimal)row.UnitPrice));
+                cartItems.Add(new CartItemReadModel((string)isbn, (int)quantity, (decimal)unitPrice));
             }
         }
         if (cartId == null || custNameResult == null)
@@ -46,12 +51,12 @@ public class ShoppingCartRepository : IShoppingCartRepository
 
     public async Task<int> CreateCartAsync(string username)
     {
-        var connection = await _connectionFactory.CreateConnectionAsync();
+        using var connection = await _connectionFactory.CreateConnectionAsync();
         var sql =
         """
-            INSERT INTO "shoppingcart" (CustName)
+            INSERT INTO shoppingcart (custname)
             VALUES (@Username)
-            RETURNING CartId
+            RETURNING cartid
         """;
         try
         {
@@ -65,13 +70,13 @@ public class ShoppingCartRepository : IShoppingCartRepository
 
     public async Task AddCartItemAsync(int cartId, CartItemReadModel cartItem)
     {
-        var connection = await _connectionFactory.CreateConnectionAsync();
+        using var connection = await _connectionFactory.CreateConnectionAsync();
         var sql =
         """
-            INSERT INTO "cartitem" (ISBN, CartId, Quantity, UnitPrice)
+            INSERT INTO cartitem (isbn, cartid, quantity, unitprice)
             VALUES (@ISBN, @CartId, @Quantity, @UnitPrice)
-            ON CONFLICT (ISBN, CartId) 
-            DO UPDATE SET Quantity = "cartitem".Quantity + @Quantity
+            ON CONFLICT (isbn, cartid) 
+            DO UPDATE SET quantity = cartitem.quantity + @Quantity
         """;
         try
         {
@@ -85,12 +90,12 @@ public class ShoppingCartRepository : IShoppingCartRepository
 
     public async Task<int> UpdateCartItemAsync(int cartId, CartItemReadModel cartItem)
     {
-        var connection = await _connectionFactory.CreateConnectionAsync();
+        using var connection = await _connectionFactory.CreateConnectionAsync();
         var sql =
         """
-            UPDATE "cartitem"
-            SET Quantity = @Quantity
-            WHERE CartId = @CartId AND ISBN = @ISBN
+            UPDATE cartitem
+            SET quantity = @Quantity
+            WHERE cartid = @CartId AND isbn = @ISBN
         """;
         try
         {
@@ -105,11 +110,11 @@ public class ShoppingCartRepository : IShoppingCartRepository
 
     public async Task RemoveCartItemAsync(int cartId, string isbn)
     {
-        var connection = await _connectionFactory.CreateConnectionAsync();
+        using var connection = await _connectionFactory.CreateConnectionAsync();
         var sql =
         """
-            DELETE FROM "cartitem"
-            WHERE CartId = @CartId AND ISBN = @ISBN
+            DELETE FROM cartitem
+            WHERE cartid = @CartId AND isbn = @ISBN
         """;
         try
         {
@@ -123,11 +128,11 @@ public class ShoppingCartRepository : IShoppingCartRepository
 
     public async Task ClearCartAsync(int cartId)
     {
-        var connection = await _connectionFactory.CreateConnectionAsync();
+        using var connection = await _connectionFactory.CreateConnectionAsync();
         var sql =
         """
-            DELETE FROM "cartitem"
-            WHERE CartId = @CartId
+            DELETE FROM cartitem
+            WHERE cartid = @CartId
         """;
         try
         {

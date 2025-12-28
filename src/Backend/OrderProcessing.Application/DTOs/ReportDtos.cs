@@ -12,7 +12,8 @@ public record SalesReportDto
 public record TopCustomerDto
 (
     string CustomerName,
-    decimal TotalSpent
+    decimal TotalSpent,
+    string Email
 );
 
 // For Report (d): Top 10 Selling Books

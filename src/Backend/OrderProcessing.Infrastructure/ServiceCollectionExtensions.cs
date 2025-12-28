@@ -23,6 +23,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IReportRepository, ReportRepository>();
         services.AddScoped<ICreditCardRepository, CreditCardRepository>();
         services.AddScoped<IShoppingCartRepository, ShoppingCartRepository>();
+        services.AddScoped<IPublisherRepository, PublisherRepository>();
 
 
         return services;

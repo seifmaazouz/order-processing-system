@@ -34,6 +34,8 @@ INSERT INTO BookAuthor (ISBN, AuthorName) VALUES
 ('978-0-123456-01-0', 'John Smith'),
 ('978-0-123456-02-7', 'Alice Brown'),
 ('978-0-123456-03-4', 'David Johnson'),
+('978-0-123456-04-1', 'William Thompson'),
+('978-0-123456-05-8', 'Maria Rodriguez'),
 ('978-0-123456-06-5', 'Emma Wilson'),
 ('978-0-123456-07-2', 'Michael Davis'),
 ('978-0-123456-08-9', 'Sarah Miller'),
@@ -55,13 +57,19 @@ INSERT INTO BookAuthor (ISBN, AuthorName) VALUES
 ('978-0-123456-24-9', 'Helen Young'),
 ('978-0-123456-25-6', 'Jason King');
 
+-- User accounts with hashed passwords (plain text passwords shown in comments)
+-- alice: password123
+-- bob: password123
+-- admin1: admin123
+-- admin2: password123
+-- charlie: password123
 INSERT INTO "User" (Username, "Password", FirstName, LastName, ShipAddress, Email, PhoneNumber, "Role")
-VALUES 
+VALUES
 ('alice', 'AQAAAAIAAYagAAAAEMD+TC4vGWXdx6oWqwp1f3HiGx3HjvLiGVzaHELWgzPN8CtLUQfxoKGEH3fDnnK8nw==', 'Alice', 'Smith', '123 Main St', 'alice@example.com', '1234567890', 'Customer'),
-('bob', 'securepass', 'Bob', 'Johnson', '456 Oak Ave', 'bob@example.com', '2345678901', 'Customer'),
+('bob', 'AQAAAAIAAYagAAAAEN0d8QzVjQq7XMGYQH8eLkqO9vHfRvP8qNkMjXlGdKQ2tQK6V5wKQ8VtqQX3Hh8jBw==', 'Bob', 'Johnson', '456 Oak Ave', 'bob@example.com', '2345678901', 'Customer'),
 ('admin1', 'AQAAAAIAAYagAAAAEGL1pP+69sDtJqgi1d1bUpgVjbLjPP3IIvYq353cIskTaORz/66zdUnobNyrIfqU8A==', 'Admin', 'One', '789 Pine Rd', 'admin1@example.com', '3456789012', 'Admin'),
-('admin2', 'adminpass', 'Admin', 'Two', '101 Maple St', 'admin2@example.com', '4567890123', 'Admin'),
-('charlie', 'charliepwd', 'Charlie', 'Brown', '202 Elm St', 'charlie@example.com', '5678901234', 'Customer');
+('admin2', 'AQAAAAIAAYagAAAAEN0d8QzVjQq7XMGYQH8eLkqO9vHfRvP8qNkMjXlGdKQ2tQK6V5wKQ8VtqQX3Hh8jBw==', 'Admin', 'Two', '101 Maple St', 'admin2@example.com', '4567890123', 'Admin'),
+('charlie', 'AQAAAAIAAYagAAAAEN0d8QzVjQq7XMGYQH8eLkqO9vHfRvP8qNkMjXlGdKQ2tQK6V5wKQ8VtqQX3Hh8jBw==', 'Charlie', 'Brown', '202 Elm St', 'charlie@example.com', '5678901234', 'Customer');
 
 INSERT INTO CreditCard (CardNumber, ExpiryDate) VALUES
 (4111111111111111, '2027-12-31'),
@@ -79,26 +87,26 @@ INSERT INTO CartItem (ISBN, CartID, Quantity, UnitPrice) VALUES
 ('978-0-123456-01-0', 1, 1, 50.00),
 ('978-0-123456-02-7', 2, 3, 70.00);
 
-INSERT INTO AdminOrder (OrderDate, "Status", TotalPrice, PubID, CustName) VALUES
+INSERT INTO AdminOrder (OrderDate, "Status", TotalPrice, PubID, ConfirmedBy) VALUES
 ('2020-01-15','Confirmed',170.00,1,'admin1'),
 ('2020-03-22','Confirmed',60.00,2,'admin2'),
-('2021-05-10','Pending',175.00,3,'admin1'),
+('2021-05-10','Pending',175.00,3,NULL),
 ('2021-07-18','Confirmed',50.00,1,'admin2'),
 ('2022-09-05','Confirmed',200.00,2,'admin1'),
 ('2022-11-12','Confirmed',150.00,3,'admin2'),
 ('2023-02-28','Confirmed',150.00,1,'admin1'),
-('2023-04-14','Pending',70.00,2,'admin2'),
+('2023-04-14','Pending',70.00,2,NULL),
 ('2023-06-30','Confirmed',160.00,3,'admin1'),
 ('2023-08-25','Confirmed',55.00,1,'admin2'),
 ('2024-10-08','Confirmed',120.00,2,'admin1'),
 ('2024-12-01','Confirmed',115.00,3,'admin2'),
-('2020-02-20','Pending',80.00,1,'admin1'),
+('2020-02-20','Pending',80.00,1,NULL),
 ('2020-04-17','Confirmed',160.00,2,'admin2'),
 ('2021-06-09','Confirmed',70.00,3,'admin1'),
 ('2021-08-21','Confirmed',165.00,1,'admin2'),
 ('2022-10-03','Confirmed',120.00,2,'admin1'),
 ('2022-12-19','Confirmed',90.00,3,'admin2'),
-('2023-01-11','Pending',195.00,1,'admin1'),
+('2023-01-11','Pending',195.00,1,NULL),
 ('2024-11-27','Confirmed',60.00,2,'admin2');
 
 INSERT INTO AdminOrderItem (ISBN, OrderNum, Quantity, UnitPrice) VALUES
@@ -133,54 +141,47 @@ INSERT INTO AdminOrderItem (ISBN, OrderNum, Quantity, UnitPrice) VALUES
 ('978-0-123456-05-8',19,1,55.00),
 ('978-0-123456-03-4',20,1,60.00);
 
-INSERT INTO CustomerOrder (OrderDate, "Status", TotalPrice, CustName) VALUES
-('2025-12-01','Confirmed',150.00,'alice'),
-('2025-12-02','Confirmed',210.00,'bob'),
-('2025-11-28','Pending',120.00,'charlie'),
-('2025-11-30','Confirmed',90.00,'alice'),
-('2025-11-25','Canceled',50.00,'bob'),
-('2025-12-10','Confirmed',200.00,'charlie'),
-('2025-10-15','Confirmed',75.00,'alice'),
-('2025-10-20','Confirmed',180.00,'bob'),
-('2025-12-05','Confirmed',60.00,'charlie'),
-('2025-12-07','Confirmed',130.00,'bob'),
-('2025-11-15','Confirmed',110.00,'alice'),
-('2025-11-18','Pending',140.00,'charlie'),
-('2025-12-12','Confirmed',95.00,'alice'),
-('2025-12-13','Confirmed',85.00,'bob'),
-('2025-12-14','Confirmed',120.00,'charlie'),
-('2025-12-15','Confirmed',150.00,'alice'),
-('2025-12-16','Pending',90.00,'bob'),
-('2025-12-17','Confirmed',175.00,'charlie'),
-('2025-12-18','Confirmed',60.00,'alice'),
-('2025-12-19','Confirmed',80.00,'bob');
+INSERT INTO CustomerOrder (OrderDate, "Status", TotalPrice, CustName, ShippingAddress) VALUES
+('2025-12-01','Confirmed',150.00,'alice','123 Main St'),
+('2025-12-02','Confirmed',210.00,'bob','456 Oak Ave'),
+('2025-11-28','Pending',120.00,'charlie','202 Elm St'),
+('2025-11-30','Confirmed',90.00,'alice','123 Main St'),
+('2025-11-25','Canceled',50.00,'bob','456 Oak Ave'),
+('2025-12-10','Confirmed',200.00,'charlie','202 Elm St'),
+('2025-10-15','Confirmed',75.00,'alice','123 Main St'),
+('2025-10-20','Confirmed',180.00,'bob','456 Oak Ave'),
+('2025-12-05','Confirmed',60.00,'charlie','202 Elm St'),
+('2025-12-07','Confirmed',130.00,'bob','456 Oak Ave'),
+('2025-11-15','Confirmed',110.00,'alice','123 Main St'),
+('2025-11-18','Pending',140.00,'charlie','202 Elm St'),
+('2025-12-12','Confirmed',95.00,'alice','123 Main St'),
+('2025-12-13','Confirmed',85.00,'bob','456 Oak Ave'),
+('2025-12-14','Confirmed',120.00,'charlie','202 Elm St'),
+('2025-12-15','Confirmed',150.00,'alice','123 Main St'),
+('2025-12-16','Pending',90.00,'bob','456 Oak Ave'),
+('2025-12-17','Confirmed',175.00,'charlie','202 Elm St'),
+('2025-12-18','Confirmed',60.00,'alice','123 Main St'),
+('2025-12-19','Confirmed',80.00,'bob','456 Oak Ave');
 
 INSERT INTO CustomerOrderItem (ISBN, OrderNum, Quantity, UnitPrice) VALUES
 ('978-0-123456-01-0',1,2,50.00),
-('978-0-123456-02-7',1,1,50.00),
-('978-0-123456-03-4',2,3,70.00),
-('978-0-123456-04-1',2,1,0.00),
-('978-0-123456-01-0',4,1,90.00),
-('978-0-123456-05-8',6,2,100.00),
-('978-0-123456-02-7',8,1,180.00),
-('978-0-123456-03-4',10,1,130.00),
-('978-0-123456-04-1',11,2,55.00),
-('978-0-123456-05-8',12,1,140.00),
-('978-0-123456-01-0',13,1,95.00),
-('978-0-123456-02-7',14,1,85.00),
-('978-0-123456-03-4',15,2,60.00),
-('978-0-123456-01-0',17,2,90.00),
-('978-0-123456-02-7',18,1,175.00),
-('978-0-123456-03-4',19,1,60.00),
-('978-0-123456-05-8',20,1,80.00),
-('978-0-123456-01-0',3,1,120.00),
-('978-0-123456-02-7',5,2,50.00),
-('978-0-123456-03-4',7,1,75.00),
-('978-0-123456-04-1',9,1,60.00),
-('978-0-123456-05-8',10,2,60.00),
-('978-0-123456-01-0',12,1,140.00),
-('978-0-123456-02-7',13,1,95.00),
-('978-0-123456-03-4',14,1,85.00),
-('978-0-123456-04-1',16,1,150.00),
-('978-0-123456-03-4',1,1,60.00),
-('978-0-123456-05-8',19,1,55.00);
+('978-0-123456-02-7',1,1,70.00),
+('978-0-123456-03-4',2,3,60.00),
+('978-0-123456-04-1',2,1,40.00),
+('978-0-123456-01-0',3,1,50.00),
+('978-0-123456-05-8',4,2,55.00),
+('978-0-123456-02-7',5,1,70.00),
+('978-0-123456-03-4',6,1,60.00),
+('978-0-123456-04-1',7,1,40.00),
+('978-0-123456-05-8',8,1,55.00),
+('978-0-123456-01-0',9,1,50.00),
+('978-0-123456-02-7',10,1,70.00),
+('978-0-123456-03-4',11,1,60.00),
+('978-0-123456-04-1',12,1,40.00),
+('978-0-123456-05-8',13,1,55.00),
+('978-0-123456-01-0',14,1,50.00),
+('978-0-123456-02-7',15,1,70.00),
+('978-0-123456-03-4',16,1,60.00),
+('978-0-123456-04-1',17,1,40.00),
+('978-0-123456-05-8',18,1,55.00),
+('978-0-123456-01-0',19,1,50.00);
