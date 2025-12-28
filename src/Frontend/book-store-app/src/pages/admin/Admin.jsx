@@ -181,11 +181,12 @@ export default function Admin() {
 				...(formData.publisher && { publisher: formData.publisher }),
 			};
 			const updated = await editBook(editingBook.isbn, payload);
-			const updatedBook = { 
-				...editingBook, 
+			const updatedBook = {
+				...editingBook,
 				title: formData.title || editingBook.title,
 				price: sellingPrice || editingBook.price,
 				stock: quantity !== null ? quantity : editingBook.stock,
+				threshold: formData.threshold !== null ? formData.threshold : editingBook.threshold,
 				year: formData.year || editingBook.year,
 				authors: validAuthors.length > 0 ? validAuthors : editingBook.authors,
 				publisher: formData.publisher || editingBook.publisher,

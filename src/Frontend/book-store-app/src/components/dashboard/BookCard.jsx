@@ -1,8 +1,8 @@
 import React from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faShoppingCart, faEdit, faTrash } from '@fortawesome/free-solid-svg-icons';
+import { faShoppingCart, faEdit, faTrash, faCheck } from '@fortawesome/free-solid-svg-icons';
 
-export default function BookCard({ book, status, onSelect, onAddToCart, onEdit, onRemove, isLoading = false, isAdminMode = false }) {
+export default function BookCard({ book, status, onSelect, onAddToCart, onEdit, onRemove, isLoading = false, isAdminMode = false, isInCart = false }) {
   const isOutOfStock = status.label === 'Out of Stock';
   // Handle both PascalCase and camelCase
   const authorsArray = book.Authors || book.authors || [];
@@ -72,7 +72,15 @@ export default function BookCard({ book, status, onSelect, onAddToCart, onEdit, 
               </div>
             ) : (
               <>
-                {isOutOfStock ? (
+                {isInCart ? (
+                  <button
+                    disabled
+                    className="flex items-center gap-1 px-3 py-2 rounded-full bg-green-500 text-white text-sm font-semibold cursor-not-allowed"
+                  >
+                    <FontAwesomeIcon icon={faCheck} className="text-sm" />
+                    In Cart
+                  </button>
+                ) : isOutOfStock ? (
                   <button
                     disabled
                     className="flex items-center gap-1 px-3 py-2 rounded-full bg-gray-300 text-gray-600 text-sm font-semibold cursor-not-allowed opacity-60"

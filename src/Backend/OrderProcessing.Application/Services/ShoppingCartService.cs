@@ -37,8 +37,8 @@ public class ShoppingCartService : IShoppingCartService
         
         // Get all ISBNs at once to avoid N+1 queries
         var isbns = cart.CartItems.Select(i => i.ISBN).ToList();
-        var books = new Dictionary<string, (string Title, List<string> Authors)>();
-        
+        var books = new Dictionary<string, (string Title, List<string> Authors, int Stock)>();
+
         foreach (var isbn in isbns)
         {
             var book = await _bookRepository.GetBookDetailsAsync(isbn);
@@ -47,14 +47,14 @@ public class ShoppingCartService : IShoppingCartService
                 var authors = (book.AuthorNames ?? "")
                     .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
                     .ToList();
-                books[isbn] = (book.Title, authors);
+                books[isbn] = (book.Title, authors, book.Quantity);
             }
         }
-        
+
         var itemsDto = cart.CartItems.Select(item =>
         {
-            var (title, authors) = books.GetValueOrDefault(item.ISBN, (string.Empty, new List<string>()));
-            return item.ToCartItemDetailsDto(title, authors);
+            var (title, authors, stock) = books.GetValueOrDefault(item.ISBN, (string.Empty, new List<string>(), 0));
+            return item.ToCartItemDetailsDto(title, authors, stock);
         }).ToList();
         
         return cart.ToShoppingCartDetailsDto(itemsDto);
@@ -77,13 +77,20 @@ public class ShoppingCartService : IShoppingCartService
             throw new BusinessRuleViolationException($"Book {book.Title} is currently out of stock");
 
         var cart = await _shoppingCartRepository.GetCartByUsernameAsync(username);
-        
+
         // Create cart if it doesn't exist
         if (cart == null)
         {
             var newCartId = await _shoppingCartRepository.CreateCartAsync(username);
             cart = new ShoppingCartReadModel(newCartId, username, new List<CartItemReadModel>());
         }
+
+        // Check if item already exists in cart and validate total quantity
+        var existingItem = cart.CartItems.FirstOrDefault(i => i.ISBN == isbn);
+        int newTotalQuantity = existingItem != null ? existingItem.Quantity + quantity : quantity;
+
+        if (newTotalQuantity > book.Quantity)
+            throw new BusinessRuleViolationException($"Cannot add more items. Available stock: {book.Quantity}, Requested total: {newTotalQuantity}");
 
         var cartItem = new CartItemReadModel(
             isbn,
@@ -103,6 +110,14 @@ public class ShoppingCartService : IShoppingCartService
         {
             throw new NotFoundException("Shopping cart", "username", username);
         }
+
+        // Validate stock availability
+        var book = await _bookRepository.GetBookDetailsAsync(isbn);
+        if (book == null)
+            throw new NotFoundException("Book", "ISBN", isbn);
+
+        if (quantity > book.Quantity)
+            throw new BusinessRuleViolationException($"Cannot update quantity. Available stock: {book.Quantity}, Requested: {quantity}");
 
         var cartItem = new CartItemReadModel(
             isbn,
@@ -168,6 +183,18 @@ public class ShoppingCartService : IShoppingCartService
         var isValidCard = await _creditCardRepository.ValidateCreditCardAsync(checkoutDto.CardNumber, expiryDateTime);
         if (!isValidCard) throw new BusinessRuleViolationException("Invalid credit card information");
 
+        // Validate stock availability before checkout (batch query)
+        var cartISBNs = cart.CartItems.Select(item => item.ISBN).ToList();
+        var books = await _bookRepository.GetBookDetailsAsync(cartISBNs);
+
+        foreach (var item in cart.CartItems)
+        {
+            if (!books.TryGetValue(item.ISBN, out var book))
+                throw new NotFoundException("Book", "ISBN", item.ISBN);
+            if (book.Quantity < item.Quantity)
+                throw new BusinessRuleViolationException($"Insufficient stock for book {book.Title}. Available: {book.Quantity}, Requested: {item.Quantity}");
+        }
+
         // Calculate total price
         decimal totalPrice = cart.CartItems.Sum(item => item.Quantity * item.UnitPrice);
 
@@ -182,11 +209,12 @@ public class ShoppingCartService : IShoppingCartService
             orderItems
         );
 
-        // Update book quantities (deduct from stock)
-        foreach (var item in cart.CartItems)
-        {
-            await _bookRepository.UpdateBookQuantityAsync(item.ISBN, -item.Quantity);
-        }
+        // Update book quantities (deduct from stock) - batch operation
+        var quantityChanges = cart.CartItems.ToDictionary(
+            item => item.ISBN,
+            item => -item.Quantity
+        );
+        await _bookRepository.UpdateBookQuantitiesAsync(quantityChanges);
 
         // Clear cart after successful checkout
         await _shoppingCartRepository.ClearCartAsync(cart.CartId);

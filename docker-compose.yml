@@ -26,7 +26,7 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Development # or Production (set accordingly)
       ASPNETCORE_URLS: "http://+:8080"
-      ConnectionStrings__PostgresConnection: "Host=postgres-db;Port=5432;Database=ordprosys;Username=postgres;Password=postgres"
+      ConnectionStrings__PostgresConnection: "Host=postgres-db;Port=5432;Database=ordprosys;Username=postgres;Password=postgres;Pooling=true;Minimum Pool Size=5;Maximum Pool Size=100;Connection Idle Lifetime=300;Connection Pruning Interval=60;Timeout=30;CommandTimeout=30"
     ports:
       - "8080:8080"
     networks:

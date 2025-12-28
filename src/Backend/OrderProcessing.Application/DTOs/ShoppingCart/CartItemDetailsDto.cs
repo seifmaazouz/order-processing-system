@@ -8,5 +8,6 @@ public record CartItemDetailsDto
 	List<string> Authors,
 	int Quantity,
 	decimal UnitPrice,
-	decimal TotalPrice
+	decimal TotalPrice,
+	int Stock
 );

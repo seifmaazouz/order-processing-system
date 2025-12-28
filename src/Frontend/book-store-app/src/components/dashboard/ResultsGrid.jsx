@@ -9,7 +9,7 @@ export default function ResultsGrid({ results, lastQueryLabel }) {
   const [selectedIndex, setSelectedIndex] = useState(null);
   const [toast, setToast] = useState(null);
   const selectedBook = selectedIndex !== null && results ? results[selectedIndex] : null;
-  const { addToCart, error, isLoading } = useCart();
+  const { addToCart, error, isLoading, items } = useCart();
 
   if (!results || results.length === 0) return null;
 
@@ -37,6 +37,11 @@ export default function ResultsGrid({ results, lastQueryLabel }) {
       if (prev === null) return 0;
       return prev-1 ;
     });
+  };
+
+  const isInCart = (book) => {
+    const bookIsbn = book.ISBN || book.isbn || book.id;
+    return items.some(item => item.id === bookIsbn);
   };
 
   const handleAddToCart = async (book) => {
@@ -74,6 +79,7 @@ export default function ResultsGrid({ results, lastQueryLabel }) {
               onSelect={() => setSelectedIndex(idx)}
               onAddToCart={() => handleAddToCart(book)}
               isLoading={isLoading}
+              isInCart={isInCart(book)}
             />
           );
         })}
@@ -211,15 +217,23 @@ export default function ResultsGrid({ results, lastQueryLabel }) {
               <div className="flex items-center gap-3 ml-auto">
                 <button
                   onClick={() => handleAddToCart(selectedBook)}
-                  disabled={(selectedBook.Stock || selectedBook.stock || 0) === 0 || isLoading}
+                  disabled={(selectedBook.Stock || selectedBook.stock || 0) === 0 || isLoading || isInCart(selectedBook)}
                   className={`flex items-center gap-2 px-5 py-2 rounded-full text-white font-semibold shadow-md ${
-                    (selectedBook.Stock || selectedBook.stock || 0) === 0 || isLoading
+                    isInCart(selectedBook)
+                      ? 'bg-green-500 cursor-not-allowed'
+                      : (selectedBook.Stock || selectedBook.stock || 0) === 0 || isLoading
                       ? 'bg-gray-400 cursor-not-allowed'
                       : 'bg-orange-500 hover:bg-orange-600'
                   }`}
                 >
                   <FontAwesomeIcon icon={faShoppingCart} className="text-sm" />
-                  {isLoading ? 'Adding...' : (selectedBook.Stock || selectedBook.stock || 0) === 0 ? 'Unavailable' : 'Add to Cart'}
+                  {isInCart(selectedBook)
+                    ? 'In Cart'
+                    : isLoading
+                    ? 'Adding...'
+                    : (selectedBook.Stock || selectedBook.stock || 0) === 0
+                    ? 'Unavailable'
+                    : 'Add to Cart'}
                 </button>
               </div>
             </div>

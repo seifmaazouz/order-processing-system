@@ -10,5 +10,6 @@ namespace OrderProcessing.Domain.Interfaces.Repositories
         Task UpdateStatusAsync(int orderId, string status);
         Task DeleteAsync(int orderId);
         Task<int> GetOrderCountForBookAsync(int isbn);
+        Task<List<AdminOrderItem>> GetOrderItemsAsync(int orderId);
     }
 }

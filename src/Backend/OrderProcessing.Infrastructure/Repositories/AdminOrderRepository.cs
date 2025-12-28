@@ -224,7 +224,7 @@ namespace OrderProcessing.Infrastructure.Repositories
                     orderSql,
                     new
                     {
-                        order.OrderDate,
+                        OrderDate = order.OrderDate.ToDateTime(TimeOnly.MinValue),
                         Status = order.Status.ToString(),
                         order.TotalPrice,
                         order.PublisherId,
@@ -303,6 +303,39 @@ namespace OrderProcessing.Infrastructure.Repositories
                 sql,
                 new { ISBN = isbn }
             );
+        }
+
+        public async Task<List<AdminOrderItem>> GetOrderItemsAsync(int orderId)
+        {
+            const string sql = """
+                SELECT
+                    isbn,
+                    quantity,
+                    unitprice
+                FROM adminorderitem
+                WHERE ordernum = @OrderId
+            """;
+
+            using var connection = await _connectionFactory.CreateConnectionAsync();
+
+            var rows = await connection.QueryAsync<dynamic>(sql, new { OrderId = orderId });
+
+            var items = new List<AdminOrderItem>();
+            foreach (var row in rows)
+            {
+                var isbn = row.isbn ?? row.ISBN;
+                var quantity = row.quantity ?? row.Quantity;
+                var unitPrice = row.unitprice ?? row.UnitPrice;
+
+                items.Add(new AdminOrderItem(
+                    isbn?.ToString() ?? "",
+                    orderId,
+                    Convert.ToInt32(quantity),
+                    Convert.ToDecimal(unitPrice)
+                ));
+            }
+
+            return items;
         }
     }
 }

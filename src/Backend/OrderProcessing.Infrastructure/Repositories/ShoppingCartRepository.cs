@@ -16,7 +16,7 @@ public class ShoppingCartRepository : IShoppingCartRepository
 
     public async Task<ShoppingCartReadModel?> GetCartByUsernameAsync(string username)
     {
-        var connection = await _connectionFactory.CreateConnectionAsync();
+        using var connection = await _connectionFactory.CreateConnectionAsync();
         var sql =
         """
             SELECT sc.cartid as CartId, sc.custname as CustName, ci.isbn as ISBN, ci.quantity as Quantity, ci.unitprice as UnitPrice
@@ -51,7 +51,7 @@ public class ShoppingCartRepository : IShoppingCartRepository
 
     public async Task<int> CreateCartAsync(string username)
     {
-        var connection = await _connectionFactory.CreateConnectionAsync();
+        using var connection = await _connectionFactory.CreateConnectionAsync();
         var sql =
         """
             INSERT INTO shoppingcart (custname)
@@ -70,7 +70,7 @@ public class ShoppingCartRepository : IShoppingCartRepository
 
     public async Task AddCartItemAsync(int cartId, CartItemReadModel cartItem)
     {
-        var connection = await _connectionFactory.CreateConnectionAsync();
+        using var connection = await _connectionFactory.CreateConnectionAsync();
         var sql =
         """
             INSERT INTO cartitem (isbn, cartid, quantity, unitprice)
@@ -90,7 +90,7 @@ public class ShoppingCartRepository : IShoppingCartRepository
 
     public async Task<int> UpdateCartItemAsync(int cartId, CartItemReadModel cartItem)
     {
-        var connection = await _connectionFactory.CreateConnectionAsync();
+        using var connection = await _connectionFactory.CreateConnectionAsync();
         var sql =
         """
             UPDATE cartitem
@@ -110,7 +110,7 @@ public class ShoppingCartRepository : IShoppingCartRepository
 
     public async Task RemoveCartItemAsync(int cartId, string isbn)
     {
-        var connection = await _connectionFactory.CreateConnectionAsync();
+        using var connection = await _connectionFactory.CreateConnectionAsync();
         var sql =
         """
             DELETE FROM cartitem
@@ -128,7 +128,7 @@ public class ShoppingCartRepository : IShoppingCartRepository
 
     public async Task ClearCartAsync(int cartId)
     {
-        var connection = await _connectionFactory.CreateConnectionAsync();
+        using var connection = await _connectionFactory.CreateConnectionAsync();
         var sql =
         """
             DELETE FROM cartitem

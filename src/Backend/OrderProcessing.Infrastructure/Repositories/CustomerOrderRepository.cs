@@ -93,7 +93,7 @@ namespace OrderProcessing.Infrastructure.Repositories
                     Status = order.Status.ToString(),
                     order.TotalPrice,
                     CustName = order.Username,
-                    order.OrderDate
+                    OrderDate = order.OrderDate.ToDateTime(TimeOnly.MinValue)
                 }, transaction);
 
                 if (items != null && items.Count > 0)

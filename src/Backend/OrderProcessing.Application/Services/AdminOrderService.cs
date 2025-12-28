@@ -100,6 +100,16 @@ namespace OrderProcessing.Application.Services
             if (!Enum.TryParse<OrderStatus>(status, ignoreCase: true, out var orderStatus))
                 throw new ArgumentException($"Invalid order status: {status}");
 
+            // If status is being changed to Confirmed, add stock to books
+            if (status.Equals("Confirmed", StringComparison.OrdinalIgnoreCase) && order.Status != OrderStatus.Confirmed)
+            {
+                var orderItems = await _adminOrderRepository.GetOrderItemsAsync(orderId);
+                foreach (var item in orderItems)
+                {
+                    await _bookRepository.UpdateBookQuantityAsync(item.ISBN, item.Quantity);
+                }
+            }
+
             await _adminOrderRepository.UpdateStatusAsync(orderId, orderStatus.ToString());
         }
     }
