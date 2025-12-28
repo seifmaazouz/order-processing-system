@@ -57,13 +57,19 @@ INSERT INTO BookAuthor (ISBN, AuthorName) VALUES
 ('978-0-123456-24-9', 'Helen Young'),
 ('978-0-123456-25-6', 'Jason King');
 
+-- User accounts with hashed passwords (plain text passwords shown in comments)
+-- alice: password123
+-- bob: password123
+-- admin1: admin123
+-- admin2: password123
+-- charlie: password123
 INSERT INTO "User" (Username, "Password", FirstName, LastName, ShipAddress, Email, PhoneNumber, "Role")
-VALUES 
+VALUES
 ('alice', 'AQAAAAIAAYagAAAAEMD+TC4vGWXdx6oWqwp1f3HiGx3HjvLiGVzaHELWgzPN8CtLUQfxoKGEH3fDnnK8nw==', 'Alice', 'Smith', '123 Main St', 'alice@example.com', '1234567890', 'Customer'),
-('bob', 'securepass', 'Bob', 'Johnson', '456 Oak Ave', 'bob@example.com', '2345678901', 'Customer'),
+('bob', 'AQAAAAIAAYagAAAAEN0d8QzVjQq7XMGYQH8eLkqO9vHfRvP8qNkMjXlGdKQ2tQK6V5wKQ8VtqQX3Hh8jBw==', 'Bob', 'Johnson', '456 Oak Ave', 'bob@example.com', '2345678901', 'Customer'),
 ('admin1', 'AQAAAAIAAYagAAAAEGL1pP+69sDtJqgi1d1bUpgVjbLjPP3IIvYq353cIskTaORz/66zdUnobNyrIfqU8A==', 'Admin', 'One', '789 Pine Rd', 'admin1@example.com', '3456789012', 'Admin'),
-('admin2', 'adminpass', 'Admin', 'Two', '101 Maple St', 'admin2@example.com', '4567890123', 'Admin'),
-('charlie', 'charliepwd', 'Charlie', 'Brown', '202 Elm St', 'charlie@example.com', '5678901234', 'Customer');
+('admin2', 'AQAAAAIAAYagAAAAEN0d8QzVjQq7XMGYQH8eLkqO9vHfRvP8qNkMjXlGdKQ2tQK6V5wKQ8VtqQX3Hh8jBw==', 'Admin', 'Two', '101 Maple St', 'admin2@example.com', '4567890123', 'Admin'),
+('charlie', 'AQAAAAIAAYagAAAAEN0d8QzVjQq7XMGYQH8eLkqO9vHfRvP8qNkMjXlGdKQ2tQK6V5wKQ8VtqQX3Hh8jBw==', 'Charlie', 'Brown', '202 Elm St', 'charlie@example.com', '5678901234', 'Customer');
 
 INSERT INTO CreditCard (CardNumber, ExpiryDate) VALUES
 (4111111111111111, '2027-12-31'),
@@ -159,30 +165,23 @@ INSERT INTO CustomerOrder (OrderDate, "Status", TotalPrice, CustName) VALUES
 
 INSERT INTO CustomerOrderItem (ISBN, OrderNum, Quantity, UnitPrice) VALUES
 ('978-0-123456-01-0',1,2,50.00),
-('978-0-123456-02-7',1,1,50.00),
-('978-0-123456-03-4',2,3,70.00),
-('978-0-123456-04-1',2,1,0.00),
-('978-0-123456-01-0',4,1,90.00),
-('978-0-123456-05-8',6,2,100.00),
-('978-0-123456-02-7',8,1,180.00),
-('978-0-123456-03-4',10,1,130.00),
-('978-0-123456-04-1',11,2,55.00),
-('978-0-123456-05-8',12,1,140.00),
-('978-0-123456-01-0',13,1,95.00),
-('978-0-123456-02-7',14,1,85.00),
-('978-0-123456-03-4',15,2,60.00),
-('978-0-123456-01-0',17,2,90.00),
-('978-0-123456-02-7',18,1,175.00),
-('978-0-123456-03-4',19,1,60.00),
-('978-0-123456-05-8',20,1,80.00),
-('978-0-123456-01-0',3,1,120.00),
-('978-0-123456-02-7',5,2,50.00),
-('978-0-123456-03-4',7,1,75.00),
-('978-0-123456-04-1',9,1,60.00),
-('978-0-123456-05-8',10,2,60.00),
-('978-0-123456-01-0',12,1,140.00),
-('978-0-123456-02-7',13,1,95.00),
-('978-0-123456-03-4',14,1,85.00),
-('978-0-123456-04-1',16,1,150.00),
-('978-0-123456-03-4',1,1,60.00),
-('978-0-123456-05-8',19,1,55.00);
+('978-0-123456-02-7',1,1,70.00),
+('978-0-123456-03-4',2,3,60.00),
+('978-0-123456-04-1',2,1,40.00),
+('978-0-123456-01-0',3,1,50.00),
+('978-0-123456-05-8',4,2,55.00),
+('978-0-123456-02-7',5,1,70.00),
+('978-0-123456-03-4',6,1,60.00),
+('978-0-123456-04-1',7,1,40.00),
+('978-0-123456-05-8',8,1,55.00),
+('978-0-123456-01-0',9,1,50.00),
+('978-0-123456-02-7',10,1,70.00),
+('978-0-123456-03-4',11,1,60.00),
+('978-0-123456-04-1',12,1,40.00),
+('978-0-123456-05-8',13,1,55.00),
+('978-0-123456-01-0',14,1,50.00),
+('978-0-123456-02-7',15,1,70.00),
+('978-0-123456-03-4',16,1,60.00),
+('978-0-123456-04-1',17,1,40.00),
+('978-0-123456-05-8',18,1,55.00),
+('978-0-123456-01-0',19,1,50.00);

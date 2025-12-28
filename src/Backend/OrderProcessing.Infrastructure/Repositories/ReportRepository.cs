@@ -85,14 +85,18 @@ public class ReportRepository : IReportRepository
     public async Task<IEnumerable<TopCustomerReadModel>> GetTop5CustomersAsync()
     {
         using var connection = await _connectionFactory.CreateConnectionAsync();
-        var sql = 
+        var sql =
         """
-                SELECT CustName AS CustomerName, SUM(TotalPrice) AS TotalSpent
-                FROM CustomerOrder
-                WHERE "Status" = 'Confirmed' 
-                    AND OrderDate >= CURRENT_DATE - INTERVAL '3 months' 
-                    AND OrderDate <= CURRENT_DATE
-                GROUP BY CustName
+                SELECT
+                    co.CustName AS CustomerName,
+                    SUM(co.TotalPrice) AS TotalSpent,
+                    u.Email AS Email
+                FROM CustomerOrder co
+                JOIN "User" u ON co.CustName = u.Username
+                WHERE co."Status" = 'Confirmed'
+                    AND co.OrderDate >= CURRENT_DATE - INTERVAL '3 months'
+                    AND co.OrderDate <= CURRENT_DATE
+                GROUP BY co.CustName, u.Email
                 ORDER BY TotalSpent DESC
                 LIMIT 5
         """;

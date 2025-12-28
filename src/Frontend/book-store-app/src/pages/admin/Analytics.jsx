@@ -12,6 +12,8 @@ import {
 	getTop10SellingBooks,
 	getBookReplenishmentCount
 } from '../../api/reports.api.js';
+import LogoutConfirmation from '../../components/shared/LogoutConfirmation.jsx';
+import { logout } from '../../api/accountDetails.api.js';
 
 export default function Analytics() {
 	const navigate = useNavigate();
@@ -27,6 +29,7 @@ export default function Analytics() {
 		books: false,
 		replenishment: false
 	});
+	const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
 	const { register: registerDate, handleSubmit: handleSubmitDate } = useForm({
 		defaultValues: { date: '' }
@@ -121,6 +124,29 @@ export default function Analytics() {
 		}
 	};
 
+	const handleLogout = async () => {
+		setShowLogoutConfirm(false);
+
+		try {
+			const token = localStorage.getItem('access');
+			if (token) {
+				// Call backend logout to invalidate session
+				await logout(token);
+			}
+		} catch (error) {
+			console.warn('Backend logout failed:', error);
+			// Continue with local cleanup even if backend call fails
+		}
+
+		// Clear local authentication data
+		localStorage.removeItem('access');
+		localStorage.removeItem('role');
+		localStorage.removeItem('userId');
+		localStorage.removeItem('authToken');
+
+		navigate('/login', { replace: true });
+	};
+
 	return (
 		<div className="light bg-background-light dark:bg-background-dark font-display text-text-main dark:text-gray-100 antialiased overflow-hidden">
 			<div className="flex h-screen w-full">
@@ -130,8 +156,7 @@ export default function Analytics() {
 				<aside className="hidden md:flex w-72 flex-col justify-between border-r border-[#e6e0db] dark:border-[#443628] bg-background-light dark:bg-background-dark p-6 transition-all">
 					<div className="flex flex-col gap-8">
 						<div className="flex flex-col gap-1 px-2">
-							<h1 className="text-2xl font-black tracking-tighter text-text-main dark:text-white">Chapter One</h1>
-							<p className="text-text-secondary text-sm font-medium">Admin Dashboard</p>
+							<h1 className="text-2xl font-bold text-text-main dark:text-white">Admin Dashboard</h1>
 						</div>
 						<nav className="flex flex-col gap-2">
 							<button onClick={() => navigate('/admin')} className="group flex items-center gap-3 px-4 py-3 rounded-full text-text-main dark:text-gray-200 hover:bg-[#efe9e3] dark:hover:bg-[#3a2d20] transition-colors w-full text-left">
@@ -148,14 +173,9 @@ export default function Analytics() {
 							</button>
 						</nav>
 					</div>
-					<button 
-						onClick={() => {
-							localStorage.removeItem('access');
-							localStorage.removeItem('role');
-							localStorage.removeItem('userId');
-							navigate('/login', { replace: true });
-						}}
-						className="flex w-full cursor-pointer items-center justify-center gap-2 overflow-hidden rounded-full h-12 px-6 bg-primary/10 hover:bg-primary/20 dark:bg-primary/20 dark:hover:bg-primary/30 text-text-main dark:text-primary text-sm font-bold transition-colors"
+					<button
+						onClick={() => setShowLogoutConfirm(true)}
+						className="flex w-full cursor-pointer items-center justify-center gap-2 overflow-hidden rounded-full h-12 px-6 bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:hover:bg-red-900/30 text-red-600 dark:text-red-400 text-sm font-bold transition-colors"
 					>
 						<FontAwesomeIcon icon={faArrowRightFromBracket} />
 						<span>Logout</span>
@@ -265,7 +285,6 @@ export default function Analytics() {
 													<th className="text-left py-3 px-4 text-sm font-semibold">Customer Name</th>
 													<th className="text-left py-3 px-4 text-sm font-semibold">Email</th>
 													<th className="text-right py-3 px-4 text-sm font-semibold">Total Spent</th>
-													<th className="text-right py-3 px-4 text-sm font-semibold">Orders</th>
 												</tr>
 											</thead>
 											<tbody>
@@ -279,7 +298,6 @@ export default function Analytics() {
 														<td className="py-3 px-4 font-medium">{customer.customerName}</td>
 														<td className="py-3 px-4 text-sm text-text-secondary">{customer.email}</td>
 														<td className="py-3 px-4 text-right font-bold text-primary">${customer.totalSpent?.toFixed(2) || '0.00'}</td>
-														<td className="py-3 px-4 text-right">{customer.orderCount || 0}</td>
 													</tr>
 												))}
 											</tbody>
@@ -307,7 +325,6 @@ export default function Analytics() {
 													<th className="text-left py-3 px-4 text-sm font-semibold">ISBN</th>
 													<th className="text-left py-3 px-4 text-sm font-semibold">Title</th>
 													<th className="text-right py-3 px-4 text-sm font-semibold">Copies Sold</th>
-													<th className="text-right py-3 px-4 text-sm font-semibold">Revenue</th>
 												</tr>
 											</thead>
 											<tbody>
@@ -321,7 +338,6 @@ export default function Analytics() {
 														<td className="py-3 px-4 text-sm text-text-secondary">{book.isbn}</td>
 														<td className="py-3 px-4 font-medium">{book.title}</td>
 														<td className="py-3 px-4 text-right font-bold">{book.totalCopiesSold || 0}</td>
-														<td className="py-3 px-4 text-right text-primary font-bold">${book.totalRevenue?.toFixed(2) || '0.00'}</td>
 													</tr>
 												))}
 											</tbody>
@@ -382,6 +398,12 @@ export default function Analytics() {
 						</div>
 					</div>
 				</main>
+
+				<LogoutConfirmation
+					isOpen={showLogoutConfirm}
+					onConfirm={handleLogout}
+					onCancel={() => setShowLogoutConfirm(false)}
+				/>
 			</div>
 		</div>
 	);

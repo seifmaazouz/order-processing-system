@@ -49,7 +49,10 @@ namespace OrderProcessing.Application.Services
         public async Task UpdateBookAsync(string isbn, UpdateBookDto dto)
         {
             var book = await _bookRepository.GetByISBNAsync(isbn);
-            if (book == null) throw new NotFoundException("Book", "ISBN", isbn);
+            if (book == null)
+            {
+                throw new NotFoundException("Book", "ISBN", isbn);
+            }
 
             // Validate Title length if updating
             if (dto.Title != null && (string.IsNullOrWhiteSpace(dto.Title) || dto.Title.Length > 100))

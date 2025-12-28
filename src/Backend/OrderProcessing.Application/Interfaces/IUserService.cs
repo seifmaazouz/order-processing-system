@@ -11,7 +11,7 @@ namespace OrderProcessing.Application.Interfaces
         Task UpdateProfileAsync(string token, UpdateUserProfileDto dto);
         Task AddCreditCardAsync(string token, AddCreditCardDto dto);
         Task RemoveCreditCardAsync(RemoveCardRequest request);
-        Task<DetailsDto> GetDetailsAsync(string token);
-        Task<IEnumerable<CustomerOrderDto>> GetPastOrdersAsync(string token);
+    Task<DetailsDto> GetDetailsAsync(string token);
+    Task<IEnumerable<CustomerOrderDto>> GetPastOrdersAsync(string token);
     }
 }

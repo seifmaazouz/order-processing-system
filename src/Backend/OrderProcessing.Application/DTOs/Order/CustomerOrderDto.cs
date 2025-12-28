@@ -8,5 +8,6 @@ public record CustomerOrderDto(
     decimal TotalPrice,
     [property: JsonConverter(typeof(JsonStringEnumConverter))] OrderStatus Status,
     DateOnly OrderDate,
+    string ShippingAddress,
     IReadOnlyList<OrderItemDto> Items
 );

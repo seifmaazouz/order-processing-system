@@ -10,6 +10,7 @@ import {
   faArrowRightFromBracket,
 } from '@fortawesome/free-solid-svg-icons';
 import LogoutConfirmation from '../shared/LogoutConfirmation.jsx';
+import { logout } from '../../api/accountDetails.api.js';
 
 export default function DashboardHeader({ showSettings, onToggleSettings, settingsRef, cartTotal }) {
   const navigate = useNavigate();
@@ -20,13 +21,27 @@ export default function DashboardHeader({ showSettings, onToggleSettings, settin
     navigate(path);
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     setShowLogoutConfirm(false);
     onToggleSettings(false);
+
+    try {
+      const token = localStorage.getItem('access');
+      if (token) {
+        // Call backend logout to clear cart and invalidate session
+        await logout(token);
+      }
+    } catch (error) {
+      console.warn('Backend logout failed:', error);
+      // Continue with local cleanup even if backend call fails
+    }
+
+    // Clear local authentication data
     localStorage.removeItem('access');
     localStorage.removeItem('role');
     localStorage.removeItem('userId');
     localStorage.removeItem('authToken');
+
     navigate('/login', { replace: true });
   };
 

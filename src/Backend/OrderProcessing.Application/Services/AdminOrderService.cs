@@ -64,14 +64,25 @@ namespace OrderProcessing.Application.Services
         public async Task<List<AdminOrderDto>> GetAllOrdersAsync()
         {
             var orders = await _adminOrderRepository.GetAllAsync();
-            return orders.Select(o => new AdminOrderDto(
-                o.OrderId,
-                o.OrderDate,
-                o.Status,
-                o.TotalPrice,
-                o.PublisherId,
-                o.Username
-            )).ToList();
+            var orderDtos = new List<AdminOrderDto>();
+
+            foreach (var order in orders)
+            {
+                var items = await _adminOrderRepository.GetOrderItemsAsync(order.OrderId);
+                var itemDtos = items.Select(i => new AdminOrderItemDto(i.ISBN, i.Quantity, i.UnitPrice)).ToList();
+
+                orderDtos.Add(new AdminOrderDto(
+                    order.OrderId,
+                    order.OrderDate,
+                    order.Status,
+                    order.TotalPrice,
+                    order.PublisherId,
+                    order.Username,
+                    itemDtos
+                ));
+            }
+
+            return orderDtos;
         }
 
         public async Task<AdminOrderDto?> GetOrderByIdAsync(int orderId)
@@ -80,13 +91,17 @@ namespace OrderProcessing.Application.Services
             if (order == null)
                 return null;
 
+            var items = await _adminOrderRepository.GetOrderItemsAsync(orderId);
+            var itemDtos = items.Select(i => new AdminOrderItemDto(i.ISBN, i.Quantity, i.UnitPrice)).ToList();
+
             return new AdminOrderDto(
                 order.OrderId,
                 order.OrderDate,
                 order.Status,
                 order.TotalPrice,
                 order.PublisherId,
-                order.Username
+                order.Username,
+                itemDtos
             );
         }
 

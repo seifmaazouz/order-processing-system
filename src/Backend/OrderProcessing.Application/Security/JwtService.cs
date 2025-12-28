@@ -99,17 +99,10 @@ namespace OrderProcessing.Application.Services
                     ClockSkew = TimeSpan.Zero
                 }, out SecurityToken validatedToken);
 
-                // Debug: print all claims
-                foreach (var claim in principal.Claims)
-                {
-                    Console.WriteLine($"{claim.Type}: {claim.Value}");
-                }
-
                 return principal;
             }
-            catch (Exception ex)
+            catch
             {
-                Console.WriteLine("Token validation failed: " + ex.Message);
                 return null;
             }
         }

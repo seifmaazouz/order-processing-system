@@ -25,39 +25,39 @@ function App() {
           <Route
             path="/dashboard"
             element={
-              <PrivateAuth>
+              <PrivateAuth requiredRole="Customer">
                 <Dashboard />
               </PrivateAuth>
             }
           />
-          <Route 
-            path="/admin" 
+          <Route
+            path="/admin"
             element={
-              <PrivateAuth>
+              <PrivateAuth requiredRole="Admin">
                 <Admin />
               </PrivateAuth>
-            } 
+            }
           />
-          <Route 
-            path="/admin/analytics" 
+          <Route
+            path="/admin/analytics"
             element={
-              <PrivateAuth>
+              <PrivateAuth requiredRole="Admin">
                 <Analytics />
               </PrivateAuth>
-            } 
+            }
           />
-          <Route 
-            path="/admin/orders" 
+          <Route
+            path="/admin/orders"
             element={
-              <PrivateAuth>
+              <PrivateAuth requiredRole="Admin">
                 <AdminOrders />
               </PrivateAuth>
-            } 
+            }
           />
           <Route
             path="/account"
             element={
-              <PrivateAuth>
+              <PrivateAuth requiredRole="Customer">
                 <Account />
               </PrivateAuth>
             }
@@ -65,7 +65,7 @@ function App() {
           <Route
             path="/orders"
             element={
-              <PrivateAuth>
+              <PrivateAuth requiredRole="Customer">
                 <Orders />
               </PrivateAuth>
             }
@@ -73,7 +73,7 @@ function App() {
           <Route
             path="/cart"
             element={
-              <PrivateAuth>
+              <PrivateAuth requiredRole="Customer">
                 <Cart />
               </PrivateAuth>
             }

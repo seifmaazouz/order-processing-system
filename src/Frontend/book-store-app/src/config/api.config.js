@@ -8,12 +8,13 @@ axios.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      console.warn('401 Unauthorized - clearing authentication and redirecting to login');
+      console.warn('401 Unauthorized - clearing authentication data, redirecting to login');
       // Clear authentication data
       localStorage.removeItem('access');
       localStorage.removeItem('role');
       localStorage.removeItem('userId');
-      // Redirect to login
+      localStorage.removeItem('authToken');
+      // Redirect to login (cart will be cleared via backend logout endpoint)
       window.location.href = '/login';
       return Promise.reject(error);
     }

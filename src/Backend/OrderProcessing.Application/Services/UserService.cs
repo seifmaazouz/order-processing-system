@@ -39,6 +39,10 @@ namespace OrderProcessing.Application.Services
             if (string.IsNullOrEmpty(username))
                 throw new UnauthorizedAccessException("Invalid token.");
 
+            // Get user details for shipping address
+            var userDetails = await GetDetailsAsync(token);
+            var shippingAddress = userDetails.Address;
+
             // Get all orders for this user
             var orders = await _customerOrderRepository.GetByUsernameAsync(username);
             
@@ -68,6 +72,7 @@ namespace OrderProcessing.Application.Services
                     order.TotalPrice,
                     order.Status,
                     order.OrderDate,
+                    shippingAddress,
                     itemDtos
                 ));
             }

@@ -7,6 +7,7 @@ import SearchBar from '../../components/dashboard/SearchBar.jsx';
 import FiltersDropdown from '../../components/dashboard/FiltersDropdown.jsx';
 import { searchBooks } from '../../api/search.api.js';
 import { addBook, editBook, removeBook } from '../../api/books.api.js';
+import { logout } from '../../api/accountDetails.api.js';
 import { useForm } from 'react-hook-form';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -64,7 +65,19 @@ export default function Admin() {
 	});
 
 	// Logout: clear auth data and redirect to login
-	const handleLogout = () => {
+	const handleLogout = async () => {
+		try {
+			const token = localStorage.getItem('access');
+			if (token) {
+				// Call backend logout to clear cart and invalidate session
+				await logout(token);
+			}
+		} catch (error) {
+			console.warn('Backend logout failed:', error);
+			// Continue with local cleanup even if backend call fails
+		}
+
+		// Clear local authentication data
 		localStorage.removeItem('access');
 		localStorage.removeItem('role');
 		localStorage.removeItem('userId');
@@ -166,6 +179,8 @@ export default function Admin() {
 
 	const handleSaveEdit = handleSubmitEdit(async (formData) => {
 		if (!editingBook) return;
+		console.log('Editing book:', editingBook);
+		console.log('Editing book ISBN:', editingBook.isbn);
 		const sellingPrice = formData.sellingPrice ? Math.max(0, Number(formData.sellingPrice)) : null;
 		const quantity = formData.quantity !== '' ? Math.max(0, Number(formData.quantity)) : null;
 		const threshold = formData.threshold !== '' ? Math.max(0, Number(formData.threshold)) : null;
@@ -180,6 +195,7 @@ export default function Admin() {
 				...(validAuthors.length > 0 && { authors: validAuthors }),
 				...(formData.publisher && { publisher: formData.publisher }),
 			};
+			console.log('Edit payload:', payload);
 			const updated = await editBook(editingBook.isbn, payload);
 			const updatedBook = {
 				...editingBook,
@@ -501,7 +517,7 @@ const handleConfirmRemove = async () => {
 				{showRemoveModal && (
 					<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
 						<div className="w-full max-w-md rounded-2xl bg-white dark:bg-surface-dark p-6 shadow-2xl border border-gray-200 dark:border-gray-700">
-							<h3 className="text-xl font-bold mb-3 text-text-main dark:text-white">Remove Book</h3>
+							<h3 className="text-xl font-bold mb-4 text-text-main dark:text-white">Remove Book</h3>
 							<p className="text-sm text-text-secondary dark:text-gray-300 mb-6">
 								Are you sure you want to remove
 								{' '}
@@ -531,7 +547,7 @@ const handleConfirmRemove = async () => {
 					<header className="w-full px-8 py-8 md:py-10 bg-background-light dark:bg-background-dark z-10">
 						<div className="flex flex-col gap-4 max-w-[1400px] mx-auto">
 							<div className="flex flex-col gap-2">
-								<h2 className="text-text-main dark:text-white text-4xl font-black tracking-tight leading-tight">Inventory Management</h2>
+								<h2 className="text-2xl font-bold text-text-main dark:text-white">Inventory Management</h2>
 								<p className="text-text-secondary text-base dark:text-gray-400 font-normal">View and manage your book catalog</p>
 							</div>
 							<div className="flex flex-col w-full gap-4">

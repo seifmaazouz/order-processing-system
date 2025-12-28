@@ -37,6 +37,14 @@ export default function OrderCard({ order, getStatusBadge }) {
         </div>
       )}
 
+      {/* Shipping Address */}
+      {order.shippingAddress && (
+        <div className="mb-4">
+          <h4 className="text-sm font-semibold mb-1">Shipping Address:</h4>
+          <p className="text-sm text-gray-700 dark:text-gray-300">{order.shippingAddress}</p>
+        </div>
+      )}
+
       {/* Total Price */}
       <div className="border-t border-gray-200 dark:border-gray-700 pt-4 flex justify-between items-center">
         <span className="font-semibold">Total:</span>

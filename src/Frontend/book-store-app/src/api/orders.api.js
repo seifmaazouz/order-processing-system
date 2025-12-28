@@ -19,6 +19,7 @@ export async function getOrders() {
     date: order.OrderDate || order.orderDate,
     status: (order.Status || order.status || 'Pending')?.toString().toLowerCase(),
     totalPrice: order.TotalPrice || order.totalPrice,
+    shippingAddress: order.ShippingAddress || order.shippingAddress,
     items: (order.Items || order.items || []).map(item => ({
       isbn: item.ISBN || item.isbn,
       title: item.Title || item.title,

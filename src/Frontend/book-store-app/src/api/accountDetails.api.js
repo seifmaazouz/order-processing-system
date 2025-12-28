@@ -40,6 +40,16 @@ export async function updateAccountDetails(payload, token) {
   return res.data; // { ok: true, message }
 }
 
+export async function logout(token) {
+  const res = await axios.post(`${API_BASE_URL}/auth/logout`, {}, {
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+  });
+  return res.data; // { message }
+}
+
 export async function changePassword(payload, token) {
   const requestBody = {
     oldPassword: payload.oldPassword,

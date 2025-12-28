@@ -18,7 +18,7 @@ export const getAllOrders = async () => {
 			}
 		});
 		
-		// Backend returns: [{ OrderId, OrderDate, Status, TotalPrice, PublisherId, Username }]
+		// Backend returns: [{ OrderId, OrderDate, Status, TotalPrice, PublisherId, Username, Items: [{ ISBN, Quantity, UnitPrice }] }]
 		// Handle both PascalCase and camelCase, and DateOnly serialization
 		return Array.isArray(response.data) ? response.data.map(order => {
 			const orderDate = order.OrderDate || order.orderDate;
@@ -33,14 +33,22 @@ export const getAllOrders = async () => {
 					dateValue = String(orderDate);
 				}
 			}
-			
+
+			// Process order items
+			const items = Array.isArray(order.Items || order.items) ? (order.Items || order.items).map(item => ({
+				isbn: item.ISBN || item.isbn || '',
+				quantity: parseInt(item.Quantity || item.quantity || 0),
+				unitPrice: parseFloat(item.UnitPrice || item.unitPrice || 0)
+			})) : [];
+
 			return {
 				orderId: order.OrderId || order.orderId,
 				orderDate: dateValue,
 				status: (order.Status || order.status || '').toString(),
 				totalPrice: parseFloat(order.TotalPrice || order.totalPrice || 0),
 				publisherId: parseInt(order.PublisherId || order.publisherId || 0),
-				username: order.Username || order.username || ''
+				username: order.Username || order.username || '',
+				items: items
 			};
 		}) : [];
 	} catch (error) {
@@ -67,6 +75,28 @@ export const confirmOrder = async (orderId) => {
 		return response.data;
 	} catch (error) {
 		console.error('Error confirming order:', error.response?.data);
+		throw error;
+	}
+};
+
+// Cancel an order
+export const cancelOrder = async (orderId) => {
+	try {
+		const token = localStorage.getItem('access');
+		// Backend expects: { Status: string }
+		const response = await axios.put(
+			`${ORDERS_URL}/${orderId}/status`,
+			{ Status: 'Canceled' },
+			{
+				headers: {
+					'Content-Type': 'application/json',
+					'Authorization': `Bearer ${token}`
+				}
+			}
+		);
+		return response.data;
+	} catch (error) {
+		console.error('Error canceling order:', error.response?.data);
 		throw error;
 	}
 };

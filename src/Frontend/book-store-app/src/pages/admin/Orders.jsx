@@ -5,6 +5,8 @@ import { faBookOpen, faShoppingBag, faChartBar, faArrowRightFromBracket, faCheck
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { getAllOrders, confirmOrder } from '../../api/adminOrders.api.js';
+import LogoutConfirmation from '../../components/shared/LogoutConfirmation.jsx';
+import { logout } from '../../api/accountDetails.api.js';
 
 export default function AdminOrders() {
 	const navigate = useNavigate();
@@ -13,6 +15,7 @@ export default function AdminOrders() {
 	const [isLoading, setIsLoading] = useState(false);
 	const [statusFilter, setStatusFilter] = useState('All');
 	const [showConfirmModal, setShowConfirmModal] = useState(false);
+	const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 	const [selectedOrder, setSelectedOrder] = useState(null);
 
 	useEffect(() => {
@@ -55,7 +58,7 @@ export default function AdminOrders() {
 
 	const handleConfirmOrder = async () => {
 		if (!selectedOrder) return;
-		
+
 		try {
 			await confirmOrder(selectedOrder.orderId);
 			toast.success('Order confirmed successfully! Stock updated.');
@@ -67,6 +70,29 @@ export default function AdminOrders() {
 			toast.error(errorMsg);
 			console.error('Confirm order error:', error.response?.data);
 		}
+	};
+
+	const handleLogout = async () => {
+		setShowLogoutConfirm(false);
+
+		try {
+			const token = localStorage.getItem('access');
+			if (token) {
+				// Call backend logout to invalidate session
+				await logout(token);
+			}
+		} catch (error) {
+			console.warn('Backend logout failed:', error);
+			// Continue with local cleanup even if backend call fails
+		}
+
+		// Clear local authentication data
+		localStorage.removeItem('access');
+		localStorage.removeItem('role');
+		localStorage.removeItem('userId');
+		localStorage.removeItem('authToken');
+
+		navigate('/login', { replace: true });
 	};
 
 	const getStatusColor = (status) => {
@@ -93,8 +119,7 @@ export default function AdminOrders() {
 				<aside className="hidden md:flex w-72 flex-col justify-between border-r border-[#e6e0db] bg-background-light p-6 transition-all">
 					<div className="flex flex-col gap-8">
 						<div className="flex flex-col gap-1 px-2">
-							<h1 className="text-2xl font-black tracking-tighter text-text-main">Chapter One</h1>
-							<p className="text-text-secondary text-sm font-medium">Admin Dashboard</p>
+							<h1 className="text-2xl font-bold text-text-main dark:text-white">Admin Dashboard</h1>
 						</div>
 						<nav className="flex flex-col gap-2">
 							<button onClick={() => navigate('/admin')} className="group flex items-center gap-3 px-4 py-3 rounded-full text-text-main hover:bg-[#efe9e3] transition-colors w-full text-left">
@@ -111,7 +136,10 @@ export default function AdminOrders() {
 							</button>
 						</nav>
 					</div>
-					<button className="flex w-full cursor-pointer items-center justify-center gap-2 overflow-hidden rounded-full h-12 px-6 bg-primary/10 hover:bg-primary/20 text-text-main text-sm font-bold transition-colors">
+					<button
+						onClick={() => setShowLogoutConfirm(true)}
+						className="flex w-full cursor-pointer items-center justify-center gap-2 overflow-hidden rounded-full h-12 px-6 bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:hover:bg-red-900/30 text-red-600 dark:text-red-400 text-sm font-bold transition-colors"
+					>
 						<FontAwesomeIcon icon={faArrowRightFromBracket} />
 						<span>Logout</span>
 					</button>
@@ -214,27 +242,43 @@ export default function AdminOrders() {
 					<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
 						<div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl border border-gray-200">
 							<h3 className="text-xl font-bold mb-4 text-text-main">Confirm Order</h3>
-							<div className="space-y-3 mb-6">
+							<div className="space-y-4 mb-6">
 								<p className="text-sm text-text-secondary">
-									You are about to confirm order <span className="font-bold text-text-main">#{selectedOrder.orderId}</span>
+									You are about to confirm order <span className="font-bold text-text-main">#{selectedOrder.orderId}</span> from publisher #{selectedOrder.publisherId}.
 								</p>
-								<div className="bg-surface-light p-4 rounded-lg space-y-2">
-									<div className="flex justify-between">
-										<span className="text-sm text-text-secondary">Order Date:</span>
-										<span className="text-sm font-semibold">{selectedOrder.orderDate ? new Date(selectedOrder.orderDate).toLocaleDateString() : 'N/A'}</span>
+
+								{/* Order Items */}
+								<div className="bg-surface-light p-4 rounded-lg">
+									<h4 className="text-sm font-semibold text-text-main mb-3">Books to be added to inventory:</h4>
+									<div className="space-y-2">
+										{selectedOrder.items && selectedOrder.items.length > 0 ? (
+											selectedOrder.items.map((item, index) => (
+												<div key={index} className="flex justify-between items-center py-2 border-b border-gray-200 last:border-b-0">
+													<div>
+														<span className="text-sm font-medium">ISBN: {item.isbn}</span>
+													</div>
+													<div className="text-right">
+														<span className="text-sm font-bold text-primary">+{item.quantity} units</span>
+														<span className="text-xs text-text-secondary ml-2">@ ${item.unitPrice?.toFixed(2)}</span>
+													</div>
+												</div>
+											))
+										) : (
+											<p className="text-sm text-text-secondary">No items found in this order.</p>
+										)}
 									</div>
-									<div className="flex justify-between">
-										<span className="text-sm text-text-secondary">Publisher ID:</span>
-										<span className="text-sm font-semibold">#{selectedOrder.publisherId}</span>
-									</div>
-									<div className="flex justify-between">
-										<span className="text-sm text-text-secondary">Total Price:</span>
+									<div className="flex justify-between items-center pt-3 mt-3 border-t border-gray-200">
+										<span className="text-sm font-semibold">Total Value:</span>
 										<span className="text-sm font-bold text-primary">${selectedOrder.totalPrice?.toFixed(2) || '0.00'}</span>
 									</div>
 								</div>
-								<p className="text-sm text-green-600 bg-green-50 p-3 rounded-lg">
-									✓ This quantity will be added to the book's stock
-								</p>
+
+								<div className="bg-green-50 p-3 rounded-lg">
+									<p className="text-sm text-green-700 flex items-center">
+										<FontAwesomeIcon icon={faCheckCircle} className="mr-2" />
+										Confirming this order will add the listed quantities to book inventory
+									</p>
+								</div>
 							</div>
 							<div className="flex justify-end gap-3">
 								<button
@@ -257,6 +301,12 @@ export default function AdminOrders() {
 						</div>
 					</div>
 				)}
+
+				<LogoutConfirmation
+					isOpen={showLogoutConfirm}
+					onConfirm={handleLogout}
+					onCancel={() => setShowLogoutConfirm(false)}
+				/>
 			</div>
 		</div>
 	);

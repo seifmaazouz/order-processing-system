@@ -58,13 +58,12 @@ export const getTop5Customers = async () => {
 				'Authorization': `Bearer ${token}`
 			}
 		});
-		// Backend returns: [{ customerName, totalSpent }]
+		// Backend returns: [{ customerName, totalSpent, email }]
 		return response.data.map((c, index) => ({
 			userId: `customer-${index}`, // Generate unique key
 			customerName: c.customerName || 'Unknown',
 			totalSpent: c.totalSpent || 0,
-			email: '', // Not provided by backend
-			orderCount: 0 // Not provided by backend
+			email: c.email || ''
 		}));
 	} catch (error) {
 		console.error('Error fetching top customers:', error.response?.data);
