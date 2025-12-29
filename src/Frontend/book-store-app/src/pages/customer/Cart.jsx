@@ -5,15 +5,21 @@ import { useNavigate } from 'react-router-dom';
 import { useCart } from '../../context/CartContext.jsx';
 import DashboardHeader from '../../components/dashboard/DashboardHeader.jsx';
 import { checkoutCart } from '../../api/addCart.js';
+import { getAccountDetails } from '../../api/accountDetails.api.js';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
 export default function Cart() {
   const navigate = useNavigate();
-  const { items, summary, removeFromCart, updateQuantity, clearCart, loadCart } = useCart();
+  const { items, summary, cartCount, removeFromCart, updateQuantity, clearCart, loadCart } = useCart();
   const [showSettings, setShowSettings] = useState(false);
   const [showCheckoutModal, setShowCheckoutModal] = useState(false);
   const [isCheckingOut, setIsCheckingOut] = useState(false);
+  const [cardholderName, setCardholderName] = useState('');
+  const [shippingAddress, setShippingAddress] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState('new'); // 'saved' or 'new'
+  const [selectedSavedCard, setSelectedSavedCard] = useState('');
+  const [savedCards, setSavedCards] = useState([]);
   const [cardNumber, setCardNumber] = useState('');
   const [expiryDate, setExpiryDate] = useState('');
   const settingsRef = useRef(null);
@@ -30,8 +36,27 @@ export default function Cart() {
 
   // Reload cart when component mounts
   useEffect(() => {
+    console.log('Cart component: Loading cart items on mount');
     loadCart();
-  }, [loadCart]);
+  }, []); // Only load once on mount
+
+  // Fetch saved cards when checkout modal opens
+  useEffect(() => {
+    if (showCheckoutModal) {
+      fetchSavedCards();
+    }
+  }, [showCheckoutModal]);
+
+  const fetchSavedCards = async () => {
+    try {
+      const token = localStorage.getItem('access');
+      const userDetails = await getAccountDetails(token);
+      setSavedCards(userDetails.creditCards || []);
+    } catch (error) {
+      console.error('Failed to fetch saved cards:', error);
+      setSavedCards([]);
+    }
+  };
 
   const handleQtyChange = (id, delta) => {
     const item = items.find((i) => i.id === id);
@@ -40,35 +65,65 @@ export default function Cart() {
   };
 
   const handleCheckout = async () => {
-    if (!cardNumber || !expiryDate) {
-      toast.error('Please enter credit card information');
+    // Validate cardholder name (only required for new cards)
+    if (paymentMethod === 'new' && !cardholderName.trim()) {
+      toast.error('Please enter cardholder name');
+      return;
+    }
+
+    // Validate payment method
+    if (paymentMethod === 'saved') {
+      if (!selectedSavedCard) {
+        toast.error('Please select a saved card');
+        return;
+      }
+    } else if (paymentMethod === 'new') {
+      if (!cardNumber || !expiryDate) {
+        toast.error('Please enter credit card information');
+        return;
+      }
+    } else {
+      toast.error('Please select a payment method');
       return;
     }
 
     setIsCheckingOut(true);
     try {
-      // Convert expiry date from MM/YY to Date string (last day of the month) in YYYY-MM-DD format
-      const [month, year] = expiryDate.split('/');
-      const expiryYear = 2000 + parseInt(year);
-      const expiryMonth = parseInt(month);
-      // Get last day of the month
-      const lastDay = new Date(expiryYear, expiryMonth, 0).getDate();
-      // Format as YYYY-MM-DD for better compatibility
-      const expiryDateStr = `${expiryYear}-${String(expiryMonth).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
-      
-      const cardNum = parseInt(cardNumber.replace(/\s/g, ''));
-      if (isNaN(cardNum)) {
-        toast.error('Invalid card number');
-        setIsCheckingOut(false);
-        return;
+      let savedCardNumber = null;
+      let newCardNumber = null;
+      let newCardExpiry = null;
+
+      if (paymentMethod === 'saved') {
+        savedCardNumber = parseInt(selectedSavedCard);
+        if (isNaN(savedCardNumber)) {
+          toast.error('Invalid saved card selection');
+          setIsCheckingOut(false);
+          return;
+        }
+      } else {
+        // Convert expiry date from MM/YY to Date string (last day of the month) in YYYY-MM-DD format
+        const [month, year] = expiryDate.split('/');
+        const expiryYear = 2000 + parseInt(year);
+        const expiryMonth = parseInt(month);
+        // Get last day of the month
+        const lastDay = new Date(expiryYear, expiryMonth, 0).getDate();
+        // Format as YYYY-MM-DD for better compatibility
+        newCardExpiry = `${expiryYear}-${String(expiryMonth).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+
+        newCardNumber = parseInt(cardNumber.replace(/\s/g, ''));
+        if (isNaN(newCardNumber)) {
+          toast.error('Invalid card number');
+          setIsCheckingOut(false);
+          return;
+        }
       }
-      
-      await checkoutCart(cardNum, expiryDateStr);
+
+      const cardholderNameToSend = paymentMethod === 'new' ? cardholderName.trim() : null;
+      await checkoutCart(cardholderNameToSend, null, savedCardNumber, newCardNumber, newCardExpiry);
       toast.success('Order placed successfully!');
       clearCart();
       setShowCheckoutModal(false);
-      setCardNumber('');
-      setExpiryDate('');
+      resetCheckoutForm();
       await loadCart(); // Refresh cart
       navigate('/orders');
     } catch (error) {
@@ -79,13 +134,21 @@ export default function Cart() {
     }
   };
 
+  const resetCheckoutForm = () => {
+    setCardholderName('');
+    setPaymentMethod('new');
+    setSelectedSavedCard('');
+    setCardNumber('');
+    setExpiryDate('');
+  };
+
   return (
     <div className="min-h-screen bg-background-light text-text-main">
       <DashboardHeader
         showSettings={showSettings}
         onToggleSettings={setShowSettings}
         settingsRef={settingsRef}
-        cartTotal={summary?.totalItems ?? 0}
+        cartTotal={cartCount}
       />
       <div className="px-4 sm:px-8 py-8">
       <div className="max-w-5xl mx-auto">
@@ -206,36 +269,131 @@ export default function Cart() {
           <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl border border-gray-200">
             <h3 className="text-xl font-bold mb-4 text-text-main">Checkout</h3>
             <div className="space-y-4 mb-6">
+              {/* Cardholder Name (only for new cards) */}
+              {paymentMethod === 'new' && (
+                <div>
+                  <label className="block text-sm font-semibold mb-2">Cardholder Name</label>
+                  <input
+                    type="text"
+                    value={cardholderName}
+                    onChange={(e) => setCardholderName(e.target.value)}
+                    placeholder="John Doe"
+                    className="w-full h-10 px-3 rounded-md bg-white border border-gray-200 focus:ring-2 focus:ring-primary outline-none"
+                  />
+                </div>
+              )}
+
+              {/* Payment Method Selection */}
               <div>
-                <label className="block text-sm font-semibold mb-2">Card Number</label>
-                <input
-                  type="text"
-                  value={cardNumber}
-                  onChange={(e) => {
-                    const value = e.target.value.replace(/\D/g, '');
-                    const formatted = value.match(/.{1,4}/g)?.join(' ') || value;
-                    setCardNumber(formatted.slice(0, 19));
-                  }}
-                  placeholder="1234 5678 9012 3456"
-                  className="w-full h-10 px-3 rounded-md bg-white border border-gray-200 focus:ring-2 focus:ring-primary outline-none"
-                />
+                <label className="block text-sm font-semibold mb-2">Payment Method</label>
+                <div className="space-y-2">
+                  <label className="flex items-center">
+                    <input
+                      type="radio"
+                      name="paymentMethod"
+                      value="saved"
+                      checked={paymentMethod === 'saved'}
+                      onChange={(e) => setPaymentMethod(e.target.value)}
+                      className="mr-2"
+                    />
+                    <span className="text-sm">Use saved card</span>
+                  </label>
+                  <label className="flex items-center">
+                    <input
+                      type="radio"
+                      name="paymentMethod"
+                      value="new"
+                      checked={paymentMethod === 'new'}
+                      onChange={(e) => setPaymentMethod(e.target.value)}
+                      className="mr-2"
+                    />
+                    <span className="text-sm">Enter new card</span>
+                  </label>
+                </div>
               </div>
-              <div>
-                <label className="block text-sm font-semibold mb-2">Expiry Date (MM/YY)</label>
-                <input
-                  type="text"
-                  value={expiryDate}
-                  onChange={(e) => {
-                    const value = e.target.value.replace(/\D/g, '');
-                    if (value.length <= 4) {
-                      const formatted = value.length > 2 ? `${value.slice(0, 2)}/${value.slice(2)}` : value;
-                      setExpiryDate(formatted);
-                    }
-                  }}
-                  placeholder="MM/YY"
-                  className="w-full h-10 px-3 rounded-md bg-white border border-gray-200 focus:ring-2 focus:ring-primary outline-none"
-                />
-              </div>
+
+              {/* Saved Cards Selection */}
+              {paymentMethod === 'saved' && (
+                <div>
+                  <label className="block text-sm font-semibold mb-2">Select Saved Card</label>
+                  <select
+                    value={selectedSavedCard}
+                    onChange={(e) => setSelectedSavedCard(e.target.value)}
+                    className="w-full h-10 px-3 rounded-md bg-white border border-gray-200 focus:ring-2 focus:ring-primary outline-none"
+                  >
+                    <option value="">Choose a card...</option>
+                    {savedCards.map((card, index) => (
+                      <option key={index} value={card.cardNumber}>
+                        **** **** **** {card.cardNumber.toString().slice(-4)} (Expires {card.expiryMonth}/{card.expiryYear})
+                      </option>
+                    ))}
+                  </select>
+                  {savedCards.length === 0 && (
+                    <p className="text-sm text-gray-500 mt-1">No saved cards found. Add a card in your account settings.</p>
+                  )}
+                </div>
+              )}
+
+              {/* New Card Details */}
+              {paymentMethod === 'new' && (
+                <>
+                  <div>
+                    <label className="block text-sm font-semibold mb-2">Card Number</label>
+                    <input
+                      type="text"
+                      value={cardNumber}
+                      onChange={(e) => {
+                        const value = e.target.value.replace(/\D/g, '');
+                        const formatted = value.match(/.{1,4}/g)?.join(' ') || value;
+                        setCardNumber(formatted.slice(0, 19));
+                      }}
+                      placeholder="1234 5678 9012 3456"
+                      className="w-full h-10 px-3 rounded-md bg-white border border-gray-200 focus:ring-2 focus:ring-primary outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold mb-2">Expiry Date (MM/YY)</label>
+                    <input
+                      type="text"
+                      value={expiryDate}
+                      onChange={(e) => {
+                        const value = e.target.value.replace(/\D/g, '');
+                        if (value.length <= 4) {
+                          const formatted = value.length >= 2 ? `${value.slice(0, 2)}${value.slice(2)}` : value;
+                          // Add slash automatically when 2+ digits
+                          if (formatted.length > 2) {
+                            const month = formatted.slice(0, 2);
+                            const year = formatted.slice(2);
+                            setExpiryDate(`${month}/${year}`);
+                          } else {
+                            setExpiryDate(formatted);
+                          }
+                        }
+                      }}
+                      onBlur={() => {
+                        // Validate on blur
+                        if (expiryDate && !/^(0[1-9]|1[0-2])\/\d{2}$/.test(expiryDate)) {
+                          // Could add error state here
+                        } else if (expiryDate) {
+                          const [month, year] = expiryDate.split('/');
+                          const expiryMonth = parseInt(month);
+                          const expiryYear = 2000 + parseInt(year);
+                          const now = new Date();
+                          const expiryDateObj = new Date(expiryYear, expiryMonth - 1);
+                          if (expiryDateObj < now) {
+                            // Could add expired error here
+                          }
+                        }
+                      }}
+                      placeholder="MM/YY"
+                      maxLength="5"
+                      className="w-full h-10 px-3 rounded-md bg-white border border-gray-200 focus:ring-2 focus:ring-primary outline-none"
+                    />
+                  </div>
+                </>
+              )}
+
+              {/* Order Summary */}
               <div className="bg-gray-50 p-4 rounded-lg">
                 <div className="flex justify-between text-sm mb-2">
                   <span>Total:</span>
@@ -247,8 +405,7 @@ export default function Cart() {
               <button
                 onClick={() => {
                   setShowCheckoutModal(false);
-                  setCardNumber('');
-                  setExpiryDate('');
+                  resetCheckoutForm();
                 }}
                 className="px-4 py-2 rounded-full border border-gray-300 bg-white text-sm font-semibold hover:border-primary hover:text-primary transition-colors"
               >
@@ -256,7 +413,9 @@ export default function Cart() {
               </button>
               <button
                 onClick={handleCheckout}
-                disabled={isCheckingOut || !cardNumber || !expiryDate}
+                disabled={isCheckingOut ||
+                  (paymentMethod === 'new' && (!cardholderName.trim() || !cardNumber || !expiryDate)) ||
+                  (paymentMethod === 'saved' && !selectedSavedCard)}
                 className="px-6 py-2 rounded-full bg-primary text-white text-sm font-semibold hover:bg-primary/90 disabled:opacity-50 transition-colors"
               >
                 {isCheckingOut ? 'Processing...' : 'Complete Order'}

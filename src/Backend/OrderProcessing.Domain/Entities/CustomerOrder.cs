@@ -4,32 +4,27 @@ namespace OrderProcessing.Domain.Entities
 {
     public class CustomerOrder
     {
-        public int OrderNumber { private set; get; }
-        public decimal TotalPrice { private set; get; }
-        public OrderStatus Status { private set; get; }
-        public DateOnly OrderDate { private set; get; }
-        public string Username { private set; get; }
-        public string ShippingAddress { private set; get; }
-        
-        public CustomerOrder(
-            int orderNumber,
-            decimal totalPrice,
-            OrderStatus status,
-            DateOnly orderDate,
-            string username,
-            string shippingAddress)
+        public int OrderNumber { get; set; }
+        public decimal TotalPrice { get; set; }
+        public OrderStatus Status { get; set; }
+        public DateOnly OrderDate { get; set; }
+        public string Username { get; set; } = null!;
+        public string ShippingAddress { get; set; } = null!;
+
+        public CustomerOrder() { }
+
+        public CustomerOrder(int orderNumber, decimal totalPrice, OrderStatus status, DateOnly orderDate, string username, string shippingAddress)
         {
+            if (orderNumber < 0) throw new ArgumentException("OrderNumber must be non-negative");
+            if (totalPrice < 0) throw new ArgumentException("Total price must be non-negative");
+            if (string.IsNullOrWhiteSpace(username)) throw new ArgumentException("Username is required");
+            if (string.IsNullOrWhiteSpace(shippingAddress)) throw new ArgumentException("Shipping address is required");
             OrderNumber = orderNumber;
             TotalPrice = totalPrice;
             Status = status;
             OrderDate = orderDate;
             Username = username;
             ShippingAddress = shippingAddress;
-        }
-        
-        public void ChangeStatus(OrderStatus newStatus)
-        {
-            Status = newStatus;
         }
     }
 }

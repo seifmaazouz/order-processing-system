@@ -6,6 +6,7 @@ using OrderProcessing.Domain.Interfaces.Repositories;
 using OrderProcessing.Application.Security;
 using OrderProcessing.Application.DTOs.Order;
 using OrderProcessing.Application.Exceptions;
+using OrderProcessing.Domain.ValueObjects;
 
 namespace OrderProcessing.Application.Services
 {
@@ -92,7 +93,8 @@ namespace OrderProcessing.Application.Services
             var creditCardDtos = creditCards?.Select(c => new CreditCardDto(
                 c.CardNumber,
                 c.ExpiryDate.Month.ToString("D2"),
-                c.ExpiryDate.Year.ToString()
+                c.ExpiryDate.Year.ToString(),
+                c.CardholderName
             )).ToList() ?? new List<CreditCardDto>();
 
             return new DetailsDto(
@@ -120,8 +122,7 @@ namespace OrderProcessing.Application.Services
 
             // 3. Verify current password
             if (!_passwordHasher.Verify(request.OldPassword, user.PasswordHash))
-                throw new UnauthorizedAccessException("Current password is incorrect.");
-
+                throw new ArgumentException("The current password you entered is incorrect. Please verify and try again.");
             // 4. Hash new password
             var newHash = _passwordHasher.HashPassword(request.NewPassword);
 
@@ -152,27 +153,21 @@ namespace OrderProcessing.Application.Services
 
             // Update user with new values or keep existing ones
             // Only use existing value if new value is null (not sent), otherwise use the new value (including empty strings)
-            var firstName = dto.FirstName ?? user.FirstName;
-            var lastName = dto.LastName ?? user.LastName;
-
-            // Validate required fields are not empty
-            if (string.IsNullOrWhiteSpace(firstName))
-                throw new BusinessRuleViolationException("First name is required.");
-            if (string.IsNullOrWhiteSpace(lastName))
-                throw new BusinessRuleViolationException("Last name is required.");
-
-            var updatedUser = new User(
-                user.Username,
-                dto.Email ?? user.Email,
-                dto.PhoneNumber ?? user.PhoneNumber,
-                firstName,
-                lastName,
-                user.PasswordHash,
-                user.Role,
-                dto.Address ?? user.Address
-            );
-
-            await _userRepository.UpdateAsync(updatedUser);
+            try
+            {
+                user.UpdateProfile(
+                    email: dto.Email,
+                    phoneNumber: dto.PhoneNumber,
+                    firstName: dto.FirstName,
+                    lastName: dto.LastName,
+                    address: dto.Address
+                );
+            }
+            catch (ArgumentException ex)
+            {
+                throw new BusinessRuleViolationException(ex.Message);
+            }
+            await _userRepository.UpdateAsync(user);
         }
 
         public async Task AddCreditCardAsync(string token, OrderProcessing.Application.DTOs.CreditCard.AddCreditCardDto dto)
@@ -213,7 +208,12 @@ namespace OrderProcessing.Application.Services
 
             // Add credit card for user
             await _creditCardRepository.AddAsync(
-                new CreditCard(dto.CardNumber, expiryDateOnly),
+                new CreditCard
+                {
+                    CardNumber = dto.CardNumber,
+                    ExpiryDate = expiryDateOnly,
+                    CardholderName = dto.CardholderName
+                },
                 username
             );
         }

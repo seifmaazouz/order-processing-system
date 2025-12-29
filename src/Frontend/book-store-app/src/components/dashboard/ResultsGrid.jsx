@@ -5,21 +5,25 @@ import { faArrowAltCircleLeft, faArrowAltCircleRight, faClose, faDiagramNext, fa
 import BookCard from './BookCard.jsx';
 import { useCart } from '../../context/CartContext.jsx';
 
-export default function ResultsGrid({ results, lastQueryLabel }) {
+export default function ResultsGrid({ results, lastQueryLabel, onStockUpdate }) {
   const [selectedIndex, setSelectedIndex] = useState(null);
   const [toast, setToast] = useState(null);
+  const [loadingBooks, setLoadingBooks] = useState(new Set()); // Track which books are being added
   const selectedBook = selectedIndex !== null && results ? results[selectedIndex] : null;
-  const { addToCart, error, isLoading, items } = useCart();
+  const { addToCart, error, items } = useCart();
 
   if (!results || results.length === 0) return null;
 
   const getStockStatus = (book) => {
     // Handle both PascalCase and camelCase
-    const stock = book.Stock || book.stock || book.stockLevel || 10; // default to 10 if not provided
+    console.log('Book properties:', Object.keys(book));
+    console.log('Book Stock/Quantity values:', { Stock: book.Stock, stock: book.stock, Quantity: book.Quantity, quantity: book.quantity });
+    const stock = book.Stock || book.stock || book.Quantity || book.quantity || book.stockLevel || 10; // default to 10 if not provided
+    console.log('Final stock value used:', stock);
     if (stock === 0) return { label: 'Out of Stock', color: 'bg-gray-100 text-gray-600', textColor: 'text-gray-500' };
-      if (stock <= 2) return { label: `only ${stock} left`, color: 'bg-red-200 text-red-600', textColor: 'text-red-500' };
-    if (stock <= 5) return { label: `only ${stock} left`, color: 'bg-orange-100 text-orange-600', textColor: 'text-orange-500' };
-  
+      if (stock <= 2) return { label: `Only ${stock} left`, color: 'bg-red-200 text-red-600', textColor: 'text-red-500' };
+    if (stock <= 5) return { label: `Only ${stock} left`, color: 'bg-orange-100 text-orange-600', textColor: 'text-orange-500' };
+
     return { label: 'In Stock', color: 'bg-green-100 text-green-600', textColor: 'text-green-500' };
   };
 
@@ -44,13 +48,27 @@ export default function ResultsGrid({ results, lastQueryLabel }) {
     return items.some(item => item.id === bookIsbn);
   };
 
+  const isBookLoading = (book) => {
+    const bookId = book.ISBN || book.isbn || book.id;
+    return loadingBooks.has(bookId);
+  };
+
   const handleAddToCart = async (book) => {
+    const bookId = book.ISBN || book.isbn || book.id;
+    setLoadingBooks(prev => new Set(prev).add(bookId));
+
     try {
       const success = await addToCart(book);
       if (success) {
         const bookTitle = book.Title || book.title || 'Book';
         setToast({ type: 'success', message: `"${bookTitle}" added to cart!` });
         setTimeout(() => setToast(null), 3000);
+
+        // Update local stock level (reduce by 1 since item was added to cart)
+        const currentStock = book.Quantity || book.quantity || book.Stock || book.stock || book.stockLevel || 10;
+        if (onStockUpdate && currentStock > 0) {
+          onStockUpdate(bookId, currentStock - 1);
+        }
       } else {
         setToast({ type: 'error', message: error || 'Failed to add item' });
         setTimeout(() => setToast(null), 4000);
@@ -59,6 +77,12 @@ export default function ResultsGrid({ results, lastQueryLabel }) {
       console.error('Error adding to cart:', err);
       setToast({ type: 'error', message: 'Failed to add item to cart' });
       setTimeout(() => setToast(null), 4000);
+    } finally {
+      setLoadingBooks(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(bookId);
+        return newSet;
+      });
     }
   };
 
@@ -78,7 +102,7 @@ export default function ResultsGrid({ results, lastQueryLabel }) {
               status={status}
               onSelect={() => setSelectedIndex(idx)}
               onAddToCart={() => handleAddToCart(book)}
-              isLoading={isLoading}
+              isLoading={isBookLoading(book)}
               isInCart={isInCart(book)}
             />
           );
@@ -217,11 +241,11 @@ export default function ResultsGrid({ results, lastQueryLabel }) {
               <div className="flex items-center gap-3 ml-auto">
                 <button
                   onClick={() => handleAddToCart(selectedBook)}
-                  disabled={(selectedBook.Stock || selectedBook.stock || 0) === 0 || isLoading || isInCart(selectedBook)}
+                  disabled={(selectedBook.Stock || selectedBook.stock || 0) === 0 || isBookLoading(selectedBook) || isInCart(selectedBook)}
                   className={`flex items-center gap-2 px-5 py-2 rounded-full text-white font-semibold shadow-md ${
                     isInCart(selectedBook)
                       ? 'bg-green-500 cursor-not-allowed'
-                      : (selectedBook.Stock || selectedBook.stock || 0) === 0 || isLoading
+                      : (selectedBook.Stock || selectedBook.stock || 0) === 0 || isBookLoading(selectedBook)
                       ? 'bg-gray-400 cursor-not-allowed'
                       : 'bg-orange-500 hover:bg-orange-600'
                   }`}
@@ -229,7 +253,7 @@ export default function ResultsGrid({ results, lastQueryLabel }) {
                   <FontAwesomeIcon icon={faShoppingCart} className="text-sm" />
                   {isInCart(selectedBook)
                     ? 'In Cart'
-                    : isLoading
+                    : isBookLoading(selectedBook)
                     ? 'Adding...'
                     : (selectedBook.Stock || selectedBook.stock || 0) === 0
                     ? 'Unavailable'

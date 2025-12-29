@@ -1,3 +1,22 @@
+// Get cart item count (for badge)
+export async function getCartItemCount() {
+  try {
+    const token = localStorage.getItem('access');
+    if (!token) return 0;
+    const response = await axios.get(
+      `${API_BASE_URL}/shoppingcart/count`,
+      {
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+      }
+    );
+    return typeof response.data === 'number' ? response.data : 0;
+  } catch (error) {
+    return 0;
+  }
+}
 import axios from "axios";
 import API_BASE_URL from '../config/api.config.js';
 
@@ -132,17 +151,22 @@ export async function removeCartItem(isbn) {
 }
 
 // Checkout cart
-export async function checkoutCart(cardNumber, expiryDate) {
+export async function checkoutCart(cardholderName, shippingAddress, savedCardNumber, newCardNumber, newCardExpiry) {
   try {
     const token = localStorage.getItem('access');
-    // Backend expects: { CardNumber: long, ExpiryDate: DateTime }
-    // expiryDate can be YYYY-MM-DD string or ISO string - ASP.NET Core will parse it
+
+    // Build checkout request with payment method fields
+    const checkoutRequest = {
+      CardholderName: cardholderName,
+      ShippingAddress: shippingAddress,
+      SavedCardNumber: savedCardNumber || null,
+      NewCardNumber: newCardNumber || null,
+      NewCardExpiryDate: newCardExpiry || null
+    };
+
     const response = await axios.post(
       `${API_BASE_URL}/shoppingcart/checkout`,
-      {
-        CardNumber: cardNumber,
-        ExpiryDate: expiryDate // Send as string (YYYY-MM-DD or ISO), backend will parse to DateTime
-      },
+      checkoutRequest,
       {
         headers: {
           "Content-Type": "application/json",

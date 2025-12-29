@@ -72,28 +72,36 @@ namespace OrderProcessing.Application.Services
             if (order == null)
                 throw new NotFoundException("AdminOrder", "OrderId", orderId.ToString());
 
-            // Parse status string to OrderStatus enum
-            if (!Enum.TryParse<OrderStatus>(status, ignoreCase: true, out var orderStatus))
-                throw new ArgumentException($"Invalid order status: {status}");
-
-            // If status is being changed to Confirmed, add stock to books and set confirmed by
+            // Use entity for status validation and transitions
             if (status.Equals("Confirmed", StringComparison.OrdinalIgnoreCase) && order.Status != OrderStatus.Confirmed)
             {
-                if (string.IsNullOrEmpty(adminUsername))
-                    throw new ArgumentException("Admin username is required when confirming an order");
-
+                try
+                {
+                    order.ConfirmBy(adminUsername!);
+                }
+                catch (ArgumentException ex)
+                {
+                    throw new BusinessRuleViolationException(ex.Message);
+                }
                 var orderItems = await _adminOrderRepository.GetOrderItemsAsync(orderId);
                 foreach (var item in orderItems)
                 {
                     await _bookRepository.UpdateBookQuantityAsync(item.ISBN, item.Quantity);
                 }
-
-                // Update status and confirmed by
-                await _adminOrderRepository.UpdateStatusAndConfirmedByAsync(orderId, orderStatus.ToString(), adminUsername);
+                await _adminOrderRepository.UpdateStatusAndConfirmedByAsync(orderId, OrderStatus.Confirmed.ToString(), adminUsername!);
             }
             else
             {
-                // For other status changes, just update the status
+                if (!Enum.TryParse<OrderStatus>(status, ignoreCase: true, out var orderStatus))
+                    throw new BusinessRuleViolationException($"Invalid order status: {status}");
+                try
+                {
+                    order.ChangeStatus(orderStatus);
+                }
+                catch (ArgumentException ex)
+                {
+                    throw new BusinessRuleViolationException(ex.Message);
+                }
                 await _adminOrderRepository.UpdateStatusAsync(orderId, orderStatus.ToString());
             }
         }

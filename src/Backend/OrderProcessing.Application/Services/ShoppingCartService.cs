@@ -3,7 +3,6 @@ using OrderProcessing.Application.Interfaces;
 using OrderProcessing.Application.Mappings;
 using OrderProcessing.Application.Exceptions;
 using OrderProcessing.Domain.Interfaces.Repositories;
-using OrderProcessing.Domain.Models;
 using OrderProcessing.Domain.Entities;
 using OrderProcessing.Domain.ValueObjects;
 
@@ -33,10 +32,10 @@ public class ShoppingCartService : IShoppingCartService
 
     public async Task<ShoppingCartDetailsDto> GetCartDetailsAsync(string username)
     {
-        var cart = await _shoppingCartRepository.GetCartByUsernameAsync(username);
-        
-        if (cart == null)
-            return new ShoppingCartDetailsDto(0, username, new List<CartItemDetailsDto>(), 0);
+        Console.WriteLine($"SERVICE: GetCartDetailsAsync called for user: {username}");
+        // Get or create cart for user (ensures exactly one cart per user)
+        var cart = await _shoppingCartRepository.GetOrCreateCartAsync(username);
+        Console.WriteLine($"SERVICE: Got cart with {cart.CartItems.Count} items");
         
         // Get all ISBNs at once to avoid N+1 queries
         var isbns = cart.CartItems.Select(i => i.ISBN).ToList();
@@ -54,11 +53,13 @@ public class ShoppingCartService : IShoppingCartService
             }
         }
 
-        var itemsDto = cart.CartItems.Select(item =>
-        {
-            var (title, authors, stock) = books.GetValueOrDefault(item.ISBN, (string.Empty, new List<string>(), 0));
-            return item.ToCartItemDetailsDto(title, authors, stock);
-        }).ToList();
+        var itemsDto = cart.CartItems
+            .OrderBy(item => item.ISBN) // Maintain consistent ordering
+            .Select(item =>
+            {
+                var (title, authors, stock) = books.GetValueOrDefault(item.ISBN, (string.Empty, new List<string>(), 0));
+                return item.ToCartItemDetailsDto(title, authors, stock);
+            }).ToList();
         
         return cart.ToShoppingCartDetailsDto(itemsDto);
     }
@@ -66,7 +67,7 @@ public class ShoppingCartService : IShoppingCartService
     public async Task AddItemToCartAsync(string username, string isbn)
     {
         int quantity = 1; // Always add 1 item
-        
+
         if (quantity <= 0)
             throw new BusinessRuleViolationException("Quantity must be greater than 0");
 
@@ -79,14 +80,8 @@ public class ShoppingCartService : IShoppingCartService
         if (book.Quantity <= 0)
             throw new BusinessRuleViolationException($"Book {book.Title} is currently out of stock");
 
-        var cart = await _shoppingCartRepository.GetCartByUsernameAsync(username);
-
-        // Create cart if it doesn't exist
-        if (cart == null)
-        {
-            var newCartId = await _shoppingCartRepository.CreateCartAsync(username);
-            cart = new ShoppingCartReadModel(newCartId, username, new List<CartItemReadModel>());
-        }
+        // Get or create cart for user (ensures exactly one cart per user)
+        var cart = await _shoppingCartRepository.GetOrCreateCartAsync(username);
 
         // Check if item already exists in cart and validate total quantity
         var existingItem = cart.CartItems.FirstOrDefault(i => i.ISBN == isbn);
@@ -95,12 +90,16 @@ public class ShoppingCartService : IShoppingCartService
         if (newTotalQuantity > book.Quantity)
             throw new BusinessRuleViolationException($"Cannot add more items. Available stock: {book.Quantity}, Requested total: {newTotalQuantity}");
 
-        var cartItem = new CartItemReadModel(
-            isbn,
-            quantity,
-            book.SellingPrice
-        );
-        await _shoppingCartRepository.AddCartItemAsync(cart.CartId, cartItem);
+        var cartItem = new CartItem(0, isbn, quantity, book.SellingPrice);
+
+        try
+        {
+            await _shoppingCartRepository.AddCartItemAsync(cart.CartId, cartItem);
+        }
+        catch (Exception ex)
+        {
+            throw new BusinessRuleViolationException($"Failed to add item to cart: {ex.Message}");
+        }
     }
 
     public async Task UpdateCartItemAsync(string username, string isbn, int quantity)
@@ -122,11 +121,12 @@ public class ShoppingCartService : IShoppingCartService
         if (quantity > book.Quantity)
             throw new BusinessRuleViolationException($"Cannot update quantity. Available stock: {book.Quantity}, Requested: {quantity}");
 
-        var cartItem = new CartItemReadModel(
-            isbn,
-            quantity,
-            -1
-        );
+        // Find existing cart item to get current unit price
+        var existingItem = cart.CartItems.FirstOrDefault(i => i.ISBN == isbn);
+        if (existingItem == null)
+            throw new NotFoundException("Cart item", "ISBN", isbn);
+
+        var cartItem = new CartItem(0, isbn, quantity, existingItem.UnitPrice);
         var affected = await _shoppingCartRepository.UpdateCartItemAsync(cart.CartId, cartItem);
         if (affected == 0)
         {
@@ -155,49 +155,89 @@ public class ShoppingCartService : IShoppingCartService
 
     public async Task<int> CheckoutAsync(string username, CheckoutDto checkoutDto)
     {
+
+        // Determine payment method
+        bool useSaved = checkoutDto.SavedCardNumber.HasValue;
+        bool useNew = checkoutDto.NewCardNumber.HasValue || !string.IsNullOrWhiteSpace(checkoutDto.NewCardExpiryDate) || !string.IsNullOrWhiteSpace(checkoutDto.CardholderName);
+
+        if (!useSaved && !useNew)
+            throw new BusinessRuleViolationException("You must select a saved card or enter new card details.");
+        if (useSaved && useNew)
+            throw new BusinessRuleViolationException("Cannot use both saved card and new card. Choose one payment method.");
+
+        // Validate cardholder name for new card
+        if (useNew && string.IsNullOrWhiteSpace(checkoutDto.CardholderName))
+            throw new BusinessRuleViolationException("Cardholder name is required for new card.");
+
         var cart = await _shoppingCartRepository.GetCartByUsernameAsync(username);
-        if (cart == null || cart.CartItems.Count == 0) 
+        if (cart == null || cart.CartItems.Count == 0)
             throw new BusinessRuleViolationException("Cannot checkout an empty cart");
 
-        // Get shipping address from checkout DTO or user profile
-        string shippingAddress = checkoutDto.ShippingAddress ?? "";
+        // Get shipping address
+        string? shippingAddress = checkoutDto.ShippingAddress;
         if (string.IsNullOrWhiteSpace(shippingAddress))
         {
             var user = await _userRepository.GetByUserNameAsync(username);
             if (user == null)
                 throw new NotFoundException("User", "username", username);
-            
-            shippingAddress = user.Address ?? "";
-            if (string.IsNullOrWhiteSpace(shippingAddress))
-                throw new BusinessRuleViolationException("Shipping address is required. Please provide a shipping address or update your profile.");
+            shippingAddress = user.Address;
         }
+        if (string.IsNullOrWhiteSpace(shippingAddress))
+            throw new BusinessRuleViolationException("Shipping address is required. Please update your profile with a shipping address.");
 
-        // Parse expiry date from string (accepts YYYY-MM-DD or ISO format)
-        if (string.IsNullOrWhiteSpace(checkoutDto.ExpiryDate))
-            throw new BusinessRuleViolationException("Expiry date is required.");
-
+        // Get card details
+        long cardNumber;
         DateTime expiryDateTime;
-        if (!DateTime.TryParse(checkoutDto.ExpiryDate, out expiryDateTime))
+        if (useSaved)
         {
-            // If direct parsing fails, try to extract date from ISO string format
-            if (checkoutDto.ExpiryDate.Contains('T'))
+            var userCards = await _creditCardRepository.GetUserCardsAsync(username);
+            var savedCard = userCards.FirstOrDefault(c => c.CardNumber == checkoutDto.SavedCardNumber);
+            if (savedCard == null)
+                throw new BusinessRuleViolationException("Saved card not found or does not belong to this user.");
+            cardNumber = savedCard.CardNumber;
+            expiryDateTime = savedCard.ExpiryDate.ToDateTime(TimeOnly.MinValue);
+        }
+        else // useNew
+        {
+            if (!checkoutDto.NewCardNumber.HasValue)
+                throw new BusinessRuleViolationException("New card number is required.");
+            cardNumber = checkoutDto.NewCardNumber.Value;
+            if (string.IsNullOrWhiteSpace(checkoutDto.NewCardExpiryDate))
+                throw new BusinessRuleViolationException("New card expiry date is required.");
+            if (!DateTime.TryParse(checkoutDto.NewCardExpiryDate, out expiryDateTime))
             {
-                // Extract just the date part from ISO format (YYYY-MM-DDTHH:mm:ss...)
-                var datePart = checkoutDto.ExpiryDate.Split('T')[0];
-                if (!DateTime.TryParse(datePart, out expiryDateTime))
+                if (checkoutDto.NewCardExpiryDate.Contains('T'))
                 {
-                    throw new BusinessRuleViolationException($"Invalid expiry date format: {checkoutDto.ExpiryDate}. Expected YYYY-MM-DD format.");
+                    var datePart = checkoutDto.NewCardExpiryDate.Split('T')[0];
+                    if (!DateTime.TryParse(datePart, out expiryDateTime))
+                        throw new BusinessRuleViolationException($"Invalid expiry date format: {checkoutDto.NewCardExpiryDate}. Expected YYYY-MM-DD format.");
                 }
-            }
-            else
-            {
-                throw new BusinessRuleViolationException($"Invalid expiry date format: {checkoutDto.ExpiryDate}. Expected YYYY-MM-DD format.");
+                else
+                {
+                    throw new BusinessRuleViolationException($"Invalid expiry date format: {checkoutDto.NewCardExpiryDate}. Expected YYYY-MM-DD format.");
+                }
             }
         }
 
         // Validate credit card
-        var isValidCard = await _creditCardRepository.ValidateCreditCardAsync(checkoutDto.CardNumber, expiryDateTime);
-        if (!isValidCard) throw new BusinessRuleViolationException("Invalid credit card information");
+        if (useSaved)
+        {
+            // For saved cards, validate they exist in database and are not expired
+            var isValidCard = await _creditCardRepository.ValidateCreditCardAsync(cardNumber, expiryDateTime);
+            if (!isValidCard) throw new BusinessRuleViolationException("Saved card is invalid or expired");
+        }
+        else
+        {
+            // For new cards, do basic validation (not expired, reasonable card number)
+            var now = DateTime.Now;
+            if (expiryDateTime <= now)
+                throw new BusinessRuleViolationException("Card expiry date must be in the future");
+
+            // Basic card number validation (should be 13-19 digits)
+            var cardNumberStr = cardNumber.ToString();
+            if (cardNumberStr.Length < 13 || cardNumberStr.Length > 19)
+                throw new BusinessRuleViolationException("Invalid card number format");
+        }
 
         // Validate stock availability before checkout (batch query)
         var cartISBNs = cart.CartItems.Select(item => item.ISBN).ToList();
@@ -215,13 +255,21 @@ public class ShoppingCartService : IShoppingCartService
         decimal totalPrice = cart.CartItems.Sum(item => item.Quantity * item.UnitPrice);
 
         // Create order items from cart items
-        var orderItems = cart.CartItems.Select(item => 
-            new CustomerOrderItem(item.ISBN, 0, item.Quantity, item.UnitPrice)
+        var orderItems = cart.CartItems.Select(item =>
+            new CustomerOrderItem { ISBN = item.ISBN, OrderNum = 0, Quantity = item.Quantity, UnitPrice = item.UnitPrice }
         ).ToList();
 
         // Create customer order with items and shipping address snapshot
         var orderId = await _orderRepository.AddAsync(
-            new CustomerOrder(0, totalPrice, OrderStatus.Confirmed, DateOnly.FromDateTime(DateTime.Now), username, shippingAddress),
+            new CustomerOrder
+            {
+                OrderNumber = 0,
+                TotalPrice = totalPrice,
+                Status = OrderStatus.Confirmed,
+                OrderDate = DateOnly.FromDateTime(DateTime.Now),
+                Username = username,
+                ShippingAddress = shippingAddress
+            },
             orderItems
         );
 
@@ -236,5 +284,21 @@ public class ShoppingCartService : IShoppingCartService
         await _shoppingCartRepository.ClearCartAsync(cart.CartId);
 
         return orderId;
+    }
+
+    public async Task CreateCartForUserAsync(string username)
+    {
+        // Check if user already has a cart
+        var existingCart = await _shoppingCartRepository.GetCartByUsernameAsync(username);
+        if (existingCart == null)
+        {
+            // Create new cart for user
+            await _shoppingCartRepository.CreateCartAsync(username);
+        }
+    }
+
+    public async Task<int> GetCartItemCountAsync(string username)
+    {
+        return await _shoppingCartRepository.GetCartItemCountAsync(username);
     }
 }

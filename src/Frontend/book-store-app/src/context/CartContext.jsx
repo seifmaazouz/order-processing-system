@@ -1,6 +1,6 @@
-import React, { createContext, useContext, useEffect, useMemo, useState, useCallback } from 'react';
+import React, { createContext, useContext, useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
-import { addCart, getCartItems, updateCartQuantity } from '../api/addCart.js';
+import { addCart, getCartItems, updateCartQuantity, getCartItemCount } from '../api/addCart.js';
 import axios from 'axios';
 import API_BASE_URL from '../config/api.config.js';
 
@@ -11,20 +11,45 @@ export function CartProvider({ children }) {
   const [items, setItems] = useState([]);
   const [error, setError] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [cartCount, setCartCount] = useState(0);
   const location = useLocation();
+  const prevPathnameRef = useRef();
+
+  // Load cart data (items and count) for navigation badge and persistence
+  const loadCartData = useCallback(async () => {
+    const token = localStorage.getItem('access');
+    if (!token) {
+      console.log('CartContext: No auth token available, clearing cart data');
+      setCartCount(0);
+      setItems([]); // Clear items when logged out
+      return;
+    }
+
+    // Always load cart items for better UX and to derive count
+    console.log('CartContext: Loading cart data for better UX and badge...');
+    await loadCart();
+  }, [location.pathname]);
 
   // Reusable function to load cart items from backend
   const loadCart = useCallback(async () => {
     const token = localStorage.getItem('access');
     if (!token) {
-      console.log('No auth token, skipping cart load');
+      console.log('CartContext: No auth token available, skipping cart items load');
+      setItems([]);
+      return;
+    }
+
+    // Prevent multiple simultaneous calls
+    if (isLoading) {
+      console.log('CartContext: Already loading cart items, skipping duplicate call');
       return;
     }
 
     try {
-      console.log('Loading cart items from backend...');
+      console.log('CartContext: Loading cart items from backend...');
+      setIsLoading(true);
       const cartData = await getCartItems();
-      console.log('Raw cart data from backend:', cartData);
+      console.log('CartContext: Raw cart data received from backend:', cartData);
       
       // Handle different response formats
       // Backend returns: { CartId, Username, Items: [{ ISBN, Title, Authors, Quantity, UnitPrice, TotalPrice }], TotalPrice }
@@ -41,7 +66,7 @@ export function CartProvider({ children }) {
       
       // If no items found, ensure we have an empty array
       if (!itemsArray || itemsArray.length === 0) {
-        console.log('Cart is empty or no items found');
+        console.log('CartContext: Cart is empty or no items found in response');
         setItems([]);
         return;
       }
@@ -61,28 +86,28 @@ export function CartProvider({ children }) {
       }));
       
       setItems(formattedItems);
-      console.log('Cart items loaded and formatted:', formattedItems);
+      setCartCount(formattedItems.length); // Derive count from loaded items
+      console.log(`CartContext: Cart items loaded and formatted (${formattedItems.length} items):`, formattedItems);
     } catch (err) {
-      console.error('Failed to load cart items:', err);
-      console.error('Error details:', err.response?.data);
+      console.error('CartContext: Failed to load cart items:', err);
+      console.error('CartContext: Error details:', err.response?.data);
+      setItems([]); // Clear items on error
+      setCartCount(0); // Reset count on error
       // Don't set error state here to avoid showing error on initial load
+    } finally {
+      setIsLoading(false);
     }
   }, []);
 
-  // Load cart items on mount
+  // Load cart data on mount and route changes (for navigation badge and persistence)
   useEffect(() => {
-    console.log('CartProvider mounted, loading cart...');
-    loadCart();
-  }, [loadCart]);
-
-  // Reload cart when navigating to a new route (ensures cart is fresh)
-  useEffect(() => {
-    const token = localStorage.getItem('access');
-    if (token) {
-      console.log('Route changed, reloading cart...', location.pathname);
-      loadCart();
+    // Only load cart data if pathname actually changed (prevents duplicate calls)
+    if (prevPathnameRef.current !== location.pathname) {
+      console.log(`CartContext: Route changed to ${location.pathname}, refreshing cart data for navigation badge`);
+      loadCartData();
+      prevPathnameRef.current = location.pathname;
     }
-  }, [location.pathname, loadCart]);
+  }, [location.pathname]); // loadCartData includes location.pathname in deps
 
   const addToCart = useCallback(async (book) => {
     if (!book) {
@@ -117,10 +142,10 @@ export function CartProvider({ children }) {
         return false;
       }
       
-      console.log('CartContext: Adding book to cart with ISBN:', isbnStr);
+      console.log(`CartContext: Adding book to cart (ISBN: ${isbnStr})`);
       await addCart({ isbn: isbnStr });
-      
-      // Reload cart from backend to ensure sync
+
+      // Reload cart data to update count and items
       await loadCart();
 
       setIsLoading(false);
@@ -138,25 +163,30 @@ export function CartProvider({ children }) {
 
   const removeFromCart = useCallback(async (id) => {
     try {
+      console.log(`CartContext: Removing item ${id} from cart`);
       const { removeCartItem } = await import('../api/addCart.js');
       await removeCartItem(id);
-      // Reload cart from backend to ensure sync
+
+      // Reload cart data to reflect the removal
+      console.log('CartContext: Reloading cart data after item removal');
       await loadCart();
     } catch (error) {
-      console.error('Failed to remove item:', error);
+      console.error('CartContext: Failed to remove item:', error);
       setError(error?.message || 'Failed to remove item');
     }
   }, [loadCart]);
 
   const updateQuantity = useCallback(async (id, quantity) => {
     try {
+      console.log(`CartContext: Updating item ${id} quantity to ${quantity}`);
       // Call API to update quantity on backend
       await updateCartQuantity(id, quantity);
-      
-      // Reload cart from backend to ensure sync
+
+      // Reload cart data to reflect the quantity change
+      console.log('CartContext: Reloading cart data after quantity update');
       await loadCart();
     } catch (error) {
-      console.error('Failed to update quantity:', error);
+      console.error('CartContext: Failed to update quantity:', error);
       setError(error?.message || 'Failed to update quantity');
     }
   }, [loadCart]);
@@ -177,6 +207,7 @@ export function CartProvider({ children }) {
       }
     }
     setItems([]);
+    setCartCount(0);
   }, []);
 
   const summary = useMemo(() => {
@@ -189,8 +220,8 @@ export function CartProvider({ children }) {
   }, [items]);
 
   const value = useMemo(
-    () => ({ items, addToCart, removeFromCart, updateQuantity, clearCart, loadCart, summary, error, isLoading }),
-    [items, addToCart, removeFromCart, updateQuantity, clearCart, loadCart, summary, error, isLoading]
+    () => ({ items, addToCart, removeFromCart, updateQuantity, clearCart, loadCart, summary, error, isLoading, cartCount, loadCartData }),
+    [items, addToCart, removeFromCart, updateQuantity, clearCart, loadCart, summary, error, isLoading, cartCount, loadCartData]
   );
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;

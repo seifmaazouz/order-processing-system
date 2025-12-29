@@ -63,22 +63,28 @@ export async function changePassword(payload, token) {
       'Authorization': `Bearer ${token}`,
     },
   });
-  return res.data; // { ok: true, message }
+  return { ok: true, message: res.data }; // Backend returns success message
 }
 
-export async function addCreditCard(cardNumber, expiryDate, token) {
+export async function addCreditCard(cardholderName, cardNumber, expiryDate, token) {
+  // Validate cardholder name
+  if (!cardholderName || cardholderName.trim().length < 2) {
+    throw new Error('Cardholder name must be at least 2 characters');
+  }
+
   // Validate and parse card number
   const cleanedCardNumber = cardNumber.replace(/\s/g, '');
   if (!cleanedCardNumber || cleanedCardNumber.length < 13 || cleanedCardNumber.length > 19) {
     throw new Error('Card number must be between 13 and 19 digits');
   }
-  
+
   const cardNumberInt = parseInt(cleanedCardNumber, 10);
   if (isNaN(cardNumberInt) || cardNumberInt <= 0) {
     throw new Error('Invalid card number');
   }
-  
+
   const requestBody = {
+    CardholderName: cardholderName.trim(),
     CardNumber: cardNumberInt,
     ExpiryDate: expiryDate
   };

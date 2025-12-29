@@ -33,15 +33,16 @@ public class GlobalExceptionHandlingMiddleware
     {
         var (statusCode, message) = exception switch
         {
+            UnauthorizedAccessException ex => (HttpStatusCode.Unauthorized, ex.Message),
             NotFoundException ex => (HttpStatusCode.NotFound, ex.Message),
             DuplicateResourceException ex => (HttpStatusCode.Conflict, ex.Message),
             BusinessRuleViolationException ex => (HttpStatusCode.BadRequest, ex.Message),
             ArgumentException ex => (HttpStatusCode.BadRequest, ex.Message),
-            InvalidOperationException ex when ex.Message.Contains("libgssapi") || ex.Message.Contains("PostgreSQL native libraries") => 
+            InvalidOperationException ex when ex.Message.Contains("libgssapi") || ex.Message.Contains("PostgreSQL native libraries") =>
                 (HttpStatusCode.InternalServerError, ex.Message),
             InvalidOperationException ex => (HttpStatusCode.BadRequest, ex.Message),
             DataConstraintException ex => (HttpStatusCode.Conflict, ex.Message),
-            DllNotFoundException ex when ex.Message.Contains("libgssapi") => 
+            DllNotFoundException ex when ex.Message.Contains("libgssapi") =>
                 (HttpStatusCode.InternalServerError, "PostgreSQL native libraries are missing. Please install PostgreSQL client libraries."),
             _ => (HttpStatusCode.InternalServerError, "An unexpected error occurred.")
         };

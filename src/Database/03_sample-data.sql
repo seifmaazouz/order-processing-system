@@ -4,8 +4,8 @@ INSERT INTO Publisher (PubName, "Address", PhoneNumber) VALUES
 ('Penguin Books', '80 Strand, London', '1122334455');
 
 INSERT INTO Book (ISBN, Title, PublicationYear, SellingPrice, Quantity, Threshold, Category, PubID) VALUES
-('978-0-123456-01-0','Physics 101',2020,50.00,100,10,'Science',1),
-('978-0-123456-02-7','Art History',2019,70.00,50,5,'Art',2),
+('978-0-123456-01-0','Physics 101',2020,50.00,10,2,'Science',1),
+('978-0-123456-02-7','Art History',2019,70.00,5,5,'Art',2),
 ('978-0-123456-03-4','World Religion',2021,60.00,80,10,'Religion',3),
 ('978-0-123456-04-1','History of Europe',2018,40.00,60,5,'History',2),
 ('978-0-123456-05-8','Geography Basics',2022,55.00,70,10,'Geography',1),
@@ -71,9 +71,9 @@ VALUES
 ('admin2', 'AQAAAAIAAYagAAAAEN0d8QzVjQq7XMGYQH8eLkqO9vHfRvP8qNkMjXlGdKQ2tQK6V5wKQ8VtqQX3Hh8jBw==', 'Admin', 'Two', '101 Maple St', 'admin2@example.com', '4567890123', 'Admin'),
 ('charlie', 'AQAAAAIAAYagAAAAEN0d8QzVjQq7XMGYQH8eLkqO9vHfRvP8qNkMjXlGdKQ2tQK6V5wKQ8VtqQX3Hh8jBw==', 'Charlie', 'Brown', '202 Elm St', 'charlie@example.com', '5678901234', 'Customer');
 
-INSERT INTO CreditCard (CardNumber, ExpiryDate) VALUES
-(4111111111111111, '2027-12-31'),
-(4222222222222222, '2026-06-30');
+INSERT INTO CreditCard (CardNumber, ExpiryDate, CardholderName) VALUES
+(4111111111111111, '2027-12-31', 'Alice Johnson'),
+(4222222222222222, '2026-06-30', 'Bob Smith');
 
 INSERT INTO CardHolder (CardNumber, Username) VALUES
 (4111111111111111, 'alice'),

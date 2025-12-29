@@ -1,4 +1,6 @@
 using Dapper;
+using Microsoft.Extensions.Logging;
+using OrderProcessing.Domain.Entities;
 using OrderProcessing.Domain.Models;
 using OrderProcessing.Domain.Interfaces;
 using OrderProcessing.Domain.Interfaces.Repositories;
@@ -8,59 +10,72 @@ namespace OrderProcessing.Infrastructure.Repositories;
 public class ShoppingCartRepository : IShoppingCartRepository
 {
     private readonly IDbConnectionFactory _connectionFactory;
+    private readonly ILogger<ShoppingCartRepository> _logger;
 
-    public ShoppingCartRepository(IDbConnectionFactory connectionFactory)
+    public ShoppingCartRepository(IDbConnectionFactory connectionFactory, ILogger<ShoppingCartRepository> logger)
     {
         _connectionFactory = connectionFactory;
+        _logger = logger;
     }
 
     public async Task<ShoppingCartReadModel?> GetCartByUsernameAsync(string username)
     {
         using var connection = await _connectionFactory.CreateConnectionAsync();
-        var sql =
-        """
-            SELECT sc.cartid as CartId, sc.custname as CustName, ci.isbn as ISBN, ci.quantity as Quantity, ci.unitprice as UnitPrice
-            FROM shoppingcart sc
-            LEFT JOIN cartitem ci ON sc.cartid = ci.cartid
-            WHERE sc.custname = @Username
+
+        // First get the cart info
+        var cartSql = """
+            SELECT
+                cartid AS CartId,
+                custname AS Username
+            FROM ShoppingCart
+            WHERE custname = @Username
         """;
 
-        var cartItems = new List<CartItemReadModel>();
-        int? cartId = null;
-        string? custNameResult = null;
-
-        var result = await connection.QueryAsync<dynamic>(sql, new { Username = username });
-        foreach (var row in result)
-        {
-            // Handle both PascalCase and camelCase from Dapper
-            cartId ??= row.CartId ?? row.cartid ?? row.CartID;
-            custNameResult ??= row.CustName ?? row.custname;
-            var isbn = row.ISBN ?? row.isbn;
-            var quantity = row.Quantity ?? row.quantity;
-            var unitPrice = row.UnitPrice ?? row.unitprice;
-            
-            if (isbn != null)
-            {
-                cartItems.Add(new CartItemReadModel((string)isbn, (int)quantity, (decimal)unitPrice));
-            }
-        }
-        if (cartId == null || custNameResult == null)
+        var cartInfo = await connection.QueryFirstOrDefaultAsync<(int CartId, string Username)>(cartSql, new { Username = username });
+        if (cartInfo == default || cartInfo.CartId == 0)
             return null;
-        return new ShoppingCartReadModel(cartId.Value, custNameResult, cartItems);
+
+        int cartId = cartInfo.CartId;
+        string userName = cartInfo.Username;
+
+        // Then get the cart items
+        var itemsSql =
+        """
+            SELECT
+                cartid AS CartId,
+                isbn AS ISBN,
+                quantity AS Quantity,
+                unitprice AS UnitPrice
+            FROM CartItem
+            WHERE cartid = @CartId
+        """;
+
+        var cartItems = await connection.QueryAsync<CartItem>(itemsSql, new { CartId = cartId });
+
+        return new ShoppingCartReadModel(cartId, userName, cartItems.ToList());
     }
 
     public async Task<int> CreateCartAsync(string username)
     {
         using var connection = await _connectionFactory.CreateConnectionAsync();
-        var sql =
-        """
-            INSERT INTO shoppingcart (custname)
+
+        // First check if cart already exists (defensive check)
+        var existingCartSql = "SELECT CartId FROM ShoppingCart WHERE custname = @Username";
+        var existingCartId = await connection.QueryFirstOrDefaultAsync<int?>(existingCartSql, new { Username = username });
+        if (existingCartId.HasValue)
+        {
+            return existingCartId.Value;
+        }
+
+        // Create new cart
+        var insertSql =
+        @"INSERT INTO ShoppingCart (custname)
             VALUES (@Username)
-            RETURNING cartid
-        """;
+            RETURNING cartid AS CartId";
+
         try
         {
-            return await connection.QuerySingleAsync<int>(sql, new { Username = username });
+            return await connection.QuerySingleAsync<int>(insertSql, new { Username = username });
         }
         catch (Npgsql.PostgresException ex)
         {
@@ -68,15 +83,30 @@ public class ShoppingCartRepository : IShoppingCartRepository
         }
     }
 
-    public async Task AddCartItemAsync(int cartId, CartItemReadModel cartItem)
+    public async Task<ShoppingCartReadModel> GetOrCreateCartAsync(string username)
+    {
+        // Try to get existing cart first
+        var existingCart = await GetCartByUsernameAsync(username);
+
+        if (existingCart != null)
+        {
+            return existingCart;
+        }
+
+        // If no cart exists, create one
+        var cartId = await CreateCartAsync(username);
+        return new ShoppingCartReadModel(cartId, username, new List<CartItem>());
+    }
+
+    public async Task AddCartItemAsync(int cartId, CartItem cartItem)
     {
         using var connection = await _connectionFactory.CreateConnectionAsync();
         var sql =
         """
-            INSERT INTO cartitem (isbn, cartid, quantity, unitprice)
+            INSERT INTO CartItem (ISBN, CartId, Quantity, UnitPrice)
             VALUES (@ISBN, @CartId, @Quantity, @UnitPrice)
-            ON CONFLICT (isbn, cartid) 
-            DO UPDATE SET quantity = cartitem.quantity + @Quantity
+            ON CONFLICT (ISBN, CartId)
+            DO UPDATE SET Quantity = CartItem.Quantity + @Quantity
         """;
         try
         {
@@ -88,12 +118,12 @@ public class ShoppingCartRepository : IShoppingCartRepository
         }
     }
 
-    public async Task<int> UpdateCartItemAsync(int cartId, CartItemReadModel cartItem)
+    public async Task<int> UpdateCartItemAsync(int cartId, CartItem cartItem)
     {
         using var connection = await _connectionFactory.CreateConnectionAsync();
         var sql =
         """
-            UPDATE cartitem
+            UPDATE CartItem
             SET quantity = @Quantity
             WHERE cartid = @CartId AND isbn = @ISBN
         """;
@@ -113,8 +143,8 @@ public class ShoppingCartRepository : IShoppingCartRepository
         using var connection = await _connectionFactory.CreateConnectionAsync();
         var sql =
         """
-            DELETE FROM cartitem
-            WHERE cartid = @CartId AND isbn = @ISBN
+            DELETE FROM CartItem
+            WHERE CartId = @CartId AND ISBN = @ISBN
         """;
         try
         {
@@ -131,8 +161,8 @@ public class ShoppingCartRepository : IShoppingCartRepository
         using var connection = await _connectionFactory.CreateConnectionAsync();
         var sql =
         """
-            DELETE FROM cartitem
-            WHERE cartid = @CartId
+            DELETE FROM CartItem
+            WHERE CartId = @CartId
         """;
         try
         {
@@ -142,5 +172,18 @@ public class ShoppingCartRepository : IShoppingCartRepository
         {
             throw PostgresExceptionTranslator.Translate(ex);
         }
+    }
+    public async Task<int> GetCartItemCountAsync(string username)
+    {
+        using var connection = await _connectionFactory.CreateConnectionAsync();
+        // Get the cart id for the user
+        var cartIdSql = @"SELECT cartid AS CartId FROM ShoppingCart WHERE custname = @Username";
+        var cartId = await connection.QueryFirstOrDefaultAsync<int?>(cartIdSql, new { Username = username });
+        if (cartId == null)
+            return 0;
+        // Sum the quantities of all items in the cart
+        var countSql = @"SELECT COALESCE(SUM(quantity), 0) FROM CartItem WHERE cartid = @CartId";
+        var count = await connection.QueryFirstAsync<int>(countSql, new { CartId = cartId });
+        return count;
     }
 }
