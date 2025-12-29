@@ -29,5 +29,6 @@ public record BookReplenishmentCountDto
 (
     string ISBN,
     string Title,
-    long TimesOrderedFromPublisher // How many times admin restocked it
+    long TimesOrderedFromPublisher, // How many times admin restocked it
+    long TotalQuantityOrdered // Total quantity ordered from publisher
 );

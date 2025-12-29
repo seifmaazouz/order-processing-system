@@ -37,7 +37,7 @@ namespace OrderProcessing.Application.Services
                     order.OrderDate,
                     order.Status,
                     order.TotalPrice,
-                    order.PublisherId,
+                    order.PubID,
                     order.ConfirmedBy,
                     itemDtos
                 ));
@@ -60,7 +60,7 @@ namespace OrderProcessing.Application.Services
                 order.OrderDate,
                 order.Status,
                 order.TotalPrice,
-                order.PublisherId,
+                order.PubID,
                 order.ConfirmedBy,
                 itemDtos
             );

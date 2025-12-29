@@ -16,71 +16,77 @@ import { CartProvider } from "./context/CartContext.jsx";
 function App() {
   return (
     <BrowserRouter>
-      <CartProvider>
-        <Routes>
-          {/* Root goes to login */}
-          <Route path="/" element={<Navigate to="/login" replace />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route
-            path="/dashboard"
-            element={
+      <Routes>
+        {/* Root goes to login */}
+        <Route path="/" element={<Navigate to="/login" replace />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route
+          path="/dashboard"
+          element={
+            <CartProvider>
               <PrivateAuth requiredRole="Customer">
                 <Dashboard />
               </PrivateAuth>
-            }
-          />
-          <Route
-            path="/admin"
-            element={
-              <PrivateAuth requiredRole="Admin">
-                <Admin />
-              </PrivateAuth>
-            }
-          />
-          <Route
-            path="/admin/analytics"
-            element={
-              <PrivateAuth requiredRole="Admin">
-                <Analytics />
-              </PrivateAuth>
-            }
-          />
-          <Route
-            path="/admin/orders"
-            element={
-              <PrivateAuth requiredRole="Admin">
-                <AdminOrders />
-              </PrivateAuth>
-            }
-          />
-          <Route
-            path="/account"
-            element={
+            </CartProvider>
+          }
+        />
+        <Route
+          path="/admin"
+          element={
+            <PrivateAuth requiredRole="Admin">
+              <Admin />
+            </PrivateAuth>
+          }
+        />
+        <Route
+          path="/admin/analytics"
+          element={
+            <PrivateAuth requiredRole="Admin">
+              <Analytics />
+            </PrivateAuth>
+          }
+        />
+        <Route
+          path="/admin/orders"
+          element={
+            <PrivateAuth requiredRole="Admin">
+              <AdminOrders />
+            </PrivateAuth>
+          }
+        />
+        <Route
+          path="/account"
+          element={
+            <CartProvider>
               <PrivateAuth requiredRole="Customer">
                 <Account />
               </PrivateAuth>
-            }
-          />
-          <Route
-            path="/orders"
-            element={
+            </CartProvider>
+          }
+        />
+        <Route
+          path="/orders"
+          element={
+            <CartProvider>
               <PrivateAuth requiredRole="Customer">
                 <Orders />
               </PrivateAuth>
-            }
-          />
-          <Route
-            path="/cart"
-            element={
+            </CartProvider>
+          }
+        />
+        <Route
+          path="/cart"
+          element={
+            <CartProvider>
               <PrivateAuth requiredRole="Customer">
                 <Cart />
               </PrivateAuth>
-            }
-          />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </CartProvider>
+            </CartProvider>
+          }
+        />
+        <Route path="*" element={<NotFound />} />
+      </Routes>
     </BrowserRouter>
   );
 }

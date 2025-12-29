@@ -4,8 +4,8 @@ using Microsoft.AspNetCore.Mvc;
 using OrderProcessing.Api.Models;
 using OrderProcessing.Application.DTOs.Order;
 using OrderProcessing.Application.DTOs.Requests;
-using OrderProcessing.Application.DTOs.Responses;
 using OrderProcessing.Application.Interfaces;
+using OrderProcessing.Application.Security;
 
 namespace OrderProcessing.Api.Controllers
 {
@@ -15,10 +15,12 @@ namespace OrderProcessing.Api.Controllers
     public class AdminOrderController : ControllerBase
     {
         private readonly IAdminOrderService _adminOrderService;
+        private readonly IJwtService _jwtService;
 
-        public AdminOrderController(IAdminOrderService adminOrderService)
+        public AdminOrderController(IAdminOrderService adminOrderService, IJwtService jwtService)
         {
             _adminOrderService = adminOrderService;
+            _jwtService = jwtService;
         }
 
 
@@ -40,13 +42,25 @@ namespace OrderProcessing.Api.Controllers
         }
 
         [HttpPut("{orderId}/status")]
-        public async Task<Results<NoContent, NotFound<ErrorResponse>, BadRequest<ErrorResponse>>> UpdateOrderStatus(int orderId, [FromBody] UpdateOrderStatusRequest request)
+        public async Task<Results<NoContent, NotFound<ErrorResponse>, BadRequest<ErrorResponse>, ForbidHttpResult>> UpdateOrderStatus(int orderId, [FromBody] UpdateOrderStatusRequest request)
         {
-            var username = User.Identity?.Name
-                ?? throw new UnauthorizedAccessException("User not authenticated");
-
+            var token = GetBearerToken();
+            var username = _jwtService.GetUsernameFromToken(token);
             await _adminOrderService.UpdateOrderStatusAsync(orderId, request.Status, username);
             return TypedResults.NoContent();
+        }
+
+        // Helper: Extract Bearer token from header
+        private string GetBearerToken()
+        {
+            if (!Request.Headers.TryGetValue("Authorization", out var authHeader))
+                throw new UnauthorizedAccessException("Authorization header missing");
+
+            var token = authHeader.ToString().Replace("Bearer ", "").Trim();
+            if (string.IsNullOrWhiteSpace(token))
+                throw new UnauthorizedAccessException("Bearer token missing");
+
+            return token;
         }
     }
 }

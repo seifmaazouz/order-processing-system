@@ -19,24 +19,24 @@ public class ReportRepository : IReportRepository
         using var connection = await _connectionFactory.CreateConnectionAsync();
 
         // Previous month: from the first day of last month to the last day of last month
-        var salesSql = 
-        """
-            SELECT OrderID, OrderDate, TotalPrice
-            FROM customerorder 
-            WHERE "Status" = 'Confirmed' 
-              AND OrderDate >= DATE_TRUNC('month', CURRENT_DATE - INTERVAL '1 month')
-              AND OrderDate < DATE_TRUNC('month', CURRENT_DATE)
-        """;
+                var salesSql = 
+                """
+                        SELECT OrderID, OrderDate, TotalPrice
+                        FROM customerorder 
+                        WHERE "Status" = 'Confirmed'::order_status_enum 
+                            AND OrderDate >= DATE_TRUNC('month', CURRENT_DATE - INTERVAL '1 month')
+                            AND OrderDate < DATE_TRUNC('month', CURRENT_DATE)
+                """;
 
-        // this select returns the total revenue from all the sales
-        var totalPriceSql =
-        """
-            SELECT SUM(TotalPrice) AS totalPrice
-            FROM customerorder
-            WHERE "Status" = 'Confirmed' 
-              AND OrderDate >= DATE_TRUNC('month', CURRENT_DATE - INTERVAL '1 month')
-              AND OrderDate < DATE_TRUNC('month', CURRENT_DATE)
-        """;
+                // this select returns the total revenue from all the sales
+                var totalPriceSql =
+                """
+                        SELECT SUM(TotalPrice) AS totalPrice
+                        FROM customerorder
+                        WHERE "Status" = 'Confirmed'::order_status_enum 
+                            AND OrderDate >= DATE_TRUNC('month', CURRENT_DATE - INTERVAL '1 month')
+                            AND OrderDate < DATE_TRUNC('month', CURRENT_DATE)
+                """;
 
         var sales = await connection.QueryAsync(salesSql);
         var totalPrice = await connection.QuerySingleAsync<decimal?>(totalPriceSql) ?? 0;
@@ -54,22 +54,22 @@ public class ReportRepository : IReportRepository
         using var connection = await _connectionFactory.CreateConnectionAsync();
 
         // admin that inserts the date inserts it here
-        var salesSql = 
-        """
-            SELECT OrderID, OrderDate, TotalPrice
-            FROM customerorder
-            WHERE "Status" = 'Confirmed'
-              AND OrderDate = @Date
-        """;
+                var salesSql = 
+                """
+                        SELECT OrderID, OrderDate, TotalPrice
+                        FROM customerorder
+                        WHERE "Status" = 'Confirmed'::order_status_enum
+                            AND OrderDate = @Date
+                """;
 
-        // this select returns the total revenue from all the sales on that day
-        var totalPriceSql =
-        """
-            SELECT SUM(TotalPrice) AS totalPrice
-            FROM customerorder
-            WHERE "Status" = 'Confirmed'
-              AND OrderDate = @Date
-        """;
+                // this select returns the total revenue from all the sales on that day
+                var totalPriceSql =
+                """
+                        SELECT SUM(TotalPrice) AS totalPrice
+                        FROM customerorder
+                        WHERE "Status" = 'Confirmed'::order_status_enum
+                            AND OrderDate = @Date
+                """;
 
         var sales = await connection.QueryAsync(salesSql, new { Date = date.ToDateTime(TimeOnly.MinValue) });
         var totalPrice = await connection.QuerySingleAsync<decimal?>(totalPriceSql, new { Date = date.ToDateTime(TimeOnly.MinValue) }) ?? 0;
@@ -93,7 +93,7 @@ public class ReportRepository : IReportRepository
                     u.Email AS Email
                 FROM customerorder co
                 JOIN "User" u ON co.CustName = u.Username
-                WHERE co."Status" = 'Confirmed'
+                WHERE co."Status" = 'Confirmed'::order_status_enum
                     AND co.OrderDate >= CURRENT_DATE - INTERVAL '3 months'
                     AND co.OrderDate <= CURRENT_DATE
                 GROUP BY co.CustName, u.Email
@@ -112,7 +112,7 @@ public class ReportRepository : IReportRepository
             FROM customerorderItem AS oi
             JOIN Book AS b ON b.ISBN = oi.ISBN
             JOIN CustomerOrder AS o ON o.OrderID = oi.OrderNum
-            WHERE o."Status" = 'Confirmed' 
+            WHERE o."Status" = 'Confirmed'::order_status_enum 
                 AND o.OrderDate >= CURRENT_DATE - INTERVAL '3 months' 
                 AND o.OrderDate <= CURRENT_DATE
             GROUP BY b.ISBN, b.Title
@@ -130,8 +130,9 @@ public class ReportRepository : IReportRepository
             SELECT 
                 b.ISBN,
                 b.Title,
-                COALESCE(SUM(aoi.Quantity), 0) AS TimesOrderedFromPublisher
-                FROM book b
+                COUNT(DISTINCT aoi.OrderNum) AS TimesOrderedFromPublisher,
+                COALESCE(SUM(aoi.Quantity), 0) AS TotalQuantityOrdered
+            FROM book b
             LEFT JOIN AdminOrderItem aoi ON b.ISBN = aoi.ISBN
             WHERE b.ISBN = @Isbn
             GROUP BY b.ISBN, b.Title
