@@ -158,8 +158,9 @@ namespace OrderProcessing.Infrastructure.Repositories
                 // Convert DateTime to DateOnly for comparison (extract just the date part)
                 var expiryDateOnly = DateOnly.FromDateTime(expiryDate.Date);
                 
-                const string sql = """
-                    SELECT COUNT(1)
+                const string sql = 
+                """
+                    SELECT 1
                     FROM creditcard
                     WHERE cardnumber = @CardNumber
                     AND expirydate >= @ExpiryDate

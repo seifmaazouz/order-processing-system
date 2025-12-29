@@ -86,7 +86,8 @@ export function CartProvider({ children }) {
       }));
       
       setItems(formattedItems);
-      setCartCount(formattedItems.length); // Derive count from loaded items
+      // Set cartCount to total quantity, not just unique items
+      setCartCount(formattedItems.reduce((sum, item) => sum + (item.quantity || 0), 0));
       console.log(`CartContext: Cart items loaded and formatted (${formattedItems.length} items):`, formattedItems);
     } catch (err) {
       console.error('CartContext: Failed to load cart items:', err);

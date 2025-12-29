@@ -93,7 +93,14 @@ export default function ResultsGrid({ results, lastQueryLabel, onStockUpdate }) 
       </h3>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {results.map((book, idx) => {
-          const status = getStockStatus(book);
+          // Smarter check: treat isAvailable === false as out of stock
+          let stock = book.Stock ?? book.stock ?? book.Quantity ?? book.quantity ?? book.stockLevel ?? 10;
+          let available = book.isAvailable !== undefined ? !!book.isAvailable : true;
+          let status;
+          if (!available || stock === 0) status = { label: 'Out of Stock', color: 'bg-gray-100 text-gray-600', textColor: 'text-gray-500', unavailable: true };
+          else if (stock <= 2) status = { label: `Only ${stock} left`, color: 'bg-red-200 text-red-600', textColor: 'text-red-500', unavailable: false };
+          else if (stock <= 5) status = { label: `Only ${stock} left`, color: 'bg-orange-100 text-orange-600', textColor: 'text-orange-500', unavailable: false };
+          else status = { label: 'In Stock', color: 'bg-green-100 text-green-600', textColor: 'text-green-500', unavailable: false };
 
           return (
             <BookCard
@@ -125,7 +132,7 @@ export default function ResultsGrid({ results, lastQueryLabel, onStockUpdate }) 
             {/* Modal Card */}
             <motion.div
               key={selectedIndex}
-              className="relative z-10 w-full max-w-3xl bg-white dark:bg-surface-dark border-2 border-primary rounded-2xl shadow-2xl p-8"
+              className="relative z-10 w-full max-w-3xl bg-white dark:bg-surface-dark border-2 border-primary rounded-2xl shadow-2xl p-8 pointer-events-auto"
               initial={{ opacity: 0, scale: 0.96, y: 16 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.96, y: 16 }}
@@ -170,12 +177,24 @@ export default function ResultsGrid({ results, lastQueryLabel, onStockUpdate }) 
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -30 }}
                 transition={{ duration: 0.2, ease: 'easeInOut' }}
+                className="pointer-events-auto"
               >
                 {/* Status Badge */}
                 <div className="flex justify-start mb-4">
-                  <span className={`inline-flex text-sm font-semibold px-4 py-1.5 rounded-full ${getStockStatus(selectedBook).color}`}>
-                    • {getStockStatus(selectedBook).label}
-                  </span>
+                  {(() => {
+                    let stock = selectedBook.Stock ?? selectedBook.stock ?? selectedBook.Quantity ?? selectedBook.quantity ?? selectedBook.stockLevel ?? 10;
+                    let available = selectedBook.isAvailable !== undefined ? !!selectedBook.isAvailable : true;
+                    let status;
+                    if (!available || stock === 0) status = { label: 'Out of Stock', color: 'bg-gray-100 text-gray-600', textColor: 'text-gray-500', unavailable: true };
+                    else if (stock <= 2) status = { label: `Only ${stock} left`, color: 'bg-red-200 text-red-600', textColor: 'text-red-500', unavailable: false };
+                    else if (stock <= 5) status = { label: `Only ${stock} left`, color: 'bg-orange-100 text-orange-600', textColor: 'text-orange-500', unavailable: false };
+                    else status = { label: 'In Stock', color: 'bg-green-100 text-green-600', textColor: 'text-green-500', unavailable: false };
+                    return (
+                      <span className={`inline-flex text-sm font-semibold px-4 py-1.5 rounded-full ${status.color}`}>
+                        • {status.label}
+                      </span>
+                    );
+                  })()}
                 </div>
 
                 {/* Header */}
@@ -248,7 +267,7 @@ export default function ResultsGrid({ results, lastQueryLabel, onStockUpdate }) 
                       : (selectedBook.Stock || selectedBook.stock || 0) === 0 || isBookLoading(selectedBook)
                       ? 'bg-gray-400 cursor-not-allowed'
                       : 'bg-orange-500 hover:bg-orange-600'
-                  }`}
+                  } pointer-events-auto`}
                 >
                   <FontAwesomeIcon icon={faShoppingCart} className="text-sm" />
                   {isInCart(selectedBook)

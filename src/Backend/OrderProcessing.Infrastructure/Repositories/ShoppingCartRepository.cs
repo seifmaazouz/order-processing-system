@@ -25,10 +25,10 @@ public class ShoppingCartRepository : IShoppingCartRepository
         // First get the cart info
         var cartSql = """
             SELECT
-                cartid AS CartId,
-                custname AS Username
+                CartId,
+                CustName AS Username
             FROM ShoppingCart
-            WHERE custname = @Username
+            WHERE CustName = @Username
         """;
 
         var cartInfo = await connection.QueryFirstOrDefaultAsync<(int CartId, string Username)>(cartSql, new { Username = username });
@@ -42,12 +42,12 @@ public class ShoppingCartRepository : IShoppingCartRepository
         var itemsSql =
         """
             SELECT
-                cartid AS CartId,
-                isbn AS ISBN,
-                quantity AS Quantity,
-                unitprice AS UnitPrice
+                CartId,
+                ISBN,
+                Quantity,
+                UnitPrice
             FROM CartItem
-            WHERE cartid = @CartId
+            WHERE CartId = @CartId
         """;
 
         var cartItems = await connection.QueryAsync<CartItem>(itemsSql, new { CartId = cartId });

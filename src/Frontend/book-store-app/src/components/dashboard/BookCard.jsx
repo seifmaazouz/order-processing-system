@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faShoppingCart, faEdit, faTrash, faCheck } from '@fortawesome/free-solid-svg-icons';
 
 export default function BookCard({ book, status, onSelect, onAddToCart, onEdit, onRemove, isLoading = false, isAdminMode = false, isInCart = false }) {
-  const isOutOfStock = status.label === 'Out of Stock';
+  const [hovered, setHovered] = useState(false);
+  const isOutOfStock = status.unavailable === true;
   // Handle both PascalCase and camelCase
   const authorsArray = book.Authors || book.authors || [];
   const authors = Array.isArray(authorsArray) ? authorsArray.join(', ') : authorsArray;
@@ -27,6 +28,8 @@ export default function BookCard({ book, status, onSelect, onAddToCart, onEdit, 
     <div
       className="relative group rounded-lg bg-white border border-gray-200 overflow-visible hover:shadow-lg transition-all duration-300 hover:border-primary cursor-pointer h-full flex flex-col"
       onClick={onSelect}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
     >
       <div className="pointer-events-auto flex flex-col h-full">
         <div className="flex justify-start p-4 pb-3">
@@ -85,7 +88,7 @@ export default function BookCard({ book, status, onSelect, onAddToCart, onEdit, 
                     disabled
                     className="flex items-center gap-1 px-3 py-2 rounded-full bg-gray-300 text-gray-600 text-sm font-semibold cursor-not-allowed opacity-60"
                   >
-                    Sold Out
+                    Unavailable
                   </button>
                 ) : (
                   <button

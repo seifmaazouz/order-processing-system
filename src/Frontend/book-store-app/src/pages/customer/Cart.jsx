@@ -12,12 +12,16 @@ import 'react-toastify/dist/ReactToastify.css';
 export default function Cart() {
   const navigate = useNavigate();
   const { items, summary, cartCount, removeFromCart, updateQuantity, clearCart, loadCart } = useCart();
+  const SHIPPING_PERCENT = 0.05; // 5% shipping fee
+  const shippingFee = summary.totalPrice * SHIPPING_PERCENT;
+  const totalWithShipping = summary.totalPrice + shippingFee;
   const [showSettings, setShowSettings] = useState(false);
   const [showCheckoutModal, setShowCheckoutModal] = useState(false);
   const [isCheckingOut, setIsCheckingOut] = useState(false);
   const [cardholderName, setCardholderName] = useState('');
   const [shippingAddress, setShippingAddress] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState('new'); // 'saved' or 'new'
+  const [userAddress, setUserAddress] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState('saved'); // 'saved' or 'new'
   const [selectedSavedCard, setSelectedSavedCard] = useState('');
   const [savedCards, setSavedCards] = useState([]);
   const [cardNumber, setCardNumber] = useState('');
@@ -40,12 +44,29 @@ export default function Cart() {
     loadCart();
   }, []); // Only load once on mount
 
-  // Fetch saved cards when checkout modal opens
+  // Fetch saved cards and user address when checkout modal opens
   useEffect(() => {
     if (showCheckoutModal) {
       fetchSavedCards();
     }
   }, [showCheckoutModal]);
+
+  // Fetch user address on mount
+  useEffect(() => {
+    const fetchUserAddress = async () => {
+      try {
+        const token = localStorage.getItem('access');
+        const userDetails = await getAccountDetails(token);
+        setUserAddress(userDetails.address || '');
+      } catch (error) {
+        setUserAddress('');
+      }
+    };
+    fetchUserAddress();
+  }, []);
+
+  // When savedCards are loaded and payment method is 'saved', select the first card by default
+  // No longer auto-select the first saved card when payment method is 'saved'
 
   const fetchSavedCards = async () => {
     try {
@@ -170,9 +191,10 @@ export default function Cart() {
           {items.length > 0 && (
             <button
               onClick={clearCart}
-              className="text-sm font-semibold text-red-600 hover:text-red-500"
+              className="text-base font-bold text-white bg-red-600 hover:bg-red-700 rounded-full px-6 py-2 shadow transition-colors duration-150"
+              style={{ minWidth: '120px' }}
             >
-              Clear cart
+              Clear Cart
             </button>
           )}
         </div>
@@ -202,7 +224,12 @@ export default function Cart() {
                     className="flex items-start gap-4 rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
                   >
                     <div className="flex-1">
-                      <h3 className="font-semibold text-lg">{item.title}</h3>
+                      <div className="flex items-center gap-2 mb-1">
+                        <h3 className="font-semibold text-lg m-0 p-0">{item.title}</h3>
+                        {item.id && (
+                          <span className="text-xs text-gray-400">ISBN: {item.id}</span>
+                        )}
+                      </div>
                       {authors && (
                         <p className="text-sm text-gray-600 mb-1">{authors}</p>
                       )}
@@ -241,21 +268,41 @@ export default function Cart() {
               })}
             </div>
 
-            <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm flex flex-col gap-4">
-              <h2 className="text-xl font-bold">Order Summary</h2>
-              <div className="flex items-center justify-between text-sm">
-                <span>Items</span>
-                <span>{summary.totalItems}</span>
-              </div>
-              <div className="flex items-center justify-between text-sm">
-                <span>Subtotal</span>
-                <span>${summary.totalPrice.toFixed(2)}</span>
+            <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm flex flex-col gap-4 min-h-[240px] max-h-[320px] justify-between sticky top-40 w-full z-20">
+              <h2 className="text-xl font-bold mb-2">Order Summary</h2>
+              <div className="flex flex-col gap-3 text-sm mb-4">
+                <div className="flex items-center justify-between">
+                  <span>Items in Cart:</span>
+                  <span className="font-semibold">{summary.totalItems}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span>Unique Products:</span>
+                  <span className="font-semibold">{items.length}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span>Subtotal:</span>
+                  <span className="font-semibold">${summary.totalPrice.toFixed(2)}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span>Shipping Fee (5%):</span>
+                  <span className="font-semibold">${shippingFee.toFixed(2)}</span>
+                </div>
+                <div className="flex items-center justify-between border-t pt-2">
+                  <span>Total:</span>
+                  <span className="font-bold text-lg">${totalWithShipping.toFixed(2)}</span>
+                </div>
+                <div className="flex items-center justify-between text-xs text-gray-500 mt-2">
+                  <span>Shipping Address:</span>
+                  <span className="truncate max-w-[60%] text-right" title={userAddress || 'No shipping address set'}>
+                    {userAddress || 'No shipping address set'}
+                  </span>
+                </div>
               </div>
               <button
                 onClick={() => setShowCheckoutModal(true)}
-                className="mt-4 w-full rounded-full bg-primary text-white font-semibold py-3 hover:bg-primary/90"
+                className="mt-6 w-full rounded-full bg-primary text-white font-semibold py-3 hover:bg-primary/90 text-lg shadow-md"
               >
-                Checkout
+                Proceed to Checkout
               </button>
             </div>
           </div>

@@ -32,10 +32,8 @@ public class ShoppingCartService : IShoppingCartService
 
     public async Task<ShoppingCartDetailsDto> GetCartDetailsAsync(string username)
     {
-        Console.WriteLine($"SERVICE: GetCartDetailsAsync called for user: {username}");
         // Get or create cart for user (ensures exactly one cart per user)
         var cart = await _shoppingCartRepository.GetOrCreateCartAsync(username);
-        Console.WriteLine($"SERVICE: Got cart with {cart.CartItems.Count} items");
         
         // Get all ISBNs at once to avoid N+1 queries
         var isbns = cart.CartItems.Select(i => i.ISBN).ToList();
