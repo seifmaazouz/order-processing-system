@@ -16,8 +16,8 @@ namespace OrderProcessing.Domain.Entities
 
         public AdminOrder(
             int orderId,
-            DateTime orderDate,
-            string status,
+            DateOnly orderDate,
+            OrderStatus status,
             decimal totalPrice,
             int pubID,
             string? confirmedBy = null)
