@@ -17,122 +17,35 @@ namespace OrderProcessing.Infrastructure.Repositories
         public async Task<CreditCard?> GetByNumberAsync(long cardNumber)
         {
             const string sql = """
-                SELECT
-                    cardnumber as card_number,
-                    expirydate as expiry_date
+                SELECT CardNumber, ExpiryDate, CardholderName
                 FROM creditcard
-                WHERE cardnumber = @CardNumber
+                WHERE CardNumber = @CardNumber
             """;
 
             using var connection = await _connectionFactory.CreateConnectionAsync();
 
-            var row = await connection.QuerySingleOrDefaultAsync<dynamic>(
+            return await connection.QuerySingleOrDefaultAsync<CreditCard>(
                 sql,
                 new { CardNumber = cardNumber }
-            );
-
-            if (row is null)
-                return null;
-
-            // Handle both DateOnly and DateTime from database
-            DateOnly expiryDate;
-            if (row.expiry_date is DateOnly dateOnly)
-            {
-                expiryDate = dateOnly;
-            }
-            else if (row.expiry_date is DateTime dateTime)
-            {
-                expiryDate = DateOnly.FromDateTime(dateTime.Date);
-            }
-            else
-            {
-                // Try to parse as string if needed
-                var dateStr = row.expiry_date?.ToString();
-                if (string.IsNullOrWhiteSpace(dateStr))
-                {
-                    throw new InvalidOperationException($"Invalid expiry date format: {row.expiry_date}");
-                }
-                
-                if (!DateOnly.TryParse(dateStr, out DateOnly parsedDate))
-                {
-                    throw new InvalidOperationException($"Invalid expiry date format: {row.expiry_date}");
-                }
-                
-                expiryDate = parsedDate;
-            }
-
-            // Handle both PascalCase and camelCase from Dapper
-            var cardNum = row.card_number ?? row.CardNumber;
-            if (cardNum == null)
-            {
-                throw new InvalidOperationException("Card number not found in result");
-            }
-
-            return new CreditCard(
-                Convert.ToInt64(cardNum),
-                expiryDate
             );
         }
         public async Task<IEnumerable<CreditCard>> GetUserCardsAsync(string username)
         {
-            const string sql = """
-                SELECT
-                    cc.cardnumber as card_number,
-                    cc.expirydate as expiry_date
+            const string sql =
+            """
+                SELECT cc.CardNumber, cc.ExpiryDate, cc.CardholderName
                 FROM creditcard cc
                 INNER JOIN cardholder ch
-                    ON ch.cardnumber = cc.cardnumber
-                WHERE ch.username = @Username
+                    ON ch.CardNumber = cc.CardNumber
+                WHERE ch.Username = @Username
             """;
 
             using var connection = await _connectionFactory.CreateConnectionAsync();
 
-            var rows = await connection.QueryAsync<dynamic>(
+            return await connection.QueryAsync<CreditCard>(
                 sql,
                 new { Username = username }
             );
-
-            return rows.Select(row =>
-            {
-                // Handle both DateOnly and DateTime from database
-                DateOnly expiryDate;
-                if (row.expiry_date is DateOnly dateOnly)
-                {
-                    expiryDate = dateOnly;
-                }
-                else if (row.expiry_date is DateTime dateTime)
-                {
-                    expiryDate = DateOnly.FromDateTime(dateTime.Date);
-                }
-                else
-                {
-                    // Try to parse as string if needed
-                    var dateStr = row.expiry_date?.ToString();
-                    if (string.IsNullOrWhiteSpace(dateStr))
-                    {
-                        throw new InvalidOperationException($"Invalid expiry date format: {row.expiry_date}");
-                    }
-                    
-                    if (!DateOnly.TryParse(dateStr, out DateOnly parsedDate))
-                    {
-                        throw new InvalidOperationException($"Invalid expiry date format: {row.expiry_date}");
-                    }
-                    
-                    expiryDate = parsedDate;
-                }
-
-                // Handle both PascalCase and camelCase from Dapper
-                var cardNum = row.card_number ?? row.CardNumber;
-                if (cardNum == null)
-                {
-                    throw new InvalidOperationException("Card number not found in result");
-                }
-
-                return new CreditCard(
-                    Convert.ToInt64(cardNum),
-                    expiryDate
-                );
-            });
         }
 
 
@@ -141,11 +54,13 @@ namespace OrderProcessing.Infrastructure.Repositories
             const string insertCardSql = """
                 INSERT INTO creditcard (
                     cardnumber,
-                    expirydate
+                    expirydate,
+                    cardholdername
                 )
                 VALUES (
                     @CardNumber,
-                    @ExpiryDate
+                    @ExpiryDate,
+                    @CardholderName
                 )
             """;
 
@@ -169,7 +84,8 @@ namespace OrderProcessing.Infrastructure.Repositories
                     new
                     {
                         card.CardNumber,
-                        ExpiryDate = card.ExpiryDate.ToDateTime(TimeOnly.MinValue)
+                        ExpiryDate = card.ExpiryDate.ToDateTime(TimeOnly.MinValue),
+                        card.CardholderName
                     },
                     transaction
                 );
@@ -242,8 +158,9 @@ namespace OrderProcessing.Infrastructure.Repositories
                 // Convert DateTime to DateOnly for comparison (extract just the date part)
                 var expiryDateOnly = DateOnly.FromDateTime(expiryDate.Date);
                 
-                const string sql = """
-                    SELECT COUNT(1)
+                const string sql = 
+                """
+                    SELECT 1
                     FROM creditcard
                     WHERE cardnumber = @CardNumber
                     AND expirydate >= @ExpiryDate

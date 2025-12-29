@@ -19,47 +19,46 @@ namespace OrderProcessing.Infrastructure.Repositories
         {
             const string sql = """
                 SELECT
-                    OrderID,
+                    OrderID AS OrderNumber,
                     OrderDate,
                     "Status",
                     TotalPrice,
-                    Custname,
+                    Custname AS Username,
                     ShippingAddress
-                FROM CustomerOrder
+                FROM customerorder
                 WHERE CustName = @Username
                 ORDER BY OrderDate DESC
             """;
 
             using var connection = await _connectionFactory.CreateConnectionAsync();
 
-            var rows = await connection.QueryAsync<OrderRow>(sql, new { Username = username });
-
-            return rows.Select(Map).ToList();
+            var orders = await connection.QueryAsync<CustomerOrder>(sql, new { Username = username });
+            return orders.ToList();
         }
 
         public async Task<CustomerOrder?> GetByOrderNumberAsync(int orderNumber, string username)
         {
             const string sql = """
                 SELECT
-                    OrderID,
+                    OrderID AS OrderNumber,
                     TotalPrice,
                     "Status",
                     OrderDate,
-                    CustName,
+                    CustName AS Username,
                     ShippingAddress
-                FROM CustomerOrder
+                FROM customerorder
                 WHERE OrderID = @OrderID
                   AND CustName = @Username
             """;
 
             using var connection = await _connectionFactory.CreateConnectionAsync();
 
-            var row = await connection.QuerySingleOrDefaultAsync<OrderRow>(
+            var order = await connection.QuerySingleOrDefaultAsync<CustomerOrder>(
                 sql,
                 new { OrderID = orderNumber, Username = username }
             );
 
-            return row is null ? null : Map(row);
+            return order;
         }
 
         public async Task<int> AddAsync(CustomerOrder order, List<CustomerOrderItem> items)
@@ -83,7 +82,7 @@ namespace OrderProcessing.Infrastructure.Repositories
             """;
 
             const string itemSql = """
-                INSERT INTO CustomerOrderItem (ISBN, OrderNum, Quantity, UnitPrice)
+                INSERT INTO customerorderitem (ISBN, OrderNum, Quantity, UnitPrice)
                 VALUES (@ISBN, @OrderNum, @Quantity, @UnitPrice)
             """;
 
@@ -149,20 +148,14 @@ namespace OrderProcessing.Infrastructure.Repositories
         {
             const string sql = """
                 SELECT ISBN, OrderNum, Quantity, UnitPrice
-                FROM CustomerOrderItem
+                FROM customerorderItem
                 WHERE OrderNum = @OrderNum
             """;
 
             using var connection = await _connectionFactory.CreateConnectionAsync();
 
-            var rows = await connection.QueryAsync<OrderItemRow>(sql, new { OrderNum = orderNumber });
-
-            return rows.Select(row => new CustomerOrderItem(
-                row.ISBN,
-                row.OrderNum,
-                row.Quantity,
-                row.UnitPrice
-            )).ToList();
+            var items = await connection.QueryAsync<CustomerOrderItem>(sql, new { OrderNum = orderNumber });
+            return items.ToList();
         }
 
         public async Task DeleteAsync(int orderNumber, string username)
@@ -182,38 +175,6 @@ namespace OrderProcessing.Infrastructure.Repositories
             });
         }
 
-        // ----------------- Helpers -----------------
-
-        private static CustomerOrder Map(OrderRow row)
-        {
-            Enum.TryParse<OrderStatus>(row.Status, true, out var status);
-
-            return new CustomerOrder(
-                row.OrderID,
-                row.TotalPrice,
-                status,
-                row.OrderDate,
-                row.CustName,
-                row.ShippingAddress ?? string.Empty
-            );
-        }
-
-
-        private record OrderRow(
-            int OrderID,
-            DateOnly OrderDate,
-            string Status,
-            decimal TotalPrice,
-            string CustName,
-            string? ShippingAddress
-        );
-
-        private record OrderItemRow(
-            string ISBN,
-            int OrderNum,
-            int Quantity,
-            decimal UnitPrice
-        );
 
     }
 }

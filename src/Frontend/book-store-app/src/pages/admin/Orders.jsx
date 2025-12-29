@@ -153,25 +153,25 @@ export default function AdminOrders() {
 					{/* Header */}
 					<header className="border-b border-[#e6e0db] bg-background-light">
 						<div className="px-6 py-6">
-								<div className="flex items-center justify-between mb-4">
-									<div>
-										<h2 className="text-2xl font-bold text-text-main">Order Management</h2>
+							<div className="flex items-center justify-between mb-4">
+								<div>
+									<h2 className="text-2xl font-bold text-text-main">Order Management</h2>
 										<p className="text-sm text-text-secondary mt-1">Confirm automatic replenishment orders from publishers</p>
-									</div>
-									<div className="flex items-center gap-3">
-										<FontAwesomeIcon icon={faFilter} className="text-text-secondary" />
-										<select
-											value={statusFilter}
-											onChange={(e) => setStatusFilter(e.target.value)}
-											className="h-10 px-4 rounded-full bg-surface-light border border-gray-200 focus:ring-2 focus:ring-primary outline-none text-sm font-medium"
-										>
-											<option value="All">All Orders</option>
-											<option value="Pending">Pending</option>
-											<option value="Confirmed">Confirmed</option>
-											<option value="Cancelled">Cancelled</option>
-										</select>
-									</div>
 								</div>
+								<div className="flex items-center gap-3">
+									<FontAwesomeIcon icon={faFilter} className="text-text-secondary" />
+									<select
+										value={statusFilter}
+										onChange={(e) => setStatusFilter(e.target.value)}
+										className="h-10 px-4 rounded-full bg-surface-light border border-gray-200 focus:ring-2 focus:ring-primary outline-none text-sm font-medium"
+									>
+										<option value="All">All Orders</option>
+										<option value="Pending">Pending</option>
+										<option value="Confirmed">Confirmed</option>
+										<option value="Cancelled">Cancelled</option>
+									</select>
+								</div>
+							</div>
 						</div>
 					</header>
 

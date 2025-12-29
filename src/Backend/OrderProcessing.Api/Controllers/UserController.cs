@@ -40,11 +40,11 @@ namespace OrderProcessing.API.Controllers
 
         // POST api/user/change-password
         [HttpPost("change-password")]
-        public async Task<Results<Ok, UnauthorizedHttpResult, NotFound<ErrorResponse>, BadRequest<ErrorResponse>>> ChangePassword([FromBody] ChangePasswordRequest request)
-            {
-                var token = GetBearerToken();
-                await _userService.ChangePasswordAsync(token, request);
-            return TypedResults.Ok();
+        public async Task<Results<Ok<string>, UnauthorizedHttpResult, NotFound<ErrorResponse>, BadRequest<ErrorResponse>>> ChangePassword([FromBody] ChangePasswordRequest request)
+        {
+            var token = GetBearerToken();
+            await _userService.ChangePasswordAsync(token, request);
+            return TypedResults.Ok("Password changed successfully");
         }
 
         // PUT api/user/profile

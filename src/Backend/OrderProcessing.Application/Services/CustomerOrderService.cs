@@ -5,6 +5,7 @@ using OrderProcessing.Application.Security;
 using OrderProcessing.Domain.Entities;
 using OrderProcessing.Domain.Interfaces.Repositories;
 using OrderProcessing.Domain.ValueObjects;
+using OrderProcessing.Application.Exceptions;
 
 public class CustomerOrderService : ICustomerOrderService
 {
@@ -80,33 +81,30 @@ public class CustomerOrderService : ICustomerOrderService
         {
             var userDetails = await _userService.GetDetailsAsync(token);
             shippingAddress = userDetails.Address ?? "";
-            if (string.IsNullOrWhiteSpace(shippingAddress))
-                throw new InvalidOperationException("Shipping address is required. Please update your profile with a shipping address.");
         }
 
         // Calculate total price and create order items
         decimal totalPrice = 0;
         var orderItems = new List<CustomerOrderItem>();
-        
         foreach (var item in request.Items)
         {
             var product = await _bookRepository.GetByISBNAsync(item.ISBN);
             if (product is null)
                 throw new InvalidOperationException($"Product with ISBN {item.ISBN} not found.");
-
             var unitPrice = product.SellingPrice;
             totalPrice += unitPrice * item.Quantity;
-            orderItems.Add(new CustomerOrderItem(item.ISBN, 0, item.Quantity, unitPrice));
+            orderItems.Add(new CustomerOrderItem { ISBN = item.ISBN, OrderNum = 0, Quantity = item.Quantity, UnitPrice = unitPrice });
         }
 
-        var newOrder = new CustomerOrder(
-            orderNumber: 0, // let DB handle auto-increment
-            totalPrice: totalPrice,
-            status: OrderStatus.Pending,
-            orderDate: DateOnly.FromDateTime(DateTime.UtcNow),
-            username: username,
-            shippingAddress: shippingAddress
-        );
+        CustomerOrder newOrder;
+        try
+        {
+            newOrder = new CustomerOrder(0, totalPrice, OrderStatus.Pending, DateOnly.FromDateTime(DateTime.UtcNow), username, shippingAddress);
+        }
+        catch (ArgumentException ex)
+        {
+            throw new BusinessRuleViolationException(ex.Message);
+        }
 
         var orderId = await _orderRepository.AddAsync(newOrder, orderItems);
 
@@ -116,7 +114,6 @@ public class CustomerOrderService : ICustomerOrderService
         foreach (var item in orderItemsFromDb)
         {
             var book = await _bookRepository.GetBookDetailsAsync(item.ISBN);
-            // If book details not found, use ISBN as title fallback
             itemDtos.Add(new OrderItemDto(
                 item.ISBN,
                 book?.Title ?? item.ISBN,

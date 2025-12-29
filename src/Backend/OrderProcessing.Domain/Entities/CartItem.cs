@@ -3,10 +3,10 @@ namespace OrderProcessing.Domain.Entities
 {
     public class CartItem // PK: (ISBN, CartId)
     {
-        public string ISBN { get; private set; } = null!; // Partial Primary key
-        public int CartId { get; private set; } // Partial Primary key  
-        public int Quantity { get; private set; }
-        public decimal UnitPrice { get; private set; }
+        public string ISBN { get; set; } = null!; // Partial Primary key
+        public int CartId { get; set; } // Partial Primary key
+        public int Quantity { get; set; }
+        public decimal UnitPrice { get; set; }
 
         // Navigation properties
         public ShoppingCart? ShoppingCart { get; private set; } = null!;

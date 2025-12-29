@@ -107,9 +107,11 @@ export default function DashboardHeader({ showSettings, onToggleSettings, settin
         >
           <FontAwesomeIcon icon={faShoppingCart} className="text-[20px] text-white" />
           <span className="text-sm hidden sm:inline text-white">Cart</span>
-          <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-white text-primary text-[10px] font-bold ring-2 ring-background-light">
-            {cartTotal}
-          </span>
+          {cartTotal > 0 && (
+            <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-white text-primary text-[10px] font-bold ring-2 ring-background-light">
+              {cartTotal}
+            </span>
+          )}
         </button>
       </div>
     </header>

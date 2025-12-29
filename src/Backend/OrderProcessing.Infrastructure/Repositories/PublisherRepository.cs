@@ -16,14 +16,14 @@ public class PublisherRepository : IPublisherRepository
 
     public async Task<IEnumerable<Publisher>> GetAllAsync()
     {
-        const string sql = "SELECT * FROM Publisher ORDER BY PubName";
+        const string sql = "SELECT * FROM publisher ORDER BY pubname";
         using var connection = await _connectionFactory.CreateConnectionAsync();
         return await connection.QueryAsync<Publisher>(sql);
     }
 
     public async Task<Publisher?> GetByIdAsync(int id)
     {
-        const string sql = "SELECT * FROM Publisher WHERE PubID = @Id";
+        const string sql = "SELECT * FROM publisher WHERE pubid = @Id";
         using var connection = await _connectionFactory.CreateConnectionAsync();
         return await connection.QueryFirstOrDefaultAsync<Publisher>(sql, new { Id = id });
     }

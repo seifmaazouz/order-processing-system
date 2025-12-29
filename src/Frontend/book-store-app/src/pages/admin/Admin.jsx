@@ -92,10 +92,14 @@ export default function Admin() {
 
 	const hasFiltersApplied = Boolean(selectedCategory || watch('author') || watch('publisher'));
 
-	const statusMap = {
-		'in-stock': { label: 'In Stock', color: 'bg-green-100 text-green-700' },
-		'low-stock': { label: 'Low Stock', color: 'bg-orange-100 text-orange-700' },
-		'out-of-stock': { label: 'Out of Stock', color: 'bg-gray-200 text-gray-600' },
+	const getStockStatus = (book) => {
+		// Handle both PascalCase and camelCase
+		const stock = book.Quantity || book.quantity || book.Stock || book.stock || book.stockLevel || 10; // default to 10 if not provided
+		if (stock === 0) return { label: 'Out of Stock', color: 'bg-gray-100 text-gray-600', textColor: 'text-gray-500' };
+		if (stock <= 2) return { label: `Only ${stock} left`, color: 'bg-red-200 text-red-600', textColor: 'text-red-500' };
+		if (stock <= 5) return { label: `Only ${stock} left`, color: 'bg-orange-100 text-orange-600', textColor: 'text-orange-500' };
+
+		return { label: 'In Stock', color: 'bg-green-100 text-green-600', textColor: 'text-green-500' };
 	};
 
 	const fetchBooks = async (formData) => {
@@ -593,7 +597,7 @@ const handleConfirmRemove = async () => {
 									<BookCard
 										key={book.id}
 										book={book}
-										status={statusMap[book.status] || statusMap['in-stock']}
+										status={getStockStatus(book)}
 										onSelect={handleSelect}
 										onEdit={handleEdit}
 										onRemove={handleRemove}

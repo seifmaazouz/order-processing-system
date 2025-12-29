@@ -22,7 +22,7 @@ public class ReportRepository : IReportRepository
         var salesSql = 
         """
             SELECT OrderID, OrderDate, TotalPrice
-            FROM CustomerOrder 
+            FROM customerorder 
             WHERE "Status" = 'Confirmed' 
               AND OrderDate >= DATE_TRUNC('month', CURRENT_DATE - INTERVAL '1 month')
               AND OrderDate < DATE_TRUNC('month', CURRENT_DATE)
@@ -32,7 +32,7 @@ public class ReportRepository : IReportRepository
         var totalPriceSql =
         """
             SELECT SUM(TotalPrice) AS totalPrice
-            FROM CustomerOrder
+            FROM customerorder
             WHERE "Status" = 'Confirmed' 
               AND OrderDate >= DATE_TRUNC('month', CURRENT_DATE - INTERVAL '1 month')
               AND OrderDate < DATE_TRUNC('month', CURRENT_DATE)
@@ -57,7 +57,7 @@ public class ReportRepository : IReportRepository
         var salesSql = 
         """
             SELECT OrderID, OrderDate, TotalPrice
-            FROM CustomerOrder
+            FROM customerorder
             WHERE "Status" = 'Confirmed'
               AND OrderDate = @Date
         """;
@@ -66,7 +66,7 @@ public class ReportRepository : IReportRepository
         var totalPriceSql =
         """
             SELECT SUM(TotalPrice) AS totalPrice
-            FROM CustomerOrder
+            FROM customerorder
             WHERE "Status" = 'Confirmed'
               AND OrderDate = @Date
         """;
@@ -91,7 +91,7 @@ public class ReportRepository : IReportRepository
                     co.CustName AS CustomerName,
                     SUM(co.TotalPrice) AS TotalSpent,
                     u.Email AS Email
-                FROM CustomerOrder co
+                FROM customerorder co
                 JOIN "User" u ON co.CustName = u.Username
                 WHERE co."Status" = 'Confirmed'
                     AND co.OrderDate >= CURRENT_DATE - INTERVAL '3 months'
@@ -109,7 +109,7 @@ public class ReportRepository : IReportRepository
         var sql =
         """
             SELECT b.ISBN, b.Title, SUM(oi.Quantity) AS TotalCopiesSold
-            FROM CustomerOrderItem AS oi
+            FROM customerorderItem AS oi
             JOIN Book AS b ON b.ISBN = oi.ISBN
             JOIN CustomerOrder AS o ON o.OrderID = oi.OrderNum
             WHERE o."Status" = 'Confirmed' 
@@ -131,7 +131,7 @@ public class ReportRepository : IReportRepository
                 b.ISBN,
                 b.Title,
                 COALESCE(SUM(aoi.Quantity), 0) AS TimesOrderedFromPublisher
-            FROM Book b
+                FROM book b
             LEFT JOIN AdminOrderItem aoi ON b.ISBN = aoi.ISBN
             WHERE b.ISBN = @Isbn
             GROUP BY b.ISBN, b.Title

@@ -21,7 +21,7 @@ public class BookRepository : IBookRepository
     {
         using var connection = await _connectionFactory.CreateConnectionAsync();
         
-        var sql = "SELECT * FROM Book WHERE ISBN = @ISBN";
+        var sql = "SELECT * FROM book WHERE isbn = @ISBN";
  
         var book = await connection.QuerySingleOrDefaultAsync<Book>(sql, new { ISBN = isbn }); // Dapper will use the parameterless private constructor
         return book;
@@ -110,7 +110,7 @@ public class BookRepository : IBookRepository
             // Only update authors if there are changes
             if (book.Authors != null && book.Authors.Any())
             {
-                await connection.ExecuteAsync("DELETE FROM BookAuthor WHERE ISBN = @ISBN", new { book.ISBN }, transaction);
+                await connection.ExecuteAsync("DELETE FROM bookauthor WHERE isbn = @ISBN", new { book.ISBN }, transaction);
                 
                 var insertAuthorSql =
                 """
@@ -139,7 +139,7 @@ public class BookRepository : IBookRepository
         using var connection = await _connectionFactory.CreateConnectionAsync();
 
         try {
-            var sql = "DELETE FROM Book WHERE ISBN = @ISBN";
+            var sql = "DELETE FROM book WHERE isbn = @ISBN";
             await connection.ExecuteAsync(sql, new { ISBN = isbn });
         }
         catch (PostgresException ex) {
@@ -154,7 +154,7 @@ public class BookRepository : IBookRepository
     {
         using var connection = await _connectionFactory.CreateConnectionAsync();
 
-        var sql = "SELECT 1 FROM Book WHERE ISBN = @ISBN";
+        var sql = "SELECT 1 FROM book WHERE isbn = @ISBN";
         
         var result = await connection.QuerySingleOrDefaultAsync<int?>(sql, new { ISBN = isbn });
         return result.HasValue;
@@ -169,7 +169,7 @@ public class BookRepository : IBookRepository
                 SELECT b.ISBN, b.Title, b.PublicationYear, b.SellingPrice, b.Quantity, b.Threshold,
                     b.Category AS CategoryName, p.PubName AS PublisherName,
                     COALESCE(STRING_AGG(ba.AuthorName, ', '), '') AS AuthorNames
-                FROM Book b
+                FROM book b
                 JOIN Publisher p ON b.PubID = p.PubID
                 LEFT JOIN BookAuthor ba ON b.ISBN = ba.ISBN
                 WHERE b.ISBN = @ISBN
@@ -189,7 +189,7 @@ public class BookRepository : IBookRepository
                 SELECT b.ISBN, b.Title, b.PublicationYear, b.SellingPrice, b.Quantity, b.Threshold,
                     b.Category AS CategoryName, p.PubName AS PublisherName,
                     COALESCE(STRING_AGG(ba.AuthorName, ', '), '') AS AuthorNames
-                FROM Book b
+                FROM book b
                 JOIN Publisher p ON b.PubID = p.PubID
                 LEFT JOIN BookAuthor ba ON b.ISBN = ba.ISBN
                 WHERE b.ISBN = ANY(@ISBNs)

@@ -4,7 +4,8 @@ namespace OrderProcessing.Application.DTOs.User
     (
         long CardNumber,
         string ExpiryMonth,
-        string ExpiryYear
+        string ExpiryYear,
+        string CardholderName
     );
 
     

@@ -1,11 +1,12 @@
 using OrderProcessing.Application.DTOs.ShoppingCart;
 using OrderProcessing.Domain.Models;
+using OrderProcessing.Domain.Entities;
 
 namespace OrderProcessing.Application.Mappings;
 
 public static class ShoppingCartMappingExtensions
 {
-    public static CartItemDetailsDto ToCartItemDetailsDto(this CartItemReadModel item, string title, List<string> authors, int stock)
+    public static CartItemDetailsDto ToCartItemDetailsDto(this CartItem item, string title, List<string> authors, int stock)
     {
         return new CartItemDetailsDto(
             item.ISBN,

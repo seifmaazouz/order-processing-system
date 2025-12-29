@@ -13,6 +13,7 @@ namespace OrderProcessing.Api.Controllers;
 [Route("api/[controller]")]
 [Authorize]
 public class ShoppingCartController : ControllerBase
+
 {
     private readonly IShoppingCartService _shoppingCartService;
 
@@ -61,6 +62,12 @@ public class ShoppingCartController : ControllerBase
         return TypedResults.Ok(cartDetails);
     }
 
+    [HttpGet("test")]
+    public IActionResult Test()
+    {
+        return Ok(new { message = "Test endpoint working", timestamp = DateTime.Now });
+    }
+
     [HttpDelete]
     public async Task<Results<NoContent, UnauthorizedHttpResult>> ClearCart()
     {
@@ -75,5 +82,13 @@ public class ShoppingCartController : ControllerBase
         var username = GetCurrentUsername();
         var orderId = await _shoppingCartService.CheckoutAsync(username, dto);
         return TypedResults.Ok(new CheckoutResponse(orderId));
+    }
+    
+    [HttpGet("count")]
+    public async Task<Results<Ok<int>, UnauthorizedHttpResult>> GetCartItemCount()
+    {
+        var username = GetCurrentUsername();
+        var count = await _shoppingCartService.GetCartItemCountAsync(username);
+        return TypedResults.Ok(count);
     }
 }

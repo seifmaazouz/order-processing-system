@@ -57,7 +57,8 @@ CREATE TABLE CustomerOrder (
 
 CREATE TABLE CreditCard (
     CardNumber BIGINT PRIMARY KEY,
-    ExpiryDate DATE NOT NULL
+    ExpiryDate DATE NOT NULL,
+    CardholderName VARCHAR(100) NOT NULL
 );
 
 CREATE TABLE CardHolder (
@@ -68,7 +69,7 @@ CREATE TABLE CardHolder (
 
 CREATE TABLE ShoppingCart (
     CartID SERIAL PRIMARY KEY,
-    CustName VARCHAR(50) NOT NULL REFERENCES "User"(Username) ON DELETE CASCADE
+    CustName VARCHAR(50) UNIQUE NOT NULL REFERENCES "User"(Username) ON DELETE CASCADE
 );
 
 CREATE TABLE AdminOrderItem (

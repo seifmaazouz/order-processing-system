@@ -26,12 +26,20 @@ export default function Dashboard() {
   const [showSettings, setShowSettings] = useState(false);
   const settingsRef = useRef(null);
   const navigate = useNavigate();
-  const { summary, loadCart } = useCart();
-  
-  // Reload cart when dashboard mounts to ensure it's fresh
-  useEffect(() => {
-    loadCart();
-  }, [loadCart]);
+  const { summary, cartCount } = useCart();
+
+  // Function to update book stock levels after cart operations
+  const updateBookStock = (bookId, newStock) => {
+    setSearchResults(prevResults =>
+      prevResults.map(book => {
+        const currentBookId = book.ISBN || book.isbn || book.id;
+        if (currentBookId === bookId) {
+          return { ...book, Quantity: newStock, quantity: newStock, Stock: newStock, stock: newStock, stockLevel: newStock };
+        }
+        return book;
+      })
+    );
+  };
 
   const { register, handleSubmit, watch, setValue } = useForm({
     defaultValues: {
@@ -140,7 +148,7 @@ export default function Dashboard() {
         showSettings={showSettings}
         onToggleSettings={setShowSettings}
         settingsRef={settingsRef}
-        cartTotal={summary.totalItems}
+        cartTotal={cartCount}
       />
 
       <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col justify-center py-10">
@@ -174,7 +182,7 @@ export default function Dashboard() {
             </div>
           )}
 
-          <ResultsGrid results={searchResults} lastQueryLabel={lastQueryLabel} />
+          <ResultsGrid results={searchResults} lastQueryLabel={lastQueryLabel} onStockUpdate={updateBookStock} />
         </div>
       </main>
 

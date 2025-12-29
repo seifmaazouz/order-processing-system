@@ -29,10 +29,6 @@ namespace OrderProcessing.Application.Services
         _jwtService=jwtService;
         _shoppingCartService=shoppingCartService;
     }
-        public Task ChangePasswordAsync(ChangePasswordRequest request)
-        {
-            throw new NotImplementedException();
-        }
 
         public async Task<UserDto> CreateAsync(CreateUserRequest request)
         {
@@ -53,6 +49,10 @@ namespace OrderProcessing.Application.Services
                 address: request.ShipAddress
             );
             await _userRepository.AddAsync(user);
+
+            // Create a shopping cart for the new user
+            await _shoppingCartService.CreateCartForUserAsync(user.Username);
+
             return new UserDto(
                 user.Username,
                 user.Email,
@@ -100,6 +100,7 @@ namespace OrderProcessing.Application.Services
                 address: request.ShipAddress
             );
             await _userRepository.AddAsync(user);
+
             return new UserDto(
                 user.Username,
                 user.Email,

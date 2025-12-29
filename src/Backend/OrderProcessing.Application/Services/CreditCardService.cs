@@ -41,24 +41,17 @@ public class CreditCardService : ICreditCardService
         if (string.IsNullOrWhiteSpace(username))
             throw new BusinessRuleViolationException("Username is required");
 
-        // Parse expiry date from string (accepts YYYY-MM-DD or ISO format)
         if (string.IsNullOrWhiteSpace(dto.ExpiryDate))
             throw new BusinessRuleViolationException("Expiry date is required.");
 
         DateOnly expiryDateOnly;
-        
-        // Parse expiry date - only accept YYYY-MM-DD format to avoid DateTime conversion issues
         if (!DateOnly.TryParse(dto.ExpiryDate, out expiryDateOnly))
         {
-            // If direct parsing fails, try to extract date from ISO string format
             if (dto.ExpiryDate.Contains('T'))
             {
-                // Extract just the date part from ISO format (YYYY-MM-DDTHH:mm:ss...)
                 var datePart = dto.ExpiryDate.Split('T')[0];
                 if (!DateOnly.TryParse(datePart, out expiryDateOnly))
-                {
                     throw new BusinessRuleViolationException($"Invalid expiry date format: {dto.ExpiryDate}. Expected YYYY-MM-DD format.");
-                }
             }
             else
             {
@@ -66,20 +59,19 @@ public class CreditCardService : ICreditCardService
             }
         }
 
-        if (expiryDateOnly < DateOnly.FromDateTime(DateTime.Now))
-            throw new BusinessRuleViolationException("Cannot add expired credit card");
-
-        // Check if card already exists for this user
         var existingCards = await _creditCardRepository.GetUserCardsAsync(username);
         if (existingCards.Any(c => c.CardNumber == dto.CardNumber))
             throw new DuplicateResourceException($"Credit card {dto.CardNumber} already exists for user {username}");
 
-        var card = new CreditCard(
-            dto.CardNumber,
-            expiryDateOnly
-        );
-
-        await _creditCardRepository.AddAsync(card, username);
+        try
+        {
+            var card = new CreditCard(dto.CardNumber, expiryDateOnly, dto.CardholderName);
+            await _creditCardRepository.AddAsync(card, username);
+        }
+        catch (ArgumentException ex)
+        {
+            throw new BusinessRuleViolationException(ex.Message);
+        }
     }
 
     public async Task DeleteCreditCardAsync(string cardNumber, string username)

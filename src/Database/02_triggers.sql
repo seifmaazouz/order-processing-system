@@ -28,7 +28,7 @@ BEGIN
 
         -- Create admin order item
         INSERT INTO AdminOrderItem(ISBN, OrderNum, Quantity, UnitPrice)
-        VALUES (NEW.ISBN, currval(pg_get_serial_sequence('AdminOrder','OrderID')), order_quantity, NEW.SellingPrice);
+        VALUES (NEW.ISBN, currval(pg_get_serial_sequence('adminorder','orderid')), order_quantity, NEW.SellingPrice);
 
     END IF;
     RETURN NEW;

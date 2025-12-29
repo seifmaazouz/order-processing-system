@@ -17,6 +17,7 @@ public class ShoppingCartServiceTests
     private readonly Mock<IBookRepository> _mockBookRepo;
     private readonly Mock<ICreditCardRepository> _mockCreditCardRepo;
     private readonly Mock<ICustomerOrderRepository> _mockOrderRepo;
+    private readonly Mock<IUserRepository> _mockUserRepo;
     private readonly ShoppingCartService _service;
 
     public ShoppingCartServiceTests()
@@ -25,11 +26,13 @@ public class ShoppingCartServiceTests
         _mockBookRepo = new Mock<IBookRepository>();
         _mockCreditCardRepo = new Mock<ICreditCardRepository>();
         _mockOrderRepo = new Mock<ICustomerOrderRepository>();
+        _mockUserRepo = new Mock<IUserRepository>();
         _service = new ShoppingCartService(
             _mockCartRepo.Object,
             _mockBookRepo.Object,
             _mockCreditCardRepo.Object,
-            _mockOrderRepo.Object
+            _mockOrderRepo.Object,
+            _mockUserRepo.Object
         );
     }
 
@@ -116,7 +119,13 @@ public class ShoppingCartServiceTests
         // Arrange
         var username = "testuser";
         var cart = new ShoppingCartReadModel(1, username, new List<CartItemReadModel>());
-        var checkoutDto = new CheckoutDto(4111111111111111, DateTime.Now.AddYears(1).ToString("yyyy-MM-dd"));
+        var checkoutDto = new CheckoutDto(
+            "John Doe",
+            "123 Main St",
+            null,
+            4111111111111111,
+            DateTime.Now.AddYears(1).ToString("yyyy-MM-dd")
+        );
 
         _mockCartRepo.Setup(r => r.GetCartByUsernameAsync(username))
             .ReturnsAsync(cart);
@@ -140,7 +149,13 @@ public class ShoppingCartServiceTests
         var book = new BookDetailsReadModel(
             isbn, "Test Book", 2020, 50.00m, 5, 10, "Science", "Publisher", "Author"
         );
-        var checkoutDto = new CheckoutDto(4111111111111111, DateTime.Now.AddYears(1).ToString("yyyy-MM-dd"));
+        var checkoutDto = new CheckoutDto(
+            "John Doe",
+            "123 Main St",
+            null,
+            4111111111111111,
+            DateTime.Now.AddYears(1).ToString("yyyy-MM-dd")
+        );
 
         _mockCartRepo.Setup(r => r.GetCartByUsernameAsync(username))
             .ReturnsAsync(cart);

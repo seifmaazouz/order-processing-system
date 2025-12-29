@@ -55,7 +55,12 @@ export default function Account() {
           email: data.Email || data.email || '',
           phoneNumber: data.PhoneNumber || data.phoneNumber || '',
           shipAddress: data.Address || data.address || '',
-          creditCards: data.CreditCards || data.creditCards || []
+          creditCards: (data.CreditCards || data.creditCards || []).map(card => ({
+            cardNumber: card.CardNumber || card.cardNumber,
+            expiryMonth: card.ExpiryMonth || card.expiryMonth,
+            expiryYear: card.ExpiryYear || card.expiryYear,
+            cardholderName: card.CardholderName || card.cardholderName || ''
+          }))
         };
         setDetails(normalizedData);
         console.log('Fetched account details:', normalizedData);
@@ -149,7 +154,16 @@ export default function Account() {
         setToast({ type: 'error', message: res?.message || 'Change password failed' });
       }
     } catch (err) {
-      setToast({ type: 'error', message: err?.message || 'Change password failed' });
+      // Handle different error response formats
+      let errorMessage = 'Change password failed';
+      if (err?.response?.data?.error) {
+        errorMessage = err.response.data.error;
+      } else if (err?.response?.data?.message) {
+        errorMessage = err.response.data.message;
+      } else if (err?.message) {
+        errorMessage = err.message;
+      }
+      setToast({ type: 'error', message: errorMessage });
     } finally {
       setTimeout(() => setToast(null), 3000);
     }
@@ -167,7 +181,7 @@ export default function Account() {
       // Format as YYYY-MM-DD for better compatibility
       const expiryDateStr = `${expiryYear}-${String(expiryMonth).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
       
-      const res = await addCreditCard(cardData.cardNumber, expiryDateStr, token);
+      const res = await addCreditCard(cardData.cardholderName, cardData.cardNumber, expiryDateStr, token);
       setToast({ type: 'success', message: res.message || 'Credit card added successfully' });
       resetCard();
       setIsCardOpen(false);
@@ -361,6 +375,24 @@ export default function Account() {
             <div className="border-t border-gray-200 dark:border-gray-700 pt-4 mb-4">
               <form onSubmit={handleSubmitCard(onAddCreditCard)} className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="md:col-span-2">
+                  <label className="block text-sm font-semibold mb-2">Cardholder Name</label>
+                  <input
+                    type="text"
+                    {...registerCard('cardholderName', {
+                      required: 'Cardholder name is required',
+                      minLength: {
+                        value: 2,
+                        message: 'Cardholder name must be at least 2 characters'
+                      }
+                    })}
+                    placeholder="John Doe"
+                    className="w-full h-10 px-3 rounded-md bg-surface-light dark:bg-surface-dark border border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-primary outline-none"
+                  />
+                  {cardErrors.cardholderName && (
+                    <p className="text-red-500 text-xs mt-1">{cardErrors.cardholderName.message}</p>
+                  )}
+                </div>
+                <div className="md:col-span-2">
                   <label className="block text-sm font-semibold mb-2">Card Number</label>
                   <input
                     type="text"
@@ -392,16 +424,36 @@ export default function Account() {
                       pattern: {
                         value: /^(0[1-9]|1[0-2])\/\d{2}$/,
                         message: 'Format: MM/YY'
+                      },
+                      validate: (value) => {
+                        if (!value) return true; // Let required handle this
+                        const [month, year] = value.split('/');
+                        const expiryMonth = parseInt(month);
+                        const expiryYear = 2000 + parseInt(year);
+                        const now = new Date();
+                        const expiryDate = new Date(expiryYear, expiryMonth - 1); // Month is 0-indexed
+                        if (expiryDate < now) {
+                          return 'Card has expired';
+                        }
+                        return true;
                       }
                     })}
                     placeholder="MM/YY"
                     onChange={(e) => {
                       const value = e.target.value.replace(/\D/g, '');
                       if (value.length <= 4) {
-                        const formatted = value.length > 2 ? `${value.slice(0, 2)}/${value.slice(2)}` : value;
-                        e.target.value = formatted;
+                        const formatted = value.length >= 2 ? `${value.slice(0, 2)}${value.slice(2)}` : value;
+                        // Add slash automatically when 2+ digits
+                        if (formatted.length > 2) {
+                          const month = formatted.slice(0, 2);
+                          const year = formatted.slice(2);
+                          e.target.value = `${month}/${year}`;
+                        } else {
+                          e.target.value = formatted;
+                        }
                       }
                     }}
+                    maxLength="5"
                     className="w-full h-10 px-3 rounded-md bg-surface-light dark:bg-surface-dark border border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-primary outline-none"
                   />
                   {cardErrors.expiryDate && (
@@ -436,6 +488,9 @@ export default function Account() {
                       <div>
                         <p className="font-mono text-lg text-gray-800 dark:text-gray-200">
                           •••• •••• •••• {last4}
+                        </p>
+                        <p className="text-sm text-gray-600 dark:text-gray-400 font-medium">
+                          {card.cardholderName}
                         </p>
                         <p className="text-sm text-gray-500">
                           Expires: {card.expiryMonth?.padStart(2, '0') || '**'}/{card.expiryYear || '**'}

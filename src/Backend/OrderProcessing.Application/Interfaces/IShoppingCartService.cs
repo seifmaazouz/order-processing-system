@@ -10,4 +10,6 @@ public interface IShoppingCartService
     Task RemoveItemFromCartAsync(string username, string isbn);
     Task ClearCartAsync(string username);
     Task<int> CheckoutAsync(string username, CheckoutDto checkoutDto);
+    Task CreateCartForUserAsync(string username);
+    Task<int> GetCartItemCountAsync(string username);
 }
