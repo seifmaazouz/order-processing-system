@@ -1,0 +1,56 @@
+name: Dev Tests
+
+on:
+  push:
+    branches:
+      - dev
+  pull_request:
+    branches:
+      - dev
+      - main
+
+jobs:
+  backend-tests:
+    name: Backend Unit Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      # -----------------------------
+      # CHECKOUT
+      # -----------------------------
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # -----------------------------
+      # SETUP .NET 10
+      # -----------------------------
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
+      # -----------------------------
+      # RESTORE
+      # -----------------------------
+      - name: Restore backend
+        run: dotnet restore src/Backend/OrderProcessing.sln
+
+      # -----------------------------
+      # BUILD
+      # -----------------------------
+      - name: Build backend
+        run: dotnet build src/Backend/OrderProcessing.sln --no-restore
+
+      # -----------------------------
+      # RUN UNIT TESTS (xUnit)
+      # -----------------------------
+      - name: Run backend tests
+        run: dotnet test src/Backend/OrderProcessing.sln --no-build --verbosity normal

@@ -23,5 +23,5 @@ jobs:
           [[ "$BRANCH" =~ ^(backend|frontend|database)/(feature|bugfix|hotfix)/.*$ ]] && exit 0
           [[ "$BRANCH" =~ ^misc/.*$ ]] && exit 0
 
-          echo "❌ Invalid branch structure for dev"
+          echo "❌ Invalid branch structure for dev. Use: backend/frontend/database with feature/bugfix/hotfix, or misc/*"
           exit 1
