@@ -81,6 +81,15 @@ jobs:
         run: npx semantic-release
 
       # ---------------------------------------
+      # GET RELEASE VERSION (only if new release was published)
+      # ---------------------------------------
+      - name: Get release version
+        if: steps.semantic_release.outputs.new_release_published == 'true'
+        run: |
+          VERSION=$(git describe --tags --abbrev=0)
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+
+      # ---------------------------------------
       # LOGIN TO DOCKER HUB
       # ---------------------------------------
       - name: Login to DockerHub
@@ -96,7 +105,6 @@ jobs:
       - name: Build Backend Image
         if: steps.semantic_release.outputs.new_release_published == 'true'
         run: |
-          VERSION=$(git describe --tags --abbrev=0)
           docker build \
             -f src/Backend/Dockerfile \
             -t ${{ secrets.DOCKERHUB_USERNAME }}/order-processing-backend:${VERSION#v} \
@@ -106,7 +114,6 @@ jobs:
       - name: Push Backend Images
         if: steps.semantic_release.outputs.new_release_published == 'true'
         run: |
-          VERSION=$(git describe --tags --abbrev=0)
           docker push ${{ secrets.DOCKERHUB_USERNAME }}/order-processing-backend:${VERSION#v}
           docker push ${{ secrets.DOCKERHUB_USERNAME }}/order-processing-backend:latest
 
@@ -116,7 +123,6 @@ jobs:
       - name: Build Frontend Image
         if: steps.semantic_release.outputs.new_release_published == 'true'
         run: |
-          VERSION=$(git describe --tags --abbrev=0)
           docker build \
             -f src/Frontend/book-store-app/Dockerfile \
             -t ${{ secrets.DOCKERHUB_USERNAME }}/order-processing-frontend:${VERSION#v} \
@@ -126,7 +132,6 @@ jobs:
       - name: Push Frontend Images
         if: steps.semantic_release.outputs.new_release_published == 'true'
         run: |
-          VERSION=$(git describe --tags --abbrev=0)
           docker push ${{ secrets.DOCKERHUB_USERNAME }}/order-processing-frontend:${VERSION#v}
           docker push ${{ secrets.DOCKERHUB_USERNAME }}/order-processing-frontend:latest
 
@@ -136,7 +141,6 @@ jobs:
       - name: Build Database Image
         if: steps.semantic_release.outputs.new_release_published == 'true'
         run: |
-          VERSION=$(git describe --tags --abbrev=0)
           docker build \
             -f src/Database/Dockerfile \
             -t ${{ secrets.DOCKERHUB_USERNAME }}/order-processing-db:${VERSION#v} \
@@ -146,6 +150,5 @@ jobs:
       - name: Push Database Images
         if: steps.semantic_release.outputs.new_release_published == 'true'
         run: |
-          VERSION=$(git describe --tags --abbrev=0)
           docker push ${{ secrets.DOCKERHUB_USERNAME }}/order-processing-db:${VERSION#v}
           docker push ${{ secrets.DOCKERHUB_USERNAME }}/order-processing-db:latest
