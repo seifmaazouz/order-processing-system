@@ -14,12 +14,14 @@ import 'react-toastify/dist/ReactToastify.css';
 import { dashboardCategories, categoryOptions } from '../../constants/categories.js';
 import LogoutConfirmation from '../../components/shared/LogoutConfirmation.jsx';
 
+
 export default function Admin() {
 	const navigate = useNavigate();
 	const [books, setBooks] = useState([]);
+	const [localQuantities, setLocalQuantities] = useState({});
 	const [showFilters, setShowFilters] = useState(false);
-		const [searchParams, setSearchParams] = useSearchParams();
-		const [selectedCategory, setSelectedCategory] = useState(() => searchParams.get('category') || '');
+	const [searchParams, setSearchParams] = useSearchParams();
+	const [selectedCategory, setSelectedCategory] = useState(() => searchParams.get('category') || '');
 	const [isLoading, setIsLoading] = useState(false);
 	const [error, setError] = useState(null);
 	const [editingBook, setEditingBook] = useState(null);
@@ -28,6 +30,7 @@ export default function Admin() {
 	const [showRemoveModal, setShowRemoveModal] = useState(false);
 	const [showAddModal, setShowAddModal] = useState(false);
 	const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+	const [selectedBook, setSelectedBook] = useState(null);
 	const filtersRef = useRef(null);
 	
 	const { register, handleSubmit, watch, setValue } = useForm({
@@ -73,7 +76,6 @@ export default function Admin() {
 		try {
 			const token = localStorage.getItem('access');
 			if (token) {
-				// Call backend logout to clear cart and invalidate session
 				await logout(token);
 			}
 		} catch (error) {
@@ -92,14 +94,21 @@ export default function Admin() {
 
 	const hasFiltersApplied = Boolean(selectedCategory || watch('author') || watch('publisher'));
 
+	// Robust stock status using localQuantities if present
 	const getStockStatus = (book) => {
-		// Handle both PascalCase and camelCase
-		const stock = book.Quantity || book.quantity || book.Stock || book.stock || book.stockLevel || 10; // default to 10 if not provided
-		if (stock === 0) return { label: 'Out of Stock', color: 'bg-gray-100 text-gray-600', textColor: 'text-gray-500' };
-		if (stock <= 2) return { label: `Only ${stock} left`, color: 'bg-red-200 text-red-600', textColor: 'text-red-500' };
-		if (stock <= 5) return { label: `Only ${stock} left`, color: 'bg-orange-100 text-orange-600', textColor: 'text-orange-500' };
-
-		return { label: 'In Stock', color: 'bg-green-100 text-green-600', textColor: 'text-green-500' };
+		const id = book.id || book.isbn || book.ISBN;
+		let stock = localQuantities[id];
+		if (stock === undefined) {
+			stock = book.Stock ?? book.stock ?? book.Quantity ?? book.quantity ?? book.stockLevel ?? 10;
+		}
+		let available = book.isAvailable !== undefined ? !!book.isAvailable : true;
+		if (!available || stock === 0)
+			return { label: 'Out of Stock', color: 'bg-gray-100 text-gray-600', textColor: 'text-gray-500', unavailable: true };
+		if (stock <= 2)
+			return { label: `Only ${stock} left`, color: 'bg-red-200 text-red-600', textColor: 'text-red-500', unavailable: false };
+		if (stock <= 5)
+			return { label: `Only ${stock} left`, color: 'bg-orange-100 text-orange-600', textColor: 'text-orange-500', unavailable: false };
+		return { label: 'In Stock', color: 'bg-green-100 text-green-600', textColor: 'text-green-500', unavailable: false };
 	};
 
 	const fetchBooks = async (formData) => {
@@ -173,10 +182,13 @@ export default function Admin() {
 
 	const handleEdit = (book) => {
 		setEditingBook(book);
+		const id = book.id || book.isbn || book.ISBN;
+		// Use localQuantities if present for this book
+		const quantity = localQuantities[id] !== undefined ? localQuantities[id] : (book.stock ?? book.Stock ?? book.Quantity ?? book.quantity ?? 0);
 		resetEdit({
 			title: book.title ?? '',
 			sellingPrice: book.price ?? '',
-			quantity: book.stock ?? 0,
+			quantity: quantity,
 			threshold: book.threshold ?? 0,
 			year: book.year ?? 0,
 			authors: book.authors ?? [],
@@ -189,8 +201,7 @@ export default function Admin() {
 
 	const handleSaveEdit = handleSubmitEdit(async (formData) => {
 		if (!editingBook) return;
-		console.log('Editing book:', editingBook);
-		console.log('Editing book ISBN:', editingBook.isbn);
+		const id = editingBook.id || editingBook.isbn || editingBook.ISBN;
 		const sellingPrice = formData.sellingPrice ? Math.max(0, Number(formData.sellingPrice)) : null;
 		const quantity = formData.quantity !== '' ? Math.max(0, Number(formData.quantity)) : null;
 		const threshold = formData.threshold !== '' ? Math.max(0, Number(formData.threshold)) : null;
@@ -205,7 +216,6 @@ export default function Admin() {
 				...(validAuthors.length > 0 && { authors: validAuthors }),
 				...(formData.publisher && { publisher: formData.publisher }),
 			};
-			console.log('Edit payload:', payload);
 			const updated = await editBook(editingBook.isbn, payload);
 			const updatedBook = {
 				...editingBook,
@@ -217,13 +227,14 @@ export default function Admin() {
 				authors: validAuthors.length > 0 ? validAuthors : editingBook.authors,
 				publisher: formData.publisher || editingBook.publisher,
 			};
-			setBooks((prev) =>
-				prev.map((b) =>
-					b.id === editingBook.id || b.isbn === editingBook.isbn
-						? updatedBook
-						: b
-				)
-			);
+			setBooks((prev) => prev.map((b) => {
+				const bookId = b.id || b.isbn || b.ISBN;
+				if (bookId === id) {
+					return { ...b, stock: quantity };
+				}
+				return b;
+			}));
+			setLocalQuantities((prev) => ({ ...prev, [id]: quantity }));
 			toast.success('Book updated successfully');
 			setShowEditModal(false);
 			setEditingBook(null);
@@ -344,21 +355,29 @@ const handleConfirmRemove = async () => {
 						<div className="flex flex-col gap-1 px-2">
 							<h1 className="text-2xl font-bold text-text-main dark:text-white">Admin Dashboard</h1>
 						</div>
-						<nav className="flex flex-col gap-2">
-
-							<button onClick={() => navigate('/admin')} className="flex items-center gap-3 px-4 py-3 rounded-full bg-[#f4ede7] dark:bg-[#3a2d20] shadow-sm w-full text-left">
-								<FontAwesomeIcon icon={faBookOpen} className="text-text-main dark:text-primary" />
-								<p className="text-sm font-bold text-text-main dark:text-white">Inventory</p>
-							</button>
-							<button onClick={() => navigate('/admin/orders')} className="group flex items-center gap-3 px-4 py-3 rounded-full text-text-main dark:text-gray-200 hover:bg-[#efe9e3] dark:hover:bg-[#3a2d20] transition-colors w-full text-left">
-								<FontAwesomeIcon icon={faShoppingBag} className="group-hover:scale-110 transition-transform" />
-								<p className="text-sm font-medium">Orders</p>
-							</button>
-							<button onClick={() => navigate('/admin/analytics')} className="group flex items-center gap-3 px-4 py-3 rounded-full text-text-main dark:text-gray-200 hover:bg-[#efe9e3] dark:hover:bg-[#3a2d20] transition-colors w-full text-left">
-								<FontAwesomeIcon icon={faChartBar} className="group-hover:scale-110 transition-transform" />
-								<p className="text-sm font-medium">Analytics</p>
-							</button>
-						</nav>
+						   <nav className="flex flex-col gap-2">
+							   <button
+								   onClick={() => navigate('/admin')}
+								   className={`flex items-center gap-3 px-4 py-3 rounded-full w-full text-left ${window.location.pathname === '/admin' ? 'bg-[#f4ede7] dark:bg-[#3a2d20] shadow-sm' : 'group text-text-main dark:text-gray-200 hover:bg-[#efe9e3] dark:hover:bg-[#3a2d20] transition-colors'}`}
+							   >
+								   <FontAwesomeIcon icon={faBookOpen} className={`${window.location.pathname === '/admin' ? 'text-text-main dark:text-primary' : 'group-hover:scale-110 transition-transform text-text-main dark:text-primary'}`} />
+								   <p className={`text-sm ${window.location.pathname === '/admin' ? 'font-bold text-text-main dark:text-white' : 'font-medium'}`}>Inventory</p>
+							   </button>
+							   <button
+								   onClick={() => navigate('/admin/orders')}
+								   className={`flex items-center gap-3 px-4 py-3 rounded-full w-full text-left ${window.location.pathname === '/admin/orders' ? 'bg-[#f4ede7] dark:bg-[#3a2d20] shadow-sm' : 'group text-text-main dark:text-gray-200 hover:bg-[#efe9e3] dark:hover:bg-[#3a2d20] transition-colors'}`}
+							   >
+								   <FontAwesomeIcon icon={faShoppingBag} className={`${window.location.pathname === '/admin/orders' ? 'text-text-main' : 'group-hover:scale-110 transition-transform text-text-main'}`} />
+								   <p className={`text-sm ${window.location.pathname === '/admin/orders' ? 'font-bold text-text-main' : 'font-medium'}`}>Orders</p>
+							   </button>
+							   <button
+								   onClick={() => navigate('/admin/analytics')}
+								   className={`flex items-center gap-3 px-4 py-3 rounded-full w-full text-left ${window.location.pathname === '/admin/analytics' ? 'bg-[#f4ede7] dark:bg-[#3a2d20] shadow-sm' : 'group text-text-main dark:text-gray-200 hover:bg-[#efe9e3] dark:hover:bg-[#3a2d20] transition-colors'}`}
+							   >
+								   <FontAwesomeIcon icon={faChartBar} className={`${window.location.pathname === '/admin/analytics' ? 'text-text-main dark:text-primary' : 'group-hover:scale-110 transition-transform text-text-main dark:text-primary'}`} />
+								   <p className={`text-sm ${window.location.pathname === '/admin/analytics' ? 'font-bold text-text-main dark:text-white' : 'font-medium'}`}>Analytics</p>
+							   </button>
+						   </nav>
 					</div>
 					<button
 						onClick={() => setShowLogoutConfirm(true)}
@@ -595,16 +614,146 @@ const handleConfirmRemove = async () => {
 							<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
 								{books.map((book) => (
 									<BookCard
-										key={book.id}
+										key={book.id || book.isbn || book.ISBN}
 										book={book}
 										status={getStockStatus(book)}
-										onSelect={handleSelect}
+										onSelect={() => setSelectedBook(book)}
 										onEdit={handleEdit}
 										onRemove={handleRemove}
 										isLoading={isLoading}
 										isAdminMode={true}
 									/>
 								))}
+								{/* Book Details Modal (Admin) */}
+								{selectedBook && (
+									<div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+										{/* Backdrop */}
+										<div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setSelectedBook(null)} />
+										<div className="relative z-10 w-full max-w-3xl bg-white dark:bg-surface-dark border-2 border-primary rounded-2xl shadow-2xl p-8 pointer-events-auto">
+											<button
+												onClick={() => setSelectedBook(null)}
+												className="absolute top-3 right-3 h-10 w-10 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 font-bold"
+												aria-label="Close"
+											>×</button>
+											{/* Navigation Buttons (match ResultsGrid logic) */}
+											<div className="absolute left-0 top-0 bottom-0 w-24 group/left">
+												<button
+													onClick={() => {
+														const idx = books.findIndex(
+															b => (b.id || b.isbn || b.ISBN) === (selectedBook.id || selectedBook.isbn || selectedBook.ISBN)
+														);
+														if (idx > 0) setSelectedBook(books[idx - 1]);
+													}}
+													className="absolute left-2 top-1/2 -translate-y-1/2 h-10 w-10 rounded-full bg-gray-100 text-gray-700 border border-gray-300 hover:bg-gray-200 shadow-lg opacity-0 group-hover/left:opacity-100 transition-opacity duration-200 flex items-center justify-center"
+													aria-label="Previous"
+													disabled={(() => {
+														const idx = books.findIndex(
+															b => (b.id || b.isbn || b.ISBN) === (selectedBook.id || selectedBook.isbn || selectedBook.ISBN)
+														);
+														return idx === 0;
+													})()}
+												>
+													<span style={{ fontSize: '1.5rem' }}>&#8592;</span>
+												</button>
+											</div>
+											<div className="absolute right-0 top-0 bottom-0 w-24 group/right">
+												<button
+													onClick={() => {
+														const idx = books.findIndex(
+															b => (b.id || b.isbn || b.ISBN) === (selectedBook.id || selectedBook.isbn || selectedBook.ISBN)
+														);
+														if (idx < books.length - 1) setSelectedBook(books[idx + 1]);
+													}}
+													className="absolute right-2 top-1/2 -translate-y-1/2 h-10 w-10 rounded-full bg-gray-100 text-gray-700 border border-gray-300 hover:bg-gray-200 shadow-lg opacity-0 group-hover/right:opacity-100 transition-opacity duration-200 flex items-center justify-center"
+													aria-label="Next"
+													disabled={(() => {
+														const idx = books.findIndex(
+															b => (b.id || b.isbn || b.ISBN) === (selectedBook.id || selectedBook.isbn || selectedBook.ISBN)
+														);
+														return idx === books.length - 1;
+													})()}
+												>
+													<span style={{ fontSize: '1.5rem' }}>&#8594;</span>
+												</button>
+											</div>
+											<div className="flex flex-col gap-2 mb-6">
+												<h3 className="text-2xl font-bold text-gray-900">{selectedBook.Title || selectedBook.title}</h3>
+												{(selectedBook.Authors || selectedBook.authors) && (selectedBook.Authors || selectedBook.authors).length > 0 && (
+													<p className="text-sm text-gray-600">
+														<span className="font-semibold">Authors:</span> {Array.isArray(selectedBook.Authors || selectedBook.authors) ? (selectedBook.Authors || selectedBook.authors).join(', ') : (selectedBook.Authors || selectedBook.authors)}
+													</p>
+												)}
+											</div>
+											<div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6 text-sm">
+												{(selectedBook.ISBN || selectedBook.isbn) && (
+													<div className="flex justify-between border border-gray-100 rounded-md px-3 py-2">
+														<span className="text-gray-600">ISBN</span>
+														<span className="font-semibold text-gray-900">{selectedBook.ISBN || selectedBook.isbn}</span>
+													</div>
+												)}
+												{(selectedBook.Year || selectedBook.year) && (
+													<div className="flex justify-between border border-gray-100 rounded-md px-3 py-2">
+														<span className="text-gray-600">Year</span>
+														<span className="font-semibold text-gray-900">{selectedBook.Year || selectedBook.year}</span>
+													</div>
+												)}
+												{(selectedBook.Category || selectedBook.category) && (
+													<div className="flex justify-between border border-gray-100 rounded-md px-3 py-2">
+														<span className="text-gray-600">Category</span>
+														<span className="font-semibold text-gray-900">{selectedBook.Category || selectedBook.category}</span>
+													</div>
+												)}
+												{(selectedBook.Publisher || selectedBook.publisher) && (
+													<div className="flex justify-between border border-gray-100 rounded-md px-3 py-2">
+														<span className="text-gray-600">Publisher</span>
+														<span className="font-semibold text-gray-900">{selectedBook.Publisher || selectedBook.publisher}</span>
+													</div>
+												)}
+												{(selectedBook.Stock !== undefined || selectedBook.stock !== undefined) && (
+													<div className="flex justify-between border border-gray-100 rounded-md px-3 py-2">
+														<span className="text-gray-600">Stock</span>
+														<span className="font-semibold text-gray-900">{selectedBook.Stock ?? selectedBook.stock} units</span>
+													</div>
+												)}
+												{(selectedBook.Threshold !== undefined || selectedBook.threshold !== undefined) && (
+													<div className="flex justify-between border border-gray-100 rounded-md px-3 py-2">
+														<span className="text-gray-600">Threshold</span>
+														<span className="font-semibold text-gray-900">{selectedBook.Threshold ?? selectedBook.threshold}</span>
+													</div>
+												)}
+												{selectedBook.isAvailable !== undefined && (
+													<div className="flex justify-between border border-gray-100 rounded-md px-3 py-2">
+														<span className="text-gray-600">Available</span>
+														<span className={`font-semibold ${selectedBook.isAvailable ? 'text-green-600' : 'text-red-600'}`}>{selectedBook.isAvailable ? 'Yes' : 'No'}</span>
+													</div>
+												)}
+												{(selectedBook.Price || selectedBook.price) && (
+													<div className="flex justify-between border border-gray-100 rounded-md px-3 py-2">
+														<span className="text-gray-600">Price</span>
+														<span className="font-semibold text-gray-900">${parseFloat(selectedBook.Price || selectedBook.price).toFixed(2)}</span>
+													</div>
+												)}
+											</div>
+											{/* Edit/Remove Buttons */}
+											<div className="flex gap-4 justify-end mt-4">
+												<button
+													className="px-4 py-2 rounded-full bg-blue-500 text-white text-sm font-semibold hover:bg-blue-600"
+													onClick={() => {
+														handleEdit(selectedBook);
+														setSelectedBook(null);
+													}}
+												>Edit</button>
+												<button
+													className="px-4 py-2 rounded-full bg-red-500 text-white text-sm font-semibold hover:bg-red-600"
+													onClick={() => {
+														handleRemove(selectedBook);
+														setSelectedBook(null);
+													}}
+												>Remove</button>
+											</div>
+										</div>
+									</div>
+								)}
 								{!isLoading && books.length === 0 && (
 									<div className="col-span-full text-center text-gray-500 dark:text-gray-400 font-medium py-10">
 										No books found. Try adjusting filters.

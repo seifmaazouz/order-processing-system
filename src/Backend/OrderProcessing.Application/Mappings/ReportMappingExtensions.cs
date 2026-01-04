@@ -15,7 +15,7 @@ public static class ReportMappingExtensions
         new(model.ISBN, model.Title, model.TotalCopiesSold);
 
     public static BookReplenishmentCountDto ToDto(this BookReplenishmentCountReadModel model) =>
-        new(model.ISBN, model.Title, model.TimesOrderedFromPublisher);
+        new(model.ISBN, model.Title, model.TimesOrderedFromPublisher, model.TotalQuantityOrdered);
 
     public static IEnumerable<TopCustomerDto> ToDtoList(this IEnumerable<TopCustomerReadModel> models) =>
         models.Select(m => m.ToDto());

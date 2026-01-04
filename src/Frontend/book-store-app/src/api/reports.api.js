@@ -105,12 +105,12 @@ export const getBookReplenishmentCount = async (isbn) => {
 				'Authorization': `Bearer ${token}`
 			}
 		});
-		// Backend returns: { isbn, title, timesOrderedFromPublisher }
+		// Backend returns: { isbn, title, timesOrderedFromPublisher, totalQuantityOrdered }
 		return {
 			isbn: response.data.isbn || isbn,
 			bookTitle: response.data.title || 'Unknown',
 			timesOrdered: response.data.timesOrderedFromPublisher || 0,
-			totalQuantityOrdered: response.data.timesOrderedFromPublisher || 0
+			totalQuantityOrdered: response.data.totalQuantityOrdered || 0
 		};
 	} catch (error) {
 		console.error('Error fetching book replenishment count:', error.response?.data);

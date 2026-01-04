@@ -29,7 +29,7 @@ export default function FiltersDropdown({
       </button>
 
       {showFilters && (
-        <div className="absolute top-1/2 left-[90%] -translate-y-1/2 ml-3 transform w-80 max-h-[70vh] overflow-y-auto bg-white dark:bg-surface-dark border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-4 z-50">
+        <div className="absolute top-5 left-[90%] ml-3 transform w-80 max-h-[70vh] overflow-y-auto bg-white dark:bg-surface-dark border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-4 z-50">
           <div className="mb-3">
             <h4 className="text-sm font-semibold mb-2">Categories</h4>
             <div className="flex flex-wrap gap-2">

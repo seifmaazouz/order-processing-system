@@ -8,28 +8,29 @@ namespace OrderProcessing.Domain.Entities
         public DateOnly OrderDate { get; private set; }
         public OrderStatus Status { get; private set; }
         public decimal TotalPrice { get; private set; }
-        public int PublisherId { get; private set; }
+        public int PubID { get; private set; }
         public string? ConfirmedBy { get; private set; }
+
+        // Parameterless constructor for Dapper
+        public AdminOrder() { }
 
         public AdminOrder(
             int orderId,
-            DateTime orderDate,
-            string status,
+            DateOnly orderDate,
+            OrderStatus status,
             decimal totalPrice,
-            int publisherId,
+            int pubID,
             string? confirmedBy = null)
         {
             if (orderId < 0) throw new ArgumentException("OrderId must be non-negative");
             if (totalPrice < 0) throw new ArgumentException("Total price must be non-negative");
-            if (publisherId < 0) throw new ArgumentException("PublisherId must be non-negative");
+            if (pubID < 0) throw new ArgumentException("PubID must be non-negative");
             OrderId = orderId;
             TotalPrice = totalPrice;
-            PublisherId = publisherId;
+            PubID = pubID;
             ConfirmedBy = confirmedBy;
-            OrderDate = DateOnly.FromDateTime(orderDate.Date);
-            if (!Enum.TryParse<OrderStatus>(status, true, out OrderStatus orderStatus))
-                throw new ArgumentException($"Invalid order status: {status}. Valid values are: Pending, Confirmed, Canceled");
-            Status = orderStatus;
+            OrderDate = orderDate;
+            Status = status;
         }
 
         public void ChangeStatus(OrderStatus newStatus)

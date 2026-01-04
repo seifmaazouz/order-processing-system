@@ -18,9 +18,9 @@ namespace OrderProcessing.Infrastructure.Repositories
         public async Task<IReadOnlyList<AdminOrder>> GetAllAsync()
         {
             const string sql = """
-                SELECT OrderId, OrderDate, "Status", TotalPrice, PublisherId, ConfirmedBy
+                SELECT OrderId, OrderDate, "Status", TotalPrice, PubID, ConfirmedBy
                 FROM adminorder
-                ORDER BY OrderDate DESC
+                ORDER BY OrderDate DESC, OrderId DESC
             """;
 
             using var connection = await _connectionFactory.CreateConnectionAsync();
@@ -33,7 +33,7 @@ namespace OrderProcessing.Infrastructure.Repositories
         public async Task<AdminOrder?> GetByOrderIdAsync(int orderId)
         {
             const string sql = """
-                SELECT OrderId, OrderDate, "Status", TotalPrice, PublisherId, ConfirmedBy
+                SELECT OrderId, OrderDate, "Status", TotalPrice, PubID, ConfirmedBy
                 FROM adminorder
                 WHERE OrderId = @OrderId
             """;
@@ -51,8 +51,8 @@ namespace OrderProcessing.Infrastructure.Repositories
         public async Task<int> AddAsync(AdminOrder order, List<AdminOrderItem> items)
         {
             const string orderSql = """
-                INSERT INTO AdminOrder (OrderDate, "Status", TotalPrice, PublisherId, ConfirmedBy)
-                VALUES (@OrderDate, @Status, @TotalPrice, @PublisherId, @ConfirmedBy)
+                INSERT INTO AdminOrder (OrderDate, "Status", TotalPrice, PubID, ConfirmedBy)
+                VALUES (@OrderDate, @Status::order_status_enum, @TotalPrice, @PubID, @ConfirmedBy)
                 RETURNING OrderId
             """;
 
@@ -73,7 +73,7 @@ namespace OrderProcessing.Infrastructure.Repositories
                         OrderDate = order.OrderDate.ToDateTime(TimeOnly.MinValue),
                         Status = order.Status.ToString(),
                         order.TotalPrice,
-                        order.PublisherId,
+                        order.PubID,
                         order.ConfirmedBy
                     },
                     transaction
@@ -108,7 +108,7 @@ namespace OrderProcessing.Infrastructure.Repositories
         {
             const string sql = """
                 UPDATE AdminOrder
-                SET "Status" = @Status
+                SET "Status" = @Status::order_status_enum
                 WHERE OrderId = @OrderId
             """;
 
@@ -124,7 +124,7 @@ namespace OrderProcessing.Infrastructure.Repositories
         {
             const string sql = """
                 UPDATE AdminOrder
-                SET "Status" = @Status, ConfirmedBy = @ConfirmedBy
+                SET "Status" = @Status::order_status_enum, ConfirmedBy = @ConfirmedBy
                 WHERE OrderId = @OrderId
             """;
 
