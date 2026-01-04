@@ -10,7 +10,14 @@ jobs:
 
     steps:
       - name: Check PR title
-        uses: thehanimo/pr-title-checker@v1.3.7
-        with:
-          pattern: '^(feat|fix|chore|docs|refactor|perf|test)(\([a-zA-Z0-9_-]+\))?: .+'
-          error-message: 'PR title must follow conventional commit format: type(scope): description'
+        run: |
+          TITLE="${{ github.event.pull_request.title }}"
+          if [[ ! "$TITLE" =~ ^(feat|fix|chore|docs|refactor|perf|test)(\([a-zA-Z0-9_-]+\))?:[[:space:]].+ ]]; then
+            echo "❌ PR title must follow conventional commit format: type(scope): description"
+            echo "Examples:"
+            echo "  ✅ feat: add user authentication"
+            echo "  ✅ fix(api): resolve endpoint bug"
+            echo "  ✅ docs: update README"
+            exit 1
+          fi
+          echo "✅ PR title follows conventional commit format"
