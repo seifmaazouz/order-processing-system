@@ -75,27 +75,25 @@ jobs:
       # RUN semantic-release
       # ---------------------------------------
       - name: Run semantic-release
+        id: semantic_release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npx semantic-release
 
+      # ---------------------------------------
+      # GET RELEASE VERSION (only if new release was published)
+      # ---------------------------------------
       - name: Get release version
+        if: steps.semantic_release.outputs.new_release_published == 'true'
         run: |
-          VERSION=$(git describe --tags --abbrev=0 2>/dev/null || true)
+          VERSION=$(git describe --tags --abbrev=0)
           echo "VERSION=$VERSION" >> $GITHUB_ENV
-
-      # If no version created, stop job
-      - name: Stop if no new release
-        if: env.VERSION == ''
-        run: |
-          echo "No new release — skipping Docker build"
-          exit 0
 
       # ---------------------------------------
       # LOGIN TO DOCKER HUB
       # ---------------------------------------
       - name: Login to DockerHub
-        if: env.VERSION != ''
+        if: steps.semantic_release.outputs.new_release_published == 'true'
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
@@ -105,7 +103,7 @@ jobs:
       # BACKEND DOCKER BUILD + PUSH
       # ---------------------------------------
       - name: Build Backend Image
-        if: env.VERSION != ''
+        if: steps.semantic_release.outputs.new_release_published == 'true'
         run: |
           docker build \
             -f src/Backend/Dockerfile \
@@ -114,7 +112,7 @@ jobs:
             src/Backend
 
       - name: Push Backend Images
-        if: env.VERSION != ''
+        if: steps.semantic_release.outputs.new_release_published == 'true'
         run: |
           docker push ${{ secrets.DOCKERHUB_USERNAME }}/order-processing-backend:${VERSION#v}
           docker push ${{ secrets.DOCKERHUB_USERNAME }}/order-processing-backend:latest
@@ -123,7 +121,7 @@ jobs:
       # FRONTEND DOCKER BUILD + PUSH
       # ---------------------------------------
       - name: Build Frontend Image
-        if: env.VERSION != ''
+        if: steps.semantic_release.outputs.new_release_published == 'true'
         run: |
           docker build \
             -f src/Frontend/book-store-app/Dockerfile \
@@ -132,7 +130,7 @@ jobs:
             src/Frontend/book-store-app
 
       - name: Push Frontend Images
-        if: env.VERSION != ''
+        if: steps.semantic_release.outputs.new_release_published == 'true'
         run: |
           docker push ${{ secrets.DOCKERHUB_USERNAME }}/order-processing-frontend:${VERSION#v}
           docker push ${{ secrets.DOCKERHUB_USERNAME }}/order-processing-frontend:latest
@@ -141,7 +139,7 @@ jobs:
       # DATABASE DOCKER BUILD + PUSH
       # ---------------------------------------
       - name: Build Database Image
-        if: env.VERSION != ''
+        if: steps.semantic_release.outputs.new_release_published == 'true'
         run: |
           docker build \
             -f src/Database/Dockerfile \
@@ -150,7 +148,7 @@ jobs:
             src/Database
 
       - name: Push Database Images
-        if: env.VERSION != ''
+        if: steps.semantic_release.outputs.new_release_published == 'true'
         run: |
           docker push ${{ secrets.DOCKERHUB_USERNAME }}/order-processing-db:${VERSION#v}
           docker push ${{ secrets.DOCKERHUB_USERNAME }}/order-processing-db:latest
