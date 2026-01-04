@@ -1,0 +1,16 @@
+{
+  "LABEL": {
+    "name": "invalid-title",
+    "color": "ff0000"
+  },
+  "CHECKS": {
+    "regexp": "^(feat|fix|chore|docs|refactor|perf|test)(\\([a-zA-Z0-9_-]+\\))?: .+",
+    "regexpFlags": "i",
+    "ignoreLabels": ["bot", "invalid-title"]
+  },
+  "MESSAGES": {
+    "success": "PR title is valid",
+    "failure": "PR title must follow conventional commit format: type(scope): description",
+    "notice": ""
+  }
+}
