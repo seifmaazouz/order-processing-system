@@ -1,0 +1,16 @@
+name: PR Title Check
+
+on:
+  pull_request:
+    types: [opened, edited, reopened, synchronize]
+
+jobs:
+  check-pr-title:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check PR title
+        uses: amitsingh-007/validate-pr-title@v1.1
+        with:
+          pattern: '^(feat|fix|chore|docs|refactor|perf|test)(\([a-zA-Z0-9_-]+\))?: .+'
+          error-message: 'PR title must follow conventional commit format: type(scope): description'

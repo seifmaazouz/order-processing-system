@@ -1,0 +1,33 @@
+{
+  "name": "order-processing-system",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Order Processing System - Fullstack E-commerce Application",
+  "release": {
+    "branches": [
+      "main"
+    ],
+    "plugins": [
+      [
+        "@semantic-release/commit-analyzer",
+        {
+          "preset": "angular",
+          "releaseRules": [
+            { "type": "docs", "scope": "README", "release": "patch" },
+            { "type": "*", "release": "patch" }
+          ]
+        }
+      ],
+      "@semantic-release/release-notes-generator",
+      "@semantic-release/changelog",
+      "@semantic-release/github"
+    ]
+  },
+  "devDependencies": {
+    "@semantic-release/changelog": "^6.0.0",
+    "@semantic-release/commit-analyzer": "^11.0.0",
+    "@semantic-release/github": "^11.0.0",
+    "@semantic-release/release-notes-generator": "^13.0.0",
+    "semantic-release": "^25.0.2"
+  }
+}

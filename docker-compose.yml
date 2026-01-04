@@ -3,24 +3,23 @@ name: order-processing-system
 services:
   frontend:
     container_name: react-frontend
+    image: ${DOCKERHUB_USERNAME}/order-processing-frontend:latest
     build:
-      context: ./src/Frontend/book-store-app/
-      dockerfile: Dockerfile
-    image: ordprosys/frontend
+      context: ./src/Frontend/book-store-app
     depends_on:
       - backend
     ports:
-      - "5174:5174" 
+      - "5174:5174"
     networks:
       - net
     environment:
-      - VITE_API_BASE_URL=http://localhost:8080/api
+      - VITE_API_BASE_URL=http://dotnet-backend:8080/api
 
   backend:
     container_name: dotnet-backend
+    image: ${DOCKERHUB_USERNAME}/order-processing-backend:latest
     build:
-      context: ./src/Backend/
-    image: ordprosys/backend
+      context: ./src/Backend
     depends_on:
       - db
     environment:
@@ -31,13 +30,12 @@ services:
       - "8080:8080"
     networks:
       - net
-    
-      
+
   db:
     container_name: postgres-db
+    image: ${DOCKERHUB_USERNAME}/order-processing-db:latest
     build:
-      context: ./src/Database/
-    image: ordprosys/database
+      context: ./src/Database
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
