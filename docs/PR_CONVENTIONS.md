@@ -20,26 +20,30 @@ chore: update dependencies
 
 ---
 
+
 ## Allowed Types and Their Meaning
 
-### Release-triggering
+### Release-triggering (will create a release and changelog entry)
 - feat → Minor version bump
 - fix → Patch version bump
-
-### Non-breaking / maintenance
-- refactor → Patch
-- perf → Patch
-- docs → Patch
-- test → Patch
-- chore → Patch
+- docs → Patch version bump
+- refactor → Patch version bump
+- perf → Patch version bump
+- test → Patch version bump
 
 ### Breaking Changes
-Use ! to indicate a breaking change:
+To trigger a major version bump (breaking change), use one of the following:
 
-feat!: change authentication response format
-fix!: remove legacy endpoint
+- Add an exclamation mark after the type: `feat!:` or `fix!:`
+- Or, add `BREAKING CHANGE:` in the body or footer of the PR description or commit message:
 
-→ Major version bump
+```
+feat(api): remove deprecated endpoint
+
+BREAKING CHANGE: The /old-endpoint route has been removed and will break clients using it.
+```
+
+Both methods are supported by semantic-release and will trigger a major version bump.
 
 ---
 
@@ -61,7 +65,7 @@ Common scopes:
 ## Important Rules
 
 - PR title **must follow the format**
-- Use **Squash and merge**
+- Use **Squash and merge** (when merging to the dev branch)
 - Feature branch commit messages can be anything
 - The squash commit message = PR title
 

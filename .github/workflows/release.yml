@@ -76,9 +76,11 @@ jobs:
       # ---------------------------------------
       - name: Run semantic-release
         id: semantic_release
+        uses: cycjimmy/semantic-release-action@v4
+        with:
+          semantic_version: 22
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npx semantic-release
 
       # ---------------------------------------
       # GET RELEASE VERSION (only if new release was published)
@@ -86,8 +88,7 @@ jobs:
       - name: Get release version
         if: steps.semantic_release.outputs.new_release_published == 'true'
         run: |
-          VERSION=$(git describe --tags --abbrev=0)
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "VERSION=${{ steps.semantic_release.outputs.new_release_version }}" >> $GITHUB_ENV
 
       # ---------------------------------------
       # LOGIN TO DOCKER HUB
@@ -107,14 +108,14 @@ jobs:
         run: |
           docker build \
             -f src/Backend/Dockerfile \
-            -t ${{ secrets.DOCKERHUB_USERNAME }}/order-processing-backend:${VERSION#v} \
+            -t ${{ secrets.DOCKERHUB_USERNAME }}/order-processing-backend:${VERSION} \
             -t ${{ secrets.DOCKERHUB_USERNAME }}/order-processing-backend:latest \
             src/Backend
 
       - name: Push Backend Images
         if: steps.semantic_release.outputs.new_release_published == 'true'
         run: |
-          docker push ${{ secrets.DOCKERHUB_USERNAME }}/order-processing-backend:${VERSION#v}
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/order-processing-backend:${VERSION}
           docker push ${{ secrets.DOCKERHUB_USERNAME }}/order-processing-backend:latest
 
       # ---------------------------------------
@@ -125,14 +126,14 @@ jobs:
         run: |
           docker build \
             -f src/Frontend/book-store-app/Dockerfile \
-            -t ${{ secrets.DOCKERHUB_USERNAME }}/order-processing-frontend:${VERSION#v} \
+            -t ${{ secrets.DOCKERHUB_USERNAME }}/order-processing-frontend:${VERSION} \
             -t ${{ secrets.DOCKERHUB_USERNAME }}/order-processing-frontend:latest \
             src/Frontend/book-store-app
 
       - name: Push Frontend Images
         if: steps.semantic_release.outputs.new_release_published == 'true'
         run: |
-          docker push ${{ secrets.DOCKERHUB_USERNAME }}/order-processing-frontend:${VERSION#v}
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/order-processing-frontend:${VERSION}
           docker push ${{ secrets.DOCKERHUB_USERNAME }}/order-processing-frontend:latest
 
       # ---------------------------------------
@@ -143,12 +144,12 @@ jobs:
         run: |
           docker build \
             -f src/Database/Dockerfile \
-            -t ${{ secrets.DOCKERHUB_USERNAME }}/order-processing-db:${VERSION#v} \
+            -t ${{ secrets.DOCKERHUB_USERNAME }}/order-processing-db:${VERSION} \
             -t ${{ secrets.DOCKERHUB_USERNAME }}/order-processing-db:latest \
             src/Database
 
       - name: Push Database Images
         if: steps.semantic_release.outputs.new_release_published == 'true'
         run: |
-          docker push ${{ secrets.DOCKERHUB_USERNAME }}/order-processing-db:${VERSION#v}
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/order-processing-db:${VERSION}
           docker push ${{ secrets.DOCKERHUB_USERNAME }}/order-processing-db:latest
