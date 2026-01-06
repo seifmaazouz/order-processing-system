@@ -1,0 +1,55 @@
+name: order-processing-system
+
+services:
+  frontend:
+    container_name: react-frontend
+    image: ${DOCKERHUB_USERNAME}/order-processing-frontend:latest
+    build:
+      context: ./src/Frontend/book-store-app
+    depends_on:
+      - backend
+    ports:
+      - "5174:5174"
+    networks:
+      - net
+    environment:
+      - VITE_API_BASE_URL=http://localhost:8080/api
+
+  backend:
+    container_name: dotnet-backend
+    image: ${DOCKERHUB_USERNAME}/order-processing-backend:latest
+    build:
+      context: ./src/Backend
+    depends_on:
+      - db
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development # or Production (set accordingly)
+      ASPNETCORE_URLS: "http://+:8080"
+      ConnectionStrings__PostgresConnection: "Host=postgres-db;Port=5432;Database=ordprosys;Username=postgres;Password=postgres;Pooling=true;Minimum Pool Size=5;Maximum Pool Size=100;Connection Idle Lifetime=300;Connection Pruning Interval=60;Timeout=30;CommandTimeout=30"
+    ports:
+      - "8080:8080"
+    networks:
+      - net
+
+  db:
+    container_name: postgres-db
+    image: ${DOCKERHUB_USERNAME}/order-processing-db:latest
+    build:
+      context: ./src/Database
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: ordprosys
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - net
+
+volumes:
+  db_data:
+
+networks:
+  net:
+    driver: bridge

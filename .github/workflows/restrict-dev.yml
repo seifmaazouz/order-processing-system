@@ -6,22 +6,22 @@ on:
     types: [opened, synchronize, reopened]
 
 jobs:
-  check-source:
+  check-branch:
     runs-on: ubuntu-latest
     steps:
       - name: Validate source branch for dev
         run: |
           BRANCH="${{ github.head_ref }}"
+          LOWER=$(echo "$BRANCH" | tr '[:upper:]' '[:lower:]')
 
-          if [[ "$BRANCH" =~ ^(backend|database|frontend)/(feature|hotfix|bugfix)/.*$ ]]; then
-            echo "✅ Allowed structured branch: $BRANCH"
-            exit 0
-          fi
+          echo "🔎 Source branch: $BRANCH"
 
-          if [[ "$BRANCH" =~ ^misc/.*$ ]]; then
-            echo "✅ Allowed misc branch: $BRANCH"
-            exit 0
-          fi
+          # Fail fast if not lowercase
+          [[ "$BRANCH" == "$LOWER" ]] || { echo "❌ Branch must be lowercase. Suggested: $LOWER"; exit 1; }
 
-          echo "❌ Invalid source branch: $BRANCH"
+          # Allowed patterns for dev
+          [[ "$BRANCH" =~ ^(backend|frontend|database)/(feature|bugfix|hotfix)/.*$ ]] && exit 0
+          [[ "$BRANCH" =~ ^misc/.*$ ]] && exit 0
+
+          echo "❌ Invalid branch structure for dev. Use: backend/frontend/database with feature/bugfix/hotfix, or misc/*"
           exit 1
