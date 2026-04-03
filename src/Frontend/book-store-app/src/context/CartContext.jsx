@@ -149,6 +149,11 @@ export function CartProvider({ children }) {
       // Reload cart data to update count and items
       await loadCart();
 
+      // Notify UI listeners immediately that an item was added (reduce stock by 1)
+      try {
+        window.dispatchEvent(new CustomEvent('cart:quantityChanged', { detail: { id: isbnStr, delta: 1 } }));
+      } catch (e) {}
+
       setIsLoading(false);
       return true;
     } catch (err) {
@@ -165,32 +170,51 @@ export function CartProvider({ children }) {
   const removeFromCart = useCallback(async (id) => {
     try {
       console.log(`CartContext: Removing item ${id} from cart`);
+      // determine previous quantity so we can adjust stock
+      const prevItem = items.find(i => i.id === id);
+      const prevQty = prevItem?.quantity || 0;
+
       const { removeCartItem } = await import('../api/addCart.js');
       await removeCartItem(id);
 
       // Reload cart data to reflect the removal
       console.log('CartContext: Reloading cart data after item removal');
       await loadCart();
+
+      // Notify listeners that stock should increase by prevQty
+      try {
+        if (prevQty !== 0) window.dispatchEvent(new CustomEvent('cart:quantityChanged', { detail: { id, delta: -prevQty } }));
+      } catch (e) {}
     } catch (error) {
       console.error('CartContext: Failed to remove item:', error);
       setError(error?.message || 'Failed to remove item');
     }
-  }, [loadCart]);
+  }, [loadCart, items]);
 
   const updateQuantity = useCallback(async (id, quantity) => {
     try {
       console.log(`CartContext: Updating item ${id} quantity to ${quantity}`);
+      // find previous quantity for delta
+      const prevItem = items.find(i => i.id === id);
+      const prevQty = prevItem?.quantity || 0;
+
       // Call API to update quantity on backend
       await updateCartQuantity(id, quantity);
 
       // Reload cart data to reflect the quantity change
       console.log('CartContext: Reloading cart data after quantity update');
       await loadCart();
+
+      // Notify listeners that cart quantity changed (stock reduced by delta)
+      const delta = quantity - prevQty;
+      try {
+        if (delta !== 0) window.dispatchEvent(new CustomEvent('cart:quantityChanged', { detail: { id, delta } }));
+      } catch (e) {}
     } catch (error) {
       console.error('CartContext: Failed to update quantity:', error);
       setError(error?.message || 'Failed to update quantity');
     }
-  }, [loadCart]);
+  }, [loadCart, items]);
 
   const clearCart = useCallback(async () => {
     const token = localStorage.getItem('access');

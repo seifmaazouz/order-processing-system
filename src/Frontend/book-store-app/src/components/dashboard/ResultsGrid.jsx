@@ -15,13 +15,10 @@ export default function ResultsGrid({ results, lastQueryLabel, onStockUpdate }) 
   if (!results || results.length === 0) return null;
 
   const getStockStatus = (book) => {
-    // Handle both PascalCase and camelCase
-    console.log('Book properties:', Object.keys(book));
-    console.log('Book Stock/Quantity values:', { Stock: book.Stock, stock: book.stock, Quantity: book.Quantity, quantity: book.quantity });
-    const stock = book.Stock || book.stock || book.Quantity || book.quantity || book.stockLevel || 10; // default to 10 if not provided
-    console.log('Final stock value used:', stock);
+    // Prefer `displayStock` computed by Dashboard; fall back to Book.Stock / book.stock etc.
+    const stock = (book.displayStock ?? book.Stock ?? book.stock ?? book.Quantity ?? book.quantity ?? book.stockLevel) ?? 0;
     if (stock === 0) return { label: 'Out of Stock', color: 'bg-gray-100 text-gray-600', textColor: 'text-gray-500' };
-      if (stock <= 2) return { label: `Only ${stock} left`, color: 'bg-red-200 text-red-600', textColor: 'text-red-500' };
+    if (stock <= 2) return { label: `Only ${stock} left`, color: 'bg-red-200 text-red-600', textColor: 'text-red-500' };
     if (stock <= 5) return { label: `Only ${stock} left`, color: 'bg-orange-100 text-orange-600', textColor: 'text-orange-500' };
 
     return { label: 'In Stock', color: 'bg-green-100 text-green-600', textColor: 'text-green-500' };
@@ -64,7 +61,12 @@ export default function ResultsGrid({ results, lastQueryLabel, onStockUpdate }) 
         setToast({ type: 'success', message: `"${bookTitle}" added to cart!` });
         setTimeout(() => setToast(null), 3000);
 
-        // Update local stock level (reduce by 1 since item was added to cart)
+        // Dispatch a global cart change immediately so UI updates (dashboard/listings)
+        try {
+          window.dispatchEvent(new CustomEvent('cart:quantityChanged', { detail: { id: bookId, delta: 1 } }));
+        } catch (e) {}
+
+        // Fallback: update via callback prop if provided
         const currentStock = book.Quantity || book.quantity || book.Stock || book.stock || book.stockLevel || 10;
         if (onStockUpdate && currentStock > 0) {
           onStockUpdate(bookId, currentStock - 1);
@@ -93,14 +95,16 @@ export default function ResultsGrid({ results, lastQueryLabel, onStockUpdate }) 
       </h3>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {results.map((book, idx) => {
-          // Smarter check: treat isAvailable === false as out of stock
-          let stock = book.Stock ?? book.stock ?? book.Quantity ?? book.quantity ?? book.stockLevel ?? 10;
-          let available = book.isAvailable !== undefined ? !!book.isAvailable : true;
-          let status;
-          if (!available || stock === 0) status = { label: 'Out of Stock', color: 'bg-gray-100 text-gray-600', textColor: 'text-gray-500', unavailable: true };
-          else if (stock <= 2) status = { label: `Only ${stock} left`, color: 'bg-red-200 text-red-600', textColor: 'text-red-500', unavailable: false };
-          else if (stock <= 5) status = { label: `Only ${stock} left`, color: 'bg-orange-100 text-orange-600', textColor: 'text-orange-500', unavailable: false };
-          else status = { label: 'In Stock', color: 'bg-green-100 text-green-600', textColor: 'text-green-500', unavailable: false };
+          // Prefer displayStock if available (Dashboard subtracts cart quantities)
+          const stock = (book.displayStock ?? book.Stock ?? book.stock ?? book.Quantity ?? book.quantity ?? book.stockLevel) ?? 0;
+          const available = book.isAvailable !== undefined ? !!book.isAvailable : true;
+          const status = !available || stock === 0
+            ? { label: 'Out of Stock', color: 'bg-gray-100 text-gray-600', textColor: 'text-gray-500', unavailable: true }
+            : stock <= 2
+            ? { label: `Only ${stock} left`, color: 'bg-red-200 text-red-600', textColor: 'text-red-500', unavailable: false }
+            : stock <= 5
+            ? { label: `Only ${stock} left`, color: 'bg-orange-100 text-orange-600', textColor: 'text-orange-500', unavailable: false }
+            : { label: 'In Stock', color: 'bg-green-100 text-green-600', textColor: 'text-green-500', unavailable: false };
 
           return (
             <BookCard
@@ -233,10 +237,10 @@ export default function ResultsGrid({ results, lastQueryLabel, onStockUpdate }) 
                   <span className="font-semibold text-gray-900">{selectedBook.Publisher || selectedBook.publisher}</span>
                 </div>
               )}
-              {(selectedBook.Stock !== undefined || selectedBook.stock !== undefined) && (
+              {((selectedBook.displayStock !== undefined) || (selectedBook.Stock !== undefined) || (selectedBook.stock !== undefined)) && (
                 <div className="flex justify-between border border-gray-100 rounded-md px-3 py-2">
                   <span className="text-gray-600">Stock</span>
-                  <span className="font-semibold text-gray-900">{(selectedBook.Stock || selectedBook.stock)} units</span>
+                  <span className="font-semibold text-gray-900">{(selectedBook.displayStock ?? selectedBook.Stock ?? selectedBook.stock)} units</span>
                 </div>
               )}
               {selectedBook.isAvailable !== undefined && (
@@ -260,7 +264,7 @@ export default function ResultsGrid({ results, lastQueryLabel, onStockUpdate }) 
               <div className="flex items-center gap-3 ml-auto">
                 <button
                   onClick={() => handleAddToCart(selectedBook)}
-                  disabled={(selectedBook.Stock || selectedBook.stock || 0) === 0 || isBookLoading(selectedBook) || isInCart(selectedBook)}
+                  disabled={(selectedBook.displayStock ?? selectedBook.Stock ?? selectedBook.stock ?? 0) === 0 || isBookLoading(selectedBook) || isInCart(selectedBook)}
                   className={`flex items-center gap-2 px-5 py-2 rounded-full text-white font-semibold shadow-md ${
                     isInCart(selectedBook)
                       ? 'bg-green-500 cursor-not-allowed'
@@ -274,7 +278,7 @@ export default function ResultsGrid({ results, lastQueryLabel, onStockUpdate }) 
                     ? 'In Cart'
                     : isBookLoading(selectedBook)
                     ? 'Adding...'
-                    : (selectedBook.Stock || selectedBook.stock || 0) === 0
+                    : (selectedBook.displayStock ?? selectedBook.Stock ?? selectedBook.stock ?? 0) === 0
                     ? 'Unavailable'
                     : 'Add to Cart'}
                 </button>
@@ -287,14 +291,14 @@ export default function ResultsGrid({ results, lastQueryLabel, onStockUpdate }) 
       )}
     </AnimatePresence>
 
-    {/* Toast Notification */}
+    {/* Toast Notification (top-center) */}
     <AnimatePresence>
       {toast && (
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -20 }}
-          className={`fixed top-4 right-4 px-5 py-3 rounded-lg font-semibold text-white shadow-lg z-50 ${
+          className={`fixed top-4 left-1/2 transform -translate-x-1/2 px-5 py-3 rounded-lg font-semibold text-white shadow-lg z-50 ${
             toast.type === 'success' ? 'bg-green-500' : 'bg-red-500'
           }`}
         >

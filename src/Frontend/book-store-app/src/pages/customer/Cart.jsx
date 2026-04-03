@@ -44,6 +44,39 @@ export default function Cart() {
     loadCart();
   }, []); // Only load once on mount
 
+  const [stockOverrides, setStockOverrides] = useState({});
+
+  // Listen for cart quantity changes to update displayed stock immediately
+  useEffect(() => {
+    function handleCartQuantityChange(e) {
+      const detail = e?.detail || {};
+      const { id, delta } = detail;
+      if (!id || typeof delta !== 'number') return;
+
+      // Only update overrides for items currently in the cart
+      setStockOverrides(prev => {
+        const current = prev[id] ?? (items.find(i => i.id === id)?.stock ?? 0);
+        const updated = Math.max(0, current - delta);
+        return { ...prev, [id]: updated };
+      });
+    }
+
+    window.addEventListener('cart:quantityChanged', handleCartQuantityChange);
+    return () => window.removeEventListener('cart:quantityChanged', handleCartQuantityChange);
+  }, [items]);
+
+  // Reset overrides when items list reloads to keep authoritative data
+  useEffect(() => {
+    // Recompute overrides based on authoritative `items` (stock - quantity)
+    const map = {};
+    (items || []).forEach(i => {
+      const base = Number(i.stock ?? 0);
+      const qty = Number(i.quantity ?? 0);
+      map[i.id] = Math.max(0, base - qty);
+    });
+    setStockOverrides(map);
+  }, [items]);
+
   // Fetch saved cards and user address when checkout modal opens
   useEffect(() => {
     if (showCheckoutModal) {
@@ -148,8 +181,58 @@ export default function Cart() {
       await loadCart(); // Refresh cart
       navigate('/orders');
     } catch (error) {
-      const errorMsg = error.response?.data?.message || error.response?.data?.error || error.message || 'Checkout failed';
-      toast.error(errorMsg);
+      // Robust handling for insufficient-stock errors.
+      // Attempt to parse structured response from backend, but fall back to message matching.
+      const data = error?.response?.data ?? {};
+      const message = data?.message || data?.error || error?.message || '';
+
+      const isInsufficient = (data?.error === 'Insufficient stock')
+        || (typeof message === 'string' && message.toLowerCase().includes('insufficient'))
+        || (data?.isbn && typeof data?.available !== 'undefined');
+
+      console.warn('Checkout failed:', { isInsufficient, message, data });
+
+      if (isInsufficient) {
+        // Ensure user returns to cart view immediately
+        try {
+          setShowCheckoutModal(false);
+        } catch (e) {
+          console.warn('Failed to close checkout modal:', e);
+        }
+
+        // If backend returned structured insufficient-stock error, auto-adjust cart to the provided available quantity
+        if (data?.error === 'Insufficient stock' && data?.isbn !== undefined && typeof data?.available !== 'undefined') {
+          const isbn = data.isbn;
+          const available = Number(data.available);
+          const title = data.title ?? null;
+          const displayName = title ?? isbn;
+          try {
+            if (available <= 0) {
+              await removeFromCart(isbn);
+              toast.error(`${displayName} is out of stock and was removed from your cart.`);
+            } else {
+              await updateQuantity(isbn, available);
+              toast.error(`Insufficient stock for ${displayName}. Quantity adjusted to ${available}.`);
+            }
+          } catch (adjErr) {
+            console.error('Failed to auto-adjust cart after checkout failure:', adjErr);
+            toast.error('Checkout failed and auto-adjust failed. Please review your cart.');
+          }
+        } else {
+          // Non-structured insufficient message: notify user and reload authoritative cart state
+          toast.error(message || 'Insufficient stock — your cart was updated.');
+        }
+
+        // Refresh cart to reflect adjustments or authoritative state regardless of auto-adjust outcome
+        try {
+          await loadCart();
+        } catch (reloadErr) {
+          console.error('Failed to reload cart after checkout failure:', reloadErr);
+        }
+      } else {
+        const errorMsg = message || 'Checkout failed';
+        toast.error(errorMsg);
+      }
     } finally {
       setIsCheckingOut(false);
     }
@@ -233,7 +316,7 @@ export default function Cart() {
                       {authors && (
                         <p className="text-sm text-gray-600 mb-1">{authors}</p>
                       )}
-                      <p className="text-sm text-gray-500">Stock: {item.stock ?? 'N/A'}</p>
+                      <p className="text-sm text-gray-500">Stock: {stockOverrides[item.id] ?? item.stock ?? 'N/A'}</p>
                       <div className="mt-3 flex items-center gap-3">
                         <div className="flex items-center gap-2 bg-gray-100 rounded-full px-3 py-1">
                           <button
@@ -472,7 +555,7 @@ export default function Cart() {
         </div>
       )}
 
-      <ToastContainer position="top-right" autoClose={3000} hideProgressBar />
+      
     </div>
   );
 }

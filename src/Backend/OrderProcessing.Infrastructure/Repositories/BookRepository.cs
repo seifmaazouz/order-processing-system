@@ -313,15 +313,59 @@ public class BookRepository : IBookRepository
             return;
 
         using var connection = await _connectionFactory.CreateConnectionAsync();
+        using var transaction = connection.BeginTransaction();
 
-        var sql =
-        """
-            UPDATE Book
-            SET Quantity = Quantity + @QuantityChange
-            WHERE ISBN = @ISBN
-        """;
+        try
+        {
+            // Update each book individually within a transaction and ensure we never go below zero
+            foreach (var change in quantityChanges)
+            {
+                // change.Key = ISBN, change.Value = quantity delta (negative for checkout)
+                var isbn = change.Key;
+                var quantityChange = change.Value;
 
-        var parameters = quantityChanges.Select(kvp => new { ISBN = kvp.Key, QuantityChange = kvp.Value });
-        await connection.ExecuteAsync(sql, parameters);
+                // Lock the row for update to avoid race conditions and read title for better error messages
+                var selectSql = "SELECT Quantity, Title FROM Book WHERE ISBN = @ISBN FOR UPDATE";
+                var row = await connection.QuerySingleOrDefaultAsync(selectSql, new { ISBN = isbn }, transaction);
+                if (row == null)
+                {
+                    transaction.Rollback();
+                    throw new InvalidOperationException($"Book not found for ISBN {isbn}");
+                }
+
+                // Row exists: extract typed values (schema enforces Title NOT NULL)
+                var currentQty = (int)row.quantity;
+                string title = (string)row.title;
+
+                var newQty = currentQty + quantityChange;
+                if (newQty < 0)
+                {
+                    transaction.Rollback();
+                    // Surface the available quantity for caller
+                    throw new InsufficientStockException(isbn, currentQty, title);
+                }
+
+                var updateSql =
+                """
+                    UPDATE Book
+                    SET Quantity = @NewQuantity
+                    WHERE ISBN = @ISBN
+                """;
+
+                await connection.ExecuteAsync(updateSql, new { ISBN = isbn, NewQuantity = newQty }, transaction);
+            }
+
+            transaction.Commit();
+        }
+        catch (PostgresException ex)
+        {
+            transaction.Rollback();
+            throw PostgresExceptionTranslator.Translate(ex);
+        }
+        catch
+        {
+            transaction.Rollback();
+            throw;
+        }
     }
 }

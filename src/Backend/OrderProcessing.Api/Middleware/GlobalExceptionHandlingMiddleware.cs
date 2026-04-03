@@ -35,6 +35,7 @@ public class GlobalExceptionHandlingMiddleware
         {
             UnauthorizedAccessException ex => (HttpStatusCode.Unauthorized, ex.Message),
             NotFoundException ex => (HttpStatusCode.NotFound, ex.Message),
+            InsufficientStockException ex => (HttpStatusCode.BadRequest, ex.Message),
             DuplicateResourceException ex => (HttpStatusCode.Conflict, ex.Message),
             BusinessRuleViolationException ex => (HttpStatusCode.BadRequest, ex.Message),
             ArgumentException ex => (HttpStatusCode.BadRequest, ex.Message),
@@ -52,6 +53,19 @@ public class GlobalExceptionHandlingMiddleware
         context.Response.ContentType = "application/json";
         context.Response.StatusCode = (int)statusCode;
 
+        // Special-case insufficient stock to return structured details
+        if (exception is InsufficientStockException ise)
+        {
+            var body = new
+            {
+                error = "Insufficient stock",
+                isbn = ise.ISBN,
+                title = ise.Title,
+                available = ise.Available
+            };
+            return context.Response.WriteAsync(JsonSerializer.Serialize(body));
+        }
+
         var response = new ErrorResponse(message, (int)statusCode);
         return context.Response.WriteAsync(JsonSerializer.Serialize(response));
     }
@@ -59,8 +73,14 @@ public class GlobalExceptionHandlingMiddleware
     private void LogException(Exception exception, HttpStatusCode statusCode, string message)
     {
         if (statusCode == HttpStatusCode.InternalServerError)
+        {
+            // For internal server errors include exception and stack trace
             _logger.LogError(exception, "Unhandled exception: {Message}", message);
+        }
         else
-            _logger.LogWarning(exception, "{Type}: {Message}", exception.GetType().Name, message);
+        {
+            // For expected/non-critical errors (e.g. domain validations) log only type and message
+            _logger.LogWarning("{Type}: {Message}", exception.GetType().Name, message);
+        }
     }
 }
