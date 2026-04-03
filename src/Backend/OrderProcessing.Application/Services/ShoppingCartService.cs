@@ -241,12 +241,24 @@ public class ShoppingCartService : IShoppingCartService
         var cartISBNs = cart.CartItems.Select(item => item.ISBN).ToList();
         var books = await _bookRepository.GetBookDetailsAsync(cartISBNs);
 
+        // Collect all insufficiencies rather than throwing on first to provide a batch response
+        var insuffList = new List<InsufficientStockException.InsufficientItem>();
         foreach (var item in cart.CartItems)
         {
             if (!books.TryGetValue(item.ISBN, out var book))
+            {
                 throw new NotFoundException("Book", "ISBN", item.ISBN);
+            }
+
             if (book.Quantity < item.Quantity)
-                throw new InsufficientStockException(item.ISBN, book.Quantity, book.Title);
+            {
+                insuffList.Add(new InsufficientStockException.InsufficientItem(item.ISBN, book.Quantity, book.Title));
+            }
+        }
+
+        if (insuffList.Any())
+        {
+            throw new InsufficientStockException(insuffList);
         }
 
         // Calculate total price
@@ -254,8 +266,10 @@ public class ShoppingCartService : IShoppingCartService
 
         // Create order items from cart items
         var orderItems = cart.CartItems.Select(item =>
-            new CustomerOrderItem { ISBN = item.ISBN, OrderNum = 0, Quantity = item.Quantity, UnitPrice = item.UnitPrice }
-        ).ToList();
+        {
+            var title = books.TryGetValue(item.ISBN, out var b) ? b.Title : item.ISBN;
+            return new CustomerOrderItem { ISBN = item.ISBN, OrderNum = 0, Quantity = item.Quantity, UnitPrice = item.UnitPrice, Title = title };
+        }).ToList();
 
         // Create customer order with items and shipping address snapshot
         var orderId = await _orderRepository.AddAsync(

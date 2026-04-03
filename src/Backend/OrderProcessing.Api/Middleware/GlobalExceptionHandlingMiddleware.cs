@@ -53,16 +53,14 @@ public class GlobalExceptionHandlingMiddleware
         context.Response.ContentType = "application/json";
         context.Response.StatusCode = (int)statusCode;
 
-        // Special-case insufficient stock to return structured details
+        // Special-case insufficient stock to return structured details (single or multiple items)
         if (exception is InsufficientStockException ise)
         {
-            var body = new
-            {
-                error = "Insufficient stock",
-                isbn = ise.ISBN,
-                title = ise.Title,
-                available = ise.Available
-            };
+            // Build a typed response DTO for clarity and testability
+            var dtoItems = (ise.Items ?? new[] { new InsufficientStockException.InsufficientItem(ise.ISBN ?? string.Empty, ise.Available ?? 0, ise.Title) })
+                .Select(i => new InsufficientStockItemDto(i.ISBN, i.Title, i.Available));
+
+            var body = new InsufficientStockResponse("Insufficient stock", dtoItems);
             return context.Response.WriteAsync(JsonSerializer.Serialize(body));
         }
 
