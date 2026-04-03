@@ -69,17 +69,30 @@ export default function Dashboard() {
 
   // Update displayed books when cart quantities change (delta positive means reduce stock)
   useEffect(() => {
+    // Recent event buckets to prevent duplicate rapid application (debounce/coalesce)
+    const recentEventBucket = new Map();
     function handleCartQuantityChange(e) {
       const detail = e?.detail || {};
       const { id, delta } = detail;
       if (!id || typeof delta !== 'number') return;
+
+      // bucket key (300ms window)
+      const bucket = Math.floor(Date.now() / 300);
+      const lastBucket = recentEventBucket.get(id);
+      if (lastBucket === bucket) {
+        // duplicate event in the same short window — ignore to avoid double-decrement
+        console.debug('Dashboard: ignored duplicate cart event', { id, delta, bucket });
+        return;
+      }
+      recentEventBucket.set(id, bucket);
 
       setSearchResults(prev => prev.map(book => {
         const bookId = book.ISBN || book.isbn || book.id;
         if (bookId !== id) return book;
         const current = book.displayStock ?? book.Stock ?? book.stock ?? book.Quantity ?? book.quantity ?? book.stockLevel ?? 0;
         const updated = Math.max(0, current - delta);
-        return { ...book, displayStock: updated, Quantity: updated, quantity: updated, Stock: updated, stock: updated, stockLevel: updated };
+        // Only update the transient displayStock; do not mutate the authoritative base stock fields
+        return { ...book, displayStock: updated };
       }));
     }
 

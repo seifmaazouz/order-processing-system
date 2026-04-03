@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faArrowAltCircleLeft, faArrowAltCircleRight, faClose, faDiagramNext, faShoppingCart } from '@fortawesome/free-solid-svg-icons';
@@ -56,22 +57,16 @@ export default function ResultsGrid({ results, lastQueryLabel, onStockUpdate }) 
 
     try {
       const success = await addToCart(book);
-      if (success) {
-        const bookTitle = book.Title || book.title || 'Book';
-        setToast({ type: 'success', message: `"${bookTitle}" added to cart!` });
-        setTimeout(() => setToast(null), 3000);
+        if (success) {
+          const bookTitle = book.Title || book.title || 'Book';
+          setToast({ type: 'success', message: `"${bookTitle}" added to cart!` });
+          setTimeout(() => setToast(null), 3000);
 
-        // Dispatch a global cart change immediately so UI updates (dashboard/listings)
-        try {
-          window.dispatchEvent(new CustomEvent('cart:quantityChanged', { detail: { id: bookId, delta: 1 } }));
-        } catch (e) {}
+          // NOTE: CartContext now dispatches `cart:quantityChanged` optimistically.
+          // Avoid duplicating that dispatch here to prevent double-decrement.
 
-        // Fallback: update via callback prop if provided
-        const currentStock = book.Quantity || book.quantity || book.Stock || book.stock || book.stockLevel || 10;
-        if (onStockUpdate && currentStock > 0) {
-          onStockUpdate(bookId, currentStock - 1);
-        }
-      } else {
+          // Do not mutate parent stock directly here — parent should listen to global `cart:quantityChanged`.
+        } else {
         setToast({ type: 'error', message: error || 'Failed to add item' });
         setTimeout(() => setToast(null), 4000);
       }
@@ -143,10 +138,10 @@ export default function ResultsGrid({ results, lastQueryLabel, onStockUpdate }) 
               transition={{ type: 'spring', stiffness: 220, damping: 24 }}
             >
               {/* Left hover area for Previous button */}
-              <div className="absolute left-0 top-0 bottom-0 w-24 group/left">
+              <div className="absolute left-0 top-0 bottom-0 w-24 group/left pointer-events-none">
                 <button
                   onClick={handlePrev}
-                  className="absolute left-2 top-1/2 -translate-y-1/2 h-10 w-10 rounded-full bg-gray-100 text-gray-700 border border-gray-300 hover:bg-gray-200 shadow-lg opacity-0 group-hover/left:opacity-100 transition-opacity duration-200 flex items-center justify-center"
+                  className="absolute left-2 top-1/2 -translate-y-1/2 h-10 w-10 rounded-full bg-gray-100 text-gray-700 border border-gray-300 hover:bg-gray-200 shadow-lg opacity-0 group-hover/left:opacity-100 transition-opacity duration-200 flex items-center justify-center pointer-events-auto"
                   aria-label="Previous"
                 >
                   <FontAwesomeIcon icon={faArrowAltCircleLeft} />
@@ -154,10 +149,10 @@ export default function ResultsGrid({ results, lastQueryLabel, onStockUpdate }) 
               </div>
 
               {/* Right hover area for Next button */}
-              <div className="absolute right-0 top-0 bottom-0 w-24 group/right">
+              <div className="absolute right-0 top-0 bottom-0 w-24 group/right pointer-events-none">
                 <button
                   onClick={handleNext}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 h-10 w-10 rounded-full bg-gray-100 text-gray-700 border border-gray-300 hover:bg-gray-200 shadow-lg opacity-0 group-hover/right:opacity-100 transition-opacity duration-200 flex items-center justify-center"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 h-10 w-10 rounded-full bg-gray-100 text-gray-700 border border-gray-300 hover:bg-gray-200 shadow-lg opacity-0 group-hover/right:opacity-100 transition-opacity duration-200 flex items-center justify-center pointer-events-auto"
                   aria-label="Next"
                 >
                   <FontAwesomeIcon icon={faArrowAltCircleRight} />
@@ -186,7 +181,8 @@ export default function ResultsGrid({ results, lastQueryLabel, onStockUpdate }) 
                 {/* Status Badge */}
                 <div className="flex justify-start mb-4">
                   {(() => {
-                    let stock = selectedBook.Stock ?? selectedBook.stock ?? selectedBook.Quantity ?? selectedBook.quantity ?? selectedBook.stockLevel ?? 10;
+                    // Prefer transient displayStock (adjusted by cart) for modal badge as well
+                    let stock = selectedBook.displayStock ?? selectedBook.Stock ?? selectedBook.stock ?? selectedBook.Quantity ?? selectedBook.quantity ?? selectedBook.stockLevel ?? 10;
                     let available = selectedBook.isAvailable !== undefined ? !!selectedBook.isAvailable : true;
                     let status;
                     if (!available || stock === 0) status = { label: 'Out of Stock', color: 'bg-gray-100 text-gray-600', textColor: 'text-gray-500', unavailable: true };
@@ -291,21 +287,24 @@ export default function ResultsGrid({ results, lastQueryLabel, onStockUpdate }) 
       )}
     </AnimatePresence>
 
-    {/* Toast Notification (top-center) */}
-    <AnimatePresence>
-      {toast && (
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -20 }}
-          className={`fixed top-4 left-1/2 transform -translate-x-1/2 px-5 py-3 rounded-lg font-semibold text-white shadow-lg z-50 ${
-            toast.type === 'success' ? 'bg-green-500' : 'bg-red-500'
-          }`}
-        >
-          {toast.message}
-        </motion.div>
-      )}
-    </AnimatePresence>
+    {/* Toast Notification (top-center) rendered via portal to avoid transformed ancestor offset */}
+    {typeof document !== 'undefined' && toast && createPortal(
+      <AnimatePresence>
+        <div className="fixed inset-x-0 top-4 z-50 flex justify-center pointer-events-none">
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className={`px-5 py-3 rounded-lg font-semibold text-white shadow-lg pointer-events-auto ${
+              toast.type === 'success' ? 'bg-green-500' : 'bg-red-500'
+            }`}
+          >
+            {toast.message}
+          </motion.div>
+        </div>
+      </AnimatePresence>,
+      document.body
+    )}
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { addCart, getCartItems, updateCartQuantity, getCartItemCount } from '../api/addCart.js';
+import { toast } from 'react-toastify';
 import axios from 'axios';
 import API_BASE_URL from '../config/api.config.js';
 
@@ -64,10 +65,11 @@ export function CartProvider({ children }) {
         itemsArray = cartData.cartItems;
       }
       
-      // If no items found, ensure we have an empty array
+      // If no items found, ensure we have an empty array and zero count
       if (!itemsArray || itemsArray.length === 0) {
         console.log('CartContext: Cart is empty or no items found in response');
         setItems([]);
+        setCartCount(0);
         return;
       }
 
@@ -143,16 +145,23 @@ export function CartProvider({ children }) {
         return false;
       }
       
+
       console.log(`CartContext: Adding book to cart (ISBN: ${isbnStr})`);
       await addCart({ isbn: isbnStr });
 
-      // Reload cart data to update count and items
-      await loadCart();
+      // Optimistic UI: update local items and cartCount immediately
+      setItems(prev => {
+        const found = prev.find(i => i.id === isbnStr);
+        if (found) {
+          return prev.map(i => i.id === isbnStr ? { ...i, quantity: (i.quantity || 0) + 1, stock: Math.max(0, (i.stock || 0) - 1) } : i);
+        }
+        // If item not present, we cannot construct full item details here; reload authoritative cart
+        return prev;
+      });
+      setCartCount(c => c + 1);
 
-      // Notify UI listeners immediately that an item was added (reduce stock by 1)
-      try {
-        window.dispatchEvent(new CustomEvent('cart:quantityChanged', { detail: { id: isbnStr, delta: 1 } }));
-      } catch (e) {}
+      // Reload authoritative cart data to reconcile state
+      await loadCart();
 
       setIsLoading(false);
       return true;
@@ -180,11 +189,9 @@ export function CartProvider({ children }) {
       // Reload cart data to reflect the removal
       console.log('CartContext: Reloading cart data after item removal');
       await loadCart();
-
-      // Notify listeners that stock should increase by prevQty
-      try {
-        if (prevQty !== 0) window.dispatchEvent(new CustomEvent('cart:quantityChanged', { detail: { id, delta: -prevQty } }));
-      } catch (e) {}
+      // Optimistic UI: adjust local items and cartCount (will reconcile after loadCart)
+      setItems(prev => prev.filter(i => i.id !== id));
+      setCartCount(c => Math.max(0, c - prevQty));
     } catch (error) {
       console.error('CartContext: Failed to remove item:', error);
       setError(error?.message || 'Failed to remove item');
@@ -204,17 +211,99 @@ export function CartProvider({ children }) {
       // Reload cart data to reflect the quantity change
       console.log('CartContext: Reloading cart data after quantity update');
       await loadCart();
-
-      // Notify listeners that cart quantity changed (stock reduced by delta)
+      // Optimistic UI: adjust local items and cartCount
       const delta = quantity - prevQty;
-      try {
-        if (delta !== 0) window.dispatchEvent(new CustomEvent('cart:quantityChanged', { detail: { id, delta } }));
-      } catch (e) {}
+      if (delta !== 0) {
+        setItems(prev => prev.map(i => i.id === id ? { ...i, quantity, stock: Math.max(0, (i.stock || 0) - delta) } : i));
+        setCartCount(c => Math.max(0, c + delta));
+      }
     } catch (error) {
       console.error('CartContext: Failed to update quantity:', error);
-      setError(error?.message || 'Failed to update quantity');
+      const data = error?.response?.data ?? {};
+      const message = data?.message || data?.error || error?.message || 'Failed to update quantity';
+
+      // If backend returned structured insufficient-stock info, show an error toast and reload authoritative cart
+      const isInsufficient = data?.error === 'Insufficient stock' || (data?.isbn && typeof data?.available !== 'undefined');
+      if (isInsufficient) {
+        const isbn = data.isbn ?? id;
+        const available = typeof data.available !== 'undefined' ? Number(data.available) : null;
+        const title = data.title ?? null;
+        const displayName = title ?? isbn;
+        if (available === 0) {
+          toast.error(`${displayName} is out of stock and was removed from your cart.`);
+        } else if (available !== null) {
+          toast.error(`Insufficient stock for ${displayName}. Quantity adjusted to ${available}.`);
+        } else {
+          toast.error(message);
+        }
+        try {
+          await loadCart();
+        } catch (reloadErr) {
+          console.error('CartContext: Failed to reload cart after insufficient-stock error:', reloadErr);
+        }
+      } else {
+        // Generic failure
+        toast.error(message);
+      }
+
+      setError(message);
     }
   }, [loadCart, items]);
+
+  // Batch adjust multiple cart items (used when backend reports insufficient stock for multiple items)
+  const adjustCartItems = useCallback(async (insufficientItems = []) => {
+    if (!Array.isArray(insufficientItems) || insufficientItems.length === 0) return;
+    const messages = [];
+
+    for (const it of insufficientItems) {
+      const isbn = it.isbn ?? it.id;
+      const available = typeof it.available !== 'undefined' ? Number(it.available) : null;
+      const title = it.title ?? null;
+      const displayName = title ?? isbn;
+
+      try {
+        if (available === null) {
+          // No actionable info, skip
+          messages.push(`Could not determine stock for ${displayName}. Please review your cart.`);
+          continue;
+        }
+
+        if (available <= 0) {
+          const { removeCartItem } = await import('../api/addCart.js');
+          await removeCartItem(isbn);
+          // Optimistic: remove from local items and update count
+          const prev = items.find(i => i.id === isbn);
+          const prevQty = prev?.quantity || 0;
+          setItems(prevItems => prevItems.filter(i => i.id !== isbn));
+          setCartCount(c => Math.max(0, c - prevQty));
+          messages.push(`${displayName} was removed — out of stock.`);
+        } else {
+          const { updateCartQuantity } = await import('../api/addCart.js');
+          await updateCartQuantity(isbn, available);
+          const prev = items.find(i => i.id === isbn);
+          const prevQty = prev?.quantity || 0;
+          const delta = available - prevQty;
+          if (delta !== 0) {
+            setItems(prevItems => prevItems.map(i => i.id === isbn ? { ...i, quantity: available, stock: Math.max(0, (i.stock || 0) - delta) } : i));
+            setCartCount(c => Math.max(0, c + delta));
+          }
+          messages.push(`Insufficient stock for ${displayName}. Quantity adjusted to ${available}.`);
+        }
+      } catch (err) {
+        console.error('CartContext: Failed to adjust item', isbn, err);
+        messages.push(`Failed to adjust ${displayName}. Please review your cart.`);
+      }
+    }
+
+    try {
+      await loadCart();
+    } catch (err) {
+      console.error('CartContext: Failed to reload cart after adjustments', err);
+    }
+
+    // Show notifications for each message
+    for (const m of messages) toast.error(m);
+  }, [items, loadCart]);
 
   const clearCart = useCallback(async () => {
     const token = localStorage.getItem('access');
@@ -245,8 +334,8 @@ export function CartProvider({ children }) {
   }, [items]);
 
   const value = useMemo(
-    () => ({ items, addToCart, removeFromCart, updateQuantity, clearCart, loadCart, summary, error, isLoading, cartCount, loadCartData }),
-    [items, addToCart, removeFromCart, updateQuantity, clearCart, loadCart, summary, error, isLoading, cartCount, loadCartData]
+    () => ({ items, addToCart, removeFromCart, updateQuantity, clearCart, loadCart, adjustCartItems, summary, error, isLoading, cartCount, loadCartData }),
+    [items, addToCart, removeFromCart, updateQuantity, clearCart, loadCart, adjustCartItems, summary, error, isLoading, cartCount, loadCartData]
   );
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;

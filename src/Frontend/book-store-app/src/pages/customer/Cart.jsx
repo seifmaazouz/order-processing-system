@@ -11,7 +11,7 @@ import 'react-toastify/dist/ReactToastify.css';
 
 export default function Cart() {
   const navigate = useNavigate();
-  const { items, summary, cartCount, removeFromCart, updateQuantity, clearCart, loadCart } = useCart();
+  const { items, summary, cartCount, removeFromCart, updateQuantity, clearCart, loadCart, adjustCartItems } = useCart();
   const SHIPPING_PERCENT = 0.05; // 5% shipping fee
   const shippingFee = summary.totalPrice * SHIPPING_PERCENT;
   const totalWithShipping = summary.totalPrice + shippingFee;
@@ -46,24 +46,7 @@ export default function Cart() {
 
   const [stockOverrides, setStockOverrides] = useState({});
 
-  // Listen for cart quantity changes to update displayed stock immediately
-  useEffect(() => {
-    function handleCartQuantityChange(e) {
-      const detail = e?.detail || {};
-      const { id, delta } = detail;
-      if (!id || typeof delta !== 'number') return;
-
-      // Only update overrides for items currently in the cart
-      setStockOverrides(prev => {
-        const current = prev[id] ?? (items.find(i => i.id === id)?.stock ?? 0);
-        const updated = Math.max(0, current - delta);
-        return { ...prev, [id]: updated };
-      });
-    }
-
-    window.addEventListener('cart:quantityChanged', handleCartQuantityChange);
-    return () => window.removeEventListener('cart:quantityChanged', handleCartQuantityChange);
-  }, [items]);
+  // StockOverrides are recomputed from authoritative `items` below when `items` changes.
 
   // Reset overrides when items list reloads to keep authoritative data
   useEffect(() => {
@@ -193,41 +176,34 @@ export default function Cart() {
       console.warn('Checkout failed:', { isInsufficient, message, data });
 
       if (isInsufficient) {
-        // Ensure user returns to cart view immediately
-        try {
-          setShowCheckoutModal(false);
-        } catch (e) {
-          console.warn('Failed to close checkout modal:', e);
+        // Close checkout modal and return user to cart immediately
+        try { setShowCheckoutModal(false); } catch (e) { console.warn('Failed to close checkout modal:', e); }
+
+        // Backend may return a single structured error or multiple items. Normalize to an array.
+        const insufficientItems = [];
+        if (Array.isArray(data?.items) && data.items.length > 0) {
+          // expected shape: [{ isbn, available, title }, ...]
+          for (const it of data.items) insufficientItems.push({ isbn: it.isbn, available: Number(it.available), title: it.title });
+        } else if (Array.isArray(data?.insufficient) && data.insufficient.length > 0) {
+          for (const it of data.insufficient) insufficientItems.push({ isbn: it.isbn, available: Number(it.available), title: it.title });
+        } else if (data?.error === 'Insufficient stock' && data?.isbn !== undefined && typeof data?.available !== 'undefined') {
+          insufficientItems.push({ isbn: data.isbn, available: Number(data.available), title: data.title });
         }
 
-        // If backend returned structured insufficient-stock error, auto-adjust cart to the provided available quantity
-        if (data?.error === 'Insufficient stock' && data?.isbn !== undefined && typeof data?.available !== 'undefined') {
-          const isbn = data.isbn;
-          const available = Number(data.available);
-          const title = data.title ?? null;
-          const displayName = title ?? isbn;
+        if (insufficientItems.length > 0) {
           try {
-            if (available <= 0) {
-              await removeFromCart(isbn);
-              toast.error(`${displayName} is out of stock and was removed from your cart.`);
-            } else {
-              await updateQuantity(isbn, available);
-              toast.error(`Insufficient stock for ${displayName}. Quantity adjusted to ${available}.`);
-            }
+            // Centralized adjustment in CartContext (performs API changes, dispatches quantity events and shows notifications)
+            await adjustCartItems(insufficientItems);
           } catch (adjErr) {
-            console.error('Failed to auto-adjust cart after checkout failure:', adjErr);
-            toast.error('Checkout failed and auto-adjust failed. Please review your cart.');
+            console.error('Failed to auto-adjust cart items after checkout failure', adjErr);
+            // Fallback: reload authoritative cart and show generic message
+            try { await loadCart(); } catch (reloadErr) { console.error('Failed to reload cart after checkout failure:', reloadErr); }
+            toast.error('One or more items could not be adjusted. Please review your cart.');
           }
         } else {
           // Non-structured insufficient message: notify user and reload authoritative cart state
           toast.error(message || 'Insufficient stock — your cart was updated.');
-        }
-
-        // Refresh cart to reflect adjustments or authoritative state regardless of auto-adjust outcome
-        try {
-          await loadCart();
-        } catch (reloadErr) {
-          console.error('Failed to reload cart after checkout failure:', reloadErr);
+          try { await loadCart(); } catch (reloadErr) { console.error('Failed to reload cart after checkout failure:', reloadErr); }
         }
       } else {
         const errorMsg = message || 'Checkout failed';
