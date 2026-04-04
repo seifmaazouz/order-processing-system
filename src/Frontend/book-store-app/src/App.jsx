@@ -1,5 +1,7 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import Login from "./pages/auth/Login";
 import Register from "./pages/auth/Register";
 import Dashboard from "./pages/customer/Dashboard.jsx";
@@ -16,6 +18,7 @@ import { CartProvider } from "./context/CartContext.jsx";
 function App() {
   return (
     <BrowserRouter>
+      <ToastContainer position="top-center" autoClose={3000} hideProgressBar />
       <Routes>
         {/* Root goes to login */}
         <Route path="/" element={<Navigate to="/login" replace />} />

@@ -26,7 +26,7 @@ export default function Dashboard() {
   const [showSettings, setShowSettings] = useState(false);
   const settingsRef = useRef(null);
   const navigate = useNavigate();
-  const { summary, cartCount } = useCart();
+  const { summary, cartCount, items: cartItems } = useCart();
 
   // Function to update book stock levels after cart operations
   const updateBookStock = (bookId, newStock) => {
@@ -65,6 +65,39 @@ export default function Dashboard() {
     }
     document.addEventListener('click', handleClick);
     return () => document.removeEventListener('click', handleClick);
+  }, []);
+
+  // Update displayed books when cart quantities change (delta positive means reduce stock)
+  useEffect(() => {
+    // Recent event buckets to prevent duplicate rapid application (debounce/coalesce)
+    const recentEventBucket = new Map();
+    function handleCartQuantityChange(e) {
+      const detail = e?.detail || {};
+      const { id, delta } = detail;
+      if (!id || typeof delta !== 'number') return;
+
+      // bucket key (300ms window)
+      const bucket = Math.floor(Date.now() / 300);
+      const lastBucket = recentEventBucket.get(id);
+      if (lastBucket === bucket) {
+        // duplicate event in the same short window — ignore to avoid double-decrement
+        console.debug('Dashboard: ignored duplicate cart event', { id, delta, bucket });
+        return;
+      }
+      recentEventBucket.set(id, bucket);
+
+      setSearchResults(prev => prev.map(book => {
+        const bookId = book.ISBN || book.isbn || book.id;
+        if (bookId !== id) return book;
+        const current = book.displayStock ?? book.Stock ?? book.stock ?? book.Quantity ?? book.quantity ?? book.stockLevel ?? 0;
+        const updated = Math.max(0, current - delta);
+        // Only update the transient displayStock; do not mutate the authoritative base stock fields
+        return { ...book, displayStock: updated };
+      }));
+    }
+
+    window.addEventListener('cart:quantityChanged', handleCartQuantityChange);
+    return () => window.removeEventListener('cart:quantityChanged', handleCartQuantityChange);
   }, []);
 
   const toggleCategory = (label) => {
@@ -109,7 +142,18 @@ export default function Dashboard() {
         authors: book.Authors || book.authors || [],
         isAvailable: book.IsAvailable !== undefined ? book.IsAvailable : (book.Stock || book.stock || 0) > 0
       })) : [];
-      setSearchResults(normalizedResults);
+
+      // Adjust displayed stock by subtracting quantities already in cart
+      const adjusted = normalizedResults.map(prod => {
+        const isbn = prod.isbn || prod.id;
+        const cartItem = (cartItems || []).find(ci => (ci.id || ci.ISBN || ci.isbn) === isbn);
+        const cartQty = cartItem ? Number(cartItem.quantity || cartItem.qty || 0) : 0;
+        const baseStock = Number(prod.stock ?? prod.stockLevel ?? 0);
+        const displayStock = Math.max(0, baseStock - cartQty);
+        return { ...prod, stock: baseStock, stockLevel: baseStock, displayStock };
+      });
+
+      setSearchResults(adjusted);
       setHasSearched(true);
       setShowFilters(false);
     } catch (err) {
@@ -128,6 +172,20 @@ export default function Dashboard() {
       handleSubmit(onSubmit)();
     }
   }, []);
+
+  // Recompute displayStock when cart changes
+  useEffect(() => {
+    if (!searchResults || searchResults.length === 0) return;
+    const adjusted = searchResults.map(prod => {
+      const isbn = prod.isbn || prod.id;
+      const cartItem = (cartItems || []).find(ci => (ci.id || ci.ISBN || ci.isbn) === isbn);
+      const cartQty = cartItem ? Number(cartItem.quantity || cartItem.qty || 0) : 0;
+      const baseStock = Number(prod.stock ?? prod.stockLevel ?? 0);
+      const displayStock = Math.max(0, baseStock - cartQty);
+      return { ...prod, displayStock };
+    });
+    setSearchResults(adjusted);
+  }, [cartItems]);
 
   const handleApplyFilters = () => {
     // Just save/close filters without searching
