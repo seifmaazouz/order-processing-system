@@ -27,7 +27,7 @@ namespace OrderProcessing.Infrastructure.Repositories
                     ShippingAddress
                 FROM customerorder
                 WHERE CustName = @Username
-                ORDER BY OrderDate DESC
+                ORDER BY OrderDate DESC, OrderID DESC
             """;
 
             using var connection = await _connectionFactory.CreateConnectionAsync();
@@ -82,8 +82,8 @@ namespace OrderProcessing.Infrastructure.Repositories
             """;
 
             const string itemSql = """
-                INSERT INTO customerorderitem (ISBN, OrderNum, Quantity, UnitPrice)
-                VALUES (@ISBN, @OrderNum, @Quantity, @UnitPrice)
+                INSERT INTO customerorderitem (ISBN, OrderNum, Quantity, UnitPrice, Title)
+                VALUES (@ISBN, @OrderNum, @Quantity, @UnitPrice, @Title)
             """;
 
             using var connection = await _connectionFactory.CreateConnectionAsync();
@@ -109,7 +109,8 @@ namespace OrderProcessing.Infrastructure.Repositories
                             item.ISBN,
                             OrderNum = orderId,
                             item.Quantity,
-                            item.UnitPrice
+                            item.UnitPrice,
+                            Title = item.Title
                         }, transaction);
                     }
                 }
@@ -147,7 +148,7 @@ namespace OrderProcessing.Infrastructure.Repositories
         public async Task<IReadOnlyList<CustomerOrderItem>> GetOrderItemsAsync(int orderNumber)
         {
             const string sql = """
-                SELECT ISBN, OrderNum, Quantity, UnitPrice
+                SELECT ISBN, OrderNum, Quantity, UnitPrice, Title
                 FROM customerorderItem
                 WHERE OrderNum = @OrderNum
             """;

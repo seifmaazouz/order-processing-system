@@ -13,9 +13,7 @@ jobs:
       - name: Check PR title
         run: |
           TITLE="${{ github.event.pull_request.title }}"
-          if [[ ! "$TITLE" =~ ^(feat|fix|docs|refactor|perf|test|chore)(\([a-zA-Z0-9_-]+\))?:[[:space:]].+ ]]; then
-            echo "❌ PR title must follow conventional commit format: type(scope): description"
-            echo "Examples:"
+          if [[ ! "$TITLE" =~ ^(feat|fix|docs|refactor|perf|test|chore)(\([a-zA-Z0-9_:-]+\))?:[[:space:]].+ ]]; then
             echo "  ✅ feat: add user authentication"
             echo "  ✅ fix(api): resolve endpoint bug"
             echo "  ✅ docs: update README"

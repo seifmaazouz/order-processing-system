@@ -40,20 +40,9 @@ public class CustomerOrderService : ICustomerOrderService
         {
             // Get order items
             var orderItems = await _orderRepository.GetOrderItemsAsync(order.OrderNumber);
-            
-            // Get book details for each item
-            var itemDtos = new List<OrderItemDto>();
-            foreach (var item in orderItems)
-            {
-                var book = await _bookRepository.GetBookDetailsAsync(item.ISBN);
-                // If book details not found, use ISBN as title fallback
-                itemDtos.Add(new OrderItemDto(
-                    item.ISBN,
-                    book?.Title ?? item.ISBN,
-                    item.Quantity,
-                    item.UnitPrice
-                ));
-            }
+            var itemDtos = orderItems
+                .Select(item => new OrderItemDto(item.ISBN, item.Title, item.Quantity, item.UnitPrice))
+                .ToList();
 
             // Use shipping address from order (snapshot at order time)
             orderDtos.Add(new CustomerOrderDto(
@@ -93,7 +82,7 @@ public class CustomerOrderService : ICustomerOrderService
                 throw new InvalidOperationException($"Product with ISBN {item.ISBN} not found.");
             var unitPrice = product.SellingPrice;
             totalPrice += unitPrice * item.Quantity;
-            orderItems.Add(new CustomerOrderItem { ISBN = item.ISBN, OrderNum = 0, Quantity = item.Quantity, UnitPrice = unitPrice });
+            orderItems.Add(new CustomerOrderItem { ISBN = item.ISBN, OrderNum = 0, Quantity = item.Quantity, UnitPrice = unitPrice, Title = product.Title });
         }
 
         CustomerOrder newOrder;
@@ -110,17 +99,9 @@ public class CustomerOrderService : ICustomerOrderService
 
         // Get order items with book details for response
         var orderItemsFromDb = await _orderRepository.GetOrderItemsAsync(orderId);
-        var itemDtos = new List<OrderItemDto>();
-        foreach (var item in orderItemsFromDb)
-        {
-            var book = await _bookRepository.GetBookDetailsAsync(item.ISBN);
-            itemDtos.Add(new OrderItemDto(
-                item.ISBN,
-                book?.Title ?? item.ISBN,
-                item.Quantity,
-                item.UnitPrice
-            ));
-        }
+        var itemDtos = orderItemsFromDb
+            .Select(item => new OrderItemDto(item.ISBN, item.Title, item.Quantity, item.UnitPrice))
+            .ToList();
 
         return new CustomerOrderDto(
             orderId,
