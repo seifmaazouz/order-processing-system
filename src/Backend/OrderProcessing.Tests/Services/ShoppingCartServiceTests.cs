@@ -4,6 +4,7 @@ using Moq;
 using OrderProcessing.Application.Services;
 using OrderProcessing.Application.DTOs.ShoppingCart;
 using OrderProcessing.Application.Exceptions;
+using OrderProcessing.Domain.Exceptions;
 using OrderProcessing.Domain.Interfaces.Repositories;
 using OrderProcessing.Domain.Models;
 using OrderProcessing.Domain.ValueObjects;
@@ -52,7 +53,7 @@ public class ShoppingCartServiceTests
             .ReturnsAsync(new Dictionary<string, BookDetailsReadModel> { { isbn, book } });
 
         // Act & Assert
-        await Assert.ThrowsAsync<BusinessRuleViolationException>(
+        await Assert.ThrowsAsync<InsufficientStockException>(
             () => _service.AddItemToCartAsync(username, isbn)
         );
     }
@@ -75,11 +76,11 @@ public class ShoppingCartServiceTests
             .ReturnsAsync(book);
         _mockBookRepo.Setup(r => r.GetBookDetailsAsync(It.IsAny<IEnumerable<string>>()))
             .ReturnsAsync(new Dictionary<string, BookDetailsReadModel> { { isbn, book } });
-        _mockCartRepo.Setup(r => r.GetCartByUsernameAsync(username))
+        _mockCartRepo.Setup(r => r.GetOrCreateCartAsync(username))
             .ReturnsAsync(cart);
 
         // Act & Assert
-        await Assert.ThrowsAsync<BusinessRuleViolationException>(
+        await Assert.ThrowsAsync<InsufficientStockException>(
             () => _service.AddItemToCartAsync(username, isbn)
         );
     }
@@ -108,7 +109,7 @@ public class ShoppingCartServiceTests
             .ReturnsAsync(1); // Simulate successful update
 
         // Act & Assert - trying to update to 10 when stock is only 5
-        await Assert.ThrowsAsync<BusinessRuleViolationException>(
+        await Assert.ThrowsAsync<InsufficientStockException>(
             () => _service.UpdateCartItemAsync(username, isbn, 10)
         );
     }
@@ -119,13 +120,14 @@ public class ShoppingCartServiceTests
         // Arrange
         var username = "testuser";
         var cart = new ShoppingCartReadModel(1, username, new List<CartItemReadModel>());
-        var checkoutDto = new CheckoutDto(
-            "John Doe",
-            "123 Main St",
-            null,
-            4111111111111111,
-            DateTime.Now.AddYears(1).ToString("yyyy-MM-dd")
-        );
+        var checkoutDto = new CheckoutDto
+        {
+            CardholderName = "John Doe",
+            ShippingAddress = "123 Main St",
+            SavedCardNumber = null,
+            NewCardNumber = 4111111111111111,
+            NewCardExpiryDate = DateTime.Now.AddYears(1).ToString("yyyy-MM-dd")
+        };
 
         _mockCartRepo.Setup(r => r.GetCartByUsernameAsync(username))
             .ReturnsAsync(cart);
@@ -149,13 +151,14 @@ public class ShoppingCartServiceTests
         var book = new BookDetailsReadModel(
             isbn, "Test Book", 2020, 50.00m, 5, 10, "Science", "Publisher", "Author"
         );
-        var checkoutDto = new CheckoutDto(
-            "John Doe",
-            "123 Main St",
-            null,
-            4111111111111111,
-            DateTime.Now.AddYears(1).ToString("yyyy-MM-dd")
-        );
+        var checkoutDto = new CheckoutDto
+        {
+            CardholderName = "John Doe",
+            ShippingAddress = "123 Main St",
+            SavedCardNumber = null,
+            NewCardNumber = 4111111111111111,
+            NewCardExpiryDate = DateTime.Now.AddYears(1).ToString("yyyy-MM-dd")
+        };
 
         _mockCartRepo.Setup(r => r.GetCartByUsernameAsync(username))
             .ReturnsAsync(cart);
@@ -167,7 +170,7 @@ public class ShoppingCartServiceTests
             .ReturnsAsync(true);
 
         // Act & Assert
-        await Assert.ThrowsAsync<BusinessRuleViolationException>(
+        await Assert.ThrowsAsync<InsufficientStockException>(
             () => _service.CheckoutAsync(username, checkoutDto)
         );
     }

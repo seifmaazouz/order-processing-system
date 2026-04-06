@@ -125,8 +125,9 @@ public class ShoppingCartService : IShoppingCartService
         if (existingItem == null)
             throw new NotFoundException("Cart item", "ISBN", isbn);
 
-        var cartItem = new CartItem(0, isbn, quantity, existingItem.UnitPrice);
-        var affected = await _shoppingCartRepository.UpdateCartItemAsync(cart.CartId, cartItem);
+            // Repository UpdateCartItemAsync expects a read-model projection; construct and pass that
+            var cartItemRead = new Domain.Models.CartItemReadModel(isbn, quantity, existingItem.UnitPrice);
+            var affected = await _shoppingCartRepository.UpdateCartItemAsync(cart.CartId, cartItemRead);
         if (affected == 0)
         {
             throw new NotFoundException("Cart item", "ISBN", isbn);

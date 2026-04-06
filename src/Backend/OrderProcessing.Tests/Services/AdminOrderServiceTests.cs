@@ -25,12 +25,12 @@ public class AdminOrderServiceTests
     }
 
     [Fact]
-    public async Task UpdateOrderStatus_WhenConfirmed_AddsStockToBooks()
+        public async Task UpdateOrderStatus_WhenConfirmed_AddsStockToBooks()
     {
         // Arrange
         var orderId = 1;
         var isbn = "978-0-123456-01-0";
-        var order = new AdminOrder(1, DateTime.Now, "Pending", 1000m, 1, "admin1");
+        var order = new AdminOrder(1, DateOnly.FromDateTime(DateTime.Now), OrderStatus.Pending, 1000m, 1, "admin1");
         var orderItems = new List<AdminOrderItem>
         {
             new AdminOrderItem { ISBN = isbn, OrderNum = orderId, Quantity = 50, UnitPrice = 20.00m }
@@ -50,11 +50,11 @@ public class AdminOrderServiceTests
     }
 
     [Fact]
-    public async Task UpdateOrderStatus_WhenNotConfirmed_DoesNotAddStock()
+        public async Task UpdateOrderStatus_WhenNotConfirmed_DoesNotAddStock()
     {
         // Arrange
         var orderId = 1;
-        var order = new AdminOrder(1, DateTime.Now, "Pending", 1000m, 1, "admin1");
+        var order = new AdminOrder(1, DateOnly.FromDateTime(DateTime.Now), OrderStatus.Pending, 1000m, 1, "admin1");
 
         _mockOrderRepo.Setup(r => r.GetByOrderIdAsync(orderId))
             .ReturnsAsync(order);
@@ -68,11 +68,11 @@ public class AdminOrderServiceTests
     }
 
     [Fact]
-    public async Task UpdateOrderStatus_WhenAlreadyConfirmed_DoesNotAddStockAgain()
+        public async Task UpdateOrderStatus_WhenAlreadyConfirmed_DoesNotAddStockAgain()
     {
         // Arrange
         var orderId = 1;
-        var order = new AdminOrder(1, DateTime.Now, "Confirmed", 1000m, 1, "admin1");
+        var order = new AdminOrder(1, DateOnly.FromDateTime(DateTime.Now), OrderStatus.Confirmed, 1000m, 1, "admin1");
 
         _mockOrderRepo.Setup(r => r.GetByOrderIdAsync(orderId))
             .ReturnsAsync(order);

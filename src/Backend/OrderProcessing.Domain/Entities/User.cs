@@ -61,9 +61,11 @@ namespace OrderProcessing.Domain.Entities
                 throw new ArgumentException("Invalid email format.");
             if (string.IsNullOrWhiteSpace(phone))
                 throw new ArgumentException("Phone number is required.");
-            if (!phone.All(char.IsDigit))
-                throw new ArgumentException("Phone number must contain only digits.");
-            if (phone.Length < 7 || phone.Length > 20)
+            // Support optional leading '+' (international format) followed by digits
+            var digitsOnly = phone.StartsWith('+') ? phone.Substring(1) : phone;
+            if (!digitsOnly.All(char.IsDigit))
+                throw new ArgumentException("Phone number must contain only digits (after optional leading '+').");
+            if (digitsOnly.Length < 7 || digitsOnly.Length > 20)
                 throw new ArgumentException("Phone number must be 7-20 digits.");
             if (!string.IsNullOrEmpty(address) && address.Length > 500)
                 throw new ArgumentException("Address is too long (max 500 characters).");
