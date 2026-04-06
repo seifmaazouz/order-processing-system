@@ -52,7 +52,10 @@ public class ShoppingCartRepository : IShoppingCartRepository
 
         var cartItems = await connection.QueryAsync<CartItem>(itemsSql, new { CartId = cartId });
 
-        return new ShoppingCartReadModel(cartId, userName, cartItems.ToList());
+        // Map domain CartItem entity to CartItemReadModel for transport
+        var readModels = cartItems.Select(ci => new CartItemReadModel(ci.ISBN, ci.Quantity, ci.UnitPrice)).ToList();
+
+        return new ShoppingCartReadModel(cartId, userName, readModels);
     }
 
     public async Task<int> CreateCartAsync(string username)
@@ -95,7 +98,7 @@ public class ShoppingCartRepository : IShoppingCartRepository
 
         // If no cart exists, create one
         var cartId = await CreateCartAsync(username);
-        return new ShoppingCartReadModel(cartId, username, new List<CartItem>());
+        return new ShoppingCartReadModel(cartId, username, new List<CartItemReadModel>());
     }
 
     public async Task AddCartItemAsync(int cartId, CartItem cartItem)
@@ -118,7 +121,7 @@ public class ShoppingCartRepository : IShoppingCartRepository
         }
     }
 
-    public async Task<int> UpdateCartItemAsync(int cartId, CartItem cartItem)
+    public async Task<int> UpdateCartItemAsync(int cartId, CartItemReadModel cartItem)
     {
         using var connection = await _connectionFactory.CreateConnectionAsync();
         var sql =

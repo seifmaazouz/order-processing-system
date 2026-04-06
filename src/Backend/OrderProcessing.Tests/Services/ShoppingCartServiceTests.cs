@@ -75,7 +75,7 @@ public class ShoppingCartServiceTests
             .ReturnsAsync(book);
         _mockBookRepo.Setup(r => r.GetBookDetailsAsync(It.IsAny<IEnumerable<string>>()))
             .ReturnsAsync(new Dictionary<string, BookDetailsReadModel> { { isbn, book } });
-        _mockCartRepo.Setup(r => r.GetCartByUsernameAsync(username))
+        _mockCartRepo.Setup(r => r.GetOrCreateCartAsync(username))
             .ReturnsAsync(cart);
 
         // Act & Assert
@@ -119,13 +119,14 @@ public class ShoppingCartServiceTests
         // Arrange
         var username = "testuser";
         var cart = new ShoppingCartReadModel(1, username, new List<CartItemReadModel>());
-        var checkoutDto = new CheckoutDto(
-            "John Doe",
-            "123 Main St",
-            null,
-            4111111111111111,
-            DateTime.Now.AddYears(1).ToString("yyyy-MM-dd")
-        );
+        var checkoutDto = new CheckoutDto
+        {
+            CardholderName = "John Doe",
+            ShippingAddress = "123 Main St",
+            SavedCardNumber = null,
+            NewCardNumber = 4111111111111111,
+            NewCardExpiryDate = DateTime.Now.AddYears(1).ToString("yyyy-MM-dd")
+        };
 
         _mockCartRepo.Setup(r => r.GetCartByUsernameAsync(username))
             .ReturnsAsync(cart);
@@ -149,13 +150,14 @@ public class ShoppingCartServiceTests
         var book = new BookDetailsReadModel(
             isbn, "Test Book", 2020, 50.00m, 5, 10, "Science", "Publisher", "Author"
         );
-        var checkoutDto = new CheckoutDto(
-            "John Doe",
-            "123 Main St",
-            null,
-            4111111111111111,
-            DateTime.Now.AddYears(1).ToString("yyyy-MM-dd")
-        );
+        var checkoutDto = new CheckoutDto
+        {
+            CardholderName = "John Doe",
+            ShippingAddress = "123 Main St",
+            SavedCardNumber = null,
+            NewCardNumber = 4111111111111111,
+            NewCardExpiryDate = DateTime.Now.AddYears(1).ToString("yyyy-MM-dd")
+        };
 
         _mockCartRepo.Setup(r => r.GetCartByUsernameAsync(username))
             .ReturnsAsync(cart);
