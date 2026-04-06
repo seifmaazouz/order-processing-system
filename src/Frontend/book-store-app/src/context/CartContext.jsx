@@ -149,18 +149,7 @@ export function CartProvider({ children }) {
       console.log(`CartContext: Adding book to cart (ISBN: ${isbnStr})`);
       await addCart({ isbn: isbnStr });
 
-      // Optimistic UI: update local items and cartCount immediately
-      setItems(prev => {
-        const found = prev.find(i => i.id === isbnStr);
-        if (found) {
-          return prev.map(i => i.id === isbnStr ? { ...i, quantity: (i.quantity || 0) + 1, stock: Math.max(0, (i.stock || 0) - 1) } : i);
-        }
-        // If item not present, we cannot construct full item details here; reload authoritative cart
-        return prev;
-      });
-      setCartCount(c => c + 1);
-
-      // Reload authoritative cart data to reconcile state
+      // Reload authoritative cart data after backend add
       await loadCart();
 
       setIsLoading(false);
@@ -189,67 +178,13 @@ export function CartProvider({ children }) {
       // Reload cart data to reflect the removal
       console.log('CartContext: Reloading cart data after item removal');
       await loadCart();
-      // Optimistic UI: adjust local items and cartCount (will reconcile after loadCart)
-      setItems(prev => prev.filter(i => i.id !== id));
-      setCartCount(c => Math.max(0, c - prevQty));
+      // authoritative reload already performed above
     } catch (error) {
       console.error('CartContext: Failed to remove item:', error);
       setError(error?.message || 'Failed to remove item');
     }
   }, [loadCart, items]);
-
-  const updateQuantity = useCallback(async (id, quantity) => {
-    try {
-      console.log(`CartContext: Updating item ${id} quantity to ${quantity}`);
-      // find previous quantity for delta
-      const prevItem = items.find(i => i.id === id);
-      const prevQty = prevItem?.quantity || 0;
-
-      // Call API to update quantity on backend
-      await updateCartQuantity(id, quantity);
-
-      // Reload cart data to reflect the quantity change
-      console.log('CartContext: Reloading cart data after quantity update');
-      await loadCart();
-      // Optimistic UI: adjust local items and cartCount
-      const delta = quantity - prevQty;
-      if (delta !== 0) {
-        setItems(prev => prev.map(i => i.id === id ? { ...i, quantity, stock: Math.max(0, (i.stock || 0) - delta) } : i));
-        setCartCount(c => Math.max(0, c + delta));
-      }
-    } catch (error) {
-      console.error('CartContext: Failed to update quantity:', error);
-      const data = error?.response?.data ?? {};
-      const message = data?.message || data?.error || error?.message || 'Failed to update quantity';
-
-      // If backend returned structured insufficient-stock info, show an error toast and reload authoritative cart
-      const isInsufficient = data?.error === 'Insufficient stock' || (data?.isbn && typeof data?.available !== 'undefined');
-      if (isInsufficient) {
-        const isbn = data.isbn ?? id;
-        const available = typeof data.available !== 'undefined' ? Number(data.available) : null;
-        const title = data.title ?? null;
-        const displayName = title ?? isbn;
-        if (available === 0) {
-          toast.error(`${displayName} is out of stock and was removed from your cart.`);
-        } else if (available !== null) {
-          toast.error(`Insufficient stock for ${displayName}. Quantity adjusted to ${available}.`);
-        } else {
-          toast.error(message);
-        }
-        try {
-          await loadCart();
-        } catch (reloadErr) {
-          console.error('CartContext: Failed to reload cart after insufficient-stock error:', reloadErr);
-        }
-      } else {
-        // Generic failure
-        toast.error(message);
-      }
-
-      setError(message);
-    }
-  }, [loadCart, items]);
-
+  
   // Batch adjust multiple cart items (used when backend reports insufficient stock for multiple items)
   const adjustCartItems = useCallback(async (insufficientItems = []) => {
     if (!Array.isArray(insufficientItems) || insufficientItems.length === 0) return;
@@ -271,22 +206,10 @@ export function CartProvider({ children }) {
         if (available <= 0) {
           const { removeCartItem } = await import('../api/addCart.js');
           await removeCartItem(isbn);
-          // Optimistic: remove from local items and update count
-          const prev = items.find(i => i.id === isbn);
-          const prevQty = prev?.quantity || 0;
-          setItems(prevItems => prevItems.filter(i => i.id !== isbn));
-          setCartCount(c => Math.max(0, c - prevQty));
           messages.push(`${displayName} was removed — out of stock.`);
         } else {
           const { updateCartQuantity } = await import('../api/addCart.js');
           await updateCartQuantity(isbn, available);
-          const prev = items.find(i => i.id === isbn);
-          const prevQty = prev?.quantity || 0;
-          const delta = available - prevQty;
-          if (delta !== 0) {
-            setItems(prevItems => prevItems.map(i => i.id === isbn ? { ...i, quantity: available, stock: Math.max(0, (i.stock || 0) - delta) } : i));
-            setCartCount(c => Math.max(0, c + delta));
-          }
           messages.push(`Insufficient stock for ${displayName}. Quantity adjusted to ${available}.`);
         }
       } catch (err) {
@@ -304,6 +227,58 @@ export function CartProvider({ children }) {
     // Show notifications for each message
     for (const m of messages) toast.error(m);
   }, [items, loadCart]);
+
+  const updateQuantity = useCallback(async (id, quantity) => {
+    try {
+      console.log(`CartContext: Updating item ${id} quantity to ${quantity}`);
+      // find previous quantity for delta
+      const prevItem = items.find(i => i.id === id);
+      const prevQty = prevItem?.quantity || 0;
+
+      // Call API to update quantity on backend
+      await updateCartQuantity(id, quantity);
+
+      // Reload cart data to reflect the quantity change
+      console.log('CartContext: Reloading cart data after quantity update');
+      await loadCart();
+    } catch (error) {
+      console.error('CartContext: Failed to update quantity:', error);
+      const data = error?.response?.data ?? {};
+      const message = data?.message || data?.error || error?.message || 'Failed to update quantity';
+
+      // If backend returned structured insufficient-stock info, attempt to auto-adjust like during checkout
+      const isInsufficient = data?.error === 'Insufficient stock' || (data?.isbn && typeof data?.available !== 'undefined') || Array.isArray(data?.items);
+      if (isInsufficient) {
+        // Normalize into array of { isbn, available, title }
+        const insufficientItems = [];
+        if (Array.isArray(data?.items) && data.items.length > 0) {
+          for (const it of data.items) insufficientItems.push({ isbn: it.isbn, available: Number(it.available), title: it.title });
+        } else if (Array.isArray(data?.insufficient) && data.insufficient.length > 0) {
+          for (const it of data.insufficient) insufficientItems.push({ isbn: it.isbn, available: Number(it.available), title: it.title });
+        } else if (data?.isbn !== undefined && typeof data?.available !== 'undefined') {
+          insufficientItems.push({ isbn: data.isbn, available: Number(data.available), title: data.title });
+        } else {
+          // Fallback: single item - use id
+          insufficientItems.push({ isbn: id, available: null, title: null });
+        }
+
+        try {
+          await adjustCartItems(insufficientItems);
+        } catch (adjErr) {
+          console.error('CartContext: Failed to auto-adjust after insufficient-stock error:', adjErr);
+          // Fallback: reload authoritative cart and notify
+          try { await loadCart(); } catch (reloadErr) { console.error('CartContext: Failed to reload cart after insufficient-stock error:', reloadErr); }
+          toast.error(message);
+        }
+      } else {
+        // Generic failure
+        toast.error(message);
+      }
+
+      setError(message);
+    }
+  }, [loadCart, items, adjustCartItems]);
+  
 
   const clearCart = useCallback(async () => {
     const token = localStorage.getItem('access');
