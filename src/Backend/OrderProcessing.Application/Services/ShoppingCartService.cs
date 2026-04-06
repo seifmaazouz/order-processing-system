@@ -269,7 +269,7 @@ public class ShoppingCartService : IShoppingCartService
         var orderItems = cart.CartItems.Select(item =>
         {
             var title = books.TryGetValue(item.ISBN, out var b) ? b.Title : item.ISBN;
-            return new CustomerOrderItem { ISBN = item.ISBN, OrderNum = 0, Quantity = item.Quantity, UnitPrice = item.UnitPrice};
+            return new CustomerOrderItem { ISBN = item.ISBN, OrderNum = 0, Quantity = item.Quantity, UnitPrice = item.UnitPrice, Title = title };
         }).ToList();
 
         // Create customer order with items and shipping address snapshot
