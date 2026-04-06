@@ -11,7 +11,7 @@ import 'react-toastify/dist/ReactToastify.css';
 
 export default function Cart() {
   const navigate = useNavigate();
-  const { items, summary, cartCount, removeFromCart, updateQuantity, clearCart, loadCart, adjustCartItems } = useCart();
+  const { items, summary, cartCount, removeFromCart, updateQuantity, clearCart, loadCart, adjustCartItems, isLoading } = useCart();
   const SHIPPING_PERCENT = 0.05; // 5% shipping fee
   const shippingFee = summary.totalPrice * SHIPPING_PERCENT;
   const totalWithShipping = summary.totalPrice + shippingFee;
@@ -44,21 +44,7 @@ export default function Cart() {
     loadCart();
   }, []); // Only load once on mount
 
-  const [stockOverrides, setStockOverrides] = useState({});
-
-  // StockOverrides are recomputed from authoritative `items` below when `items` changes.
-
-  // Reset overrides when items list reloads to keep authoritative data
-  useEffect(() => {
-    // Recompute overrides based on authoritative `items` (stock - quantity)
-    const map = {};
-    (items || []).forEach(i => {
-      const base = Number(i.stock ?? 0);
-      const qty = Number(i.quantity ?? 0);
-      map[i.id] = Math.max(0, base - qty);
-    });
-    setStockOverrides(map);
-  }, [items]);
+  // We use authoritative stock from `items` and compute available = stock - quantity.
 
   // Fetch saved cards and user address when checkout modal opens
   useEffect(() => {
@@ -98,7 +84,14 @@ export default function Cart() {
   const handleQtyChange = (id, delta) => {
     const item = items.find((i) => i.id === id);
     if (!item) return;
-    updateQuantity(id, Math.max(1, item.quantity + delta));
+    const baseStock = Number(item.stock ?? 0);
+    const qty = Number(item.quantity ?? 0);
+    const available = Math.max(0, baseStock - qty);
+    if (delta > 0 && available <= 0) {
+      toast.warn(`${item.title || id} has no more stock available.`);
+      return;
+    }
+    updateQuantity(id, Math.max(1, qty + delta));
   };
 
   const handleCheckout = async () => {
@@ -292,13 +285,23 @@ export default function Cart() {
                       {authors && (
                         <p className="text-sm text-gray-600 mb-1">{authors}</p>
                       )}
-                      <p className="text-sm text-gray-500">Stock: {stockOverrides[item.id] ?? item.stock ?? 'N/A'}</p>
+                      {(() => {
+                        const baseStock = Number(item.stock ?? 0);
+                        const qty = Number(item.quantity ?? 0);
+                        const available = Math.max(0, baseStock - qty);
+                        return (
+                          <>
+                            <p className="text-sm text-gray-500">Available: {available}</p>
+                            {/* low-stock hint removed per user request */}
+                          </>
+                        );
+                      })()}
                       <div className="mt-3 flex items-center gap-3">
-                        <div className="flex items-center gap-2 bg-gray-100 rounded-full px-3 py-1">
+                          <div className="flex items-center gap-2 bg-gray-100 rounded-full px-3 py-1">
                           <button
                             onClick={() => handleQtyChange(item.id, -1)}
                             className="text-lg font-bold px-2"
-                            disabled={item.quantity <= 1}
+                            disabled={item.quantity <= 1 || isLoading}
                           >
                             -
                           </button>
@@ -306,6 +309,12 @@ export default function Cart() {
                           <button
                             onClick={() => handleQtyChange(item.id, 1)}
                             className="text-lg font-bold px-2"
+                            disabled={(() => {
+                              const baseStock = Number(item.stock ?? 0);
+                              const qty = Number(item.quantity ?? 0);
+                              const available = Math.max(0, baseStock - qty);
+                              return isLoading || available <= 0;
+                            })()}
                           >
                             +
                           </button>
