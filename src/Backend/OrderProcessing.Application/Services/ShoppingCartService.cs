@@ -2,6 +2,7 @@ using OrderProcessing.Application.DTOs.ShoppingCart;
 using OrderProcessing.Application.Interfaces;
 using OrderProcessing.Application.Mappings;
 using OrderProcessing.Application.Exceptions;
+using OrderProcessing.Domain.Exceptions;
 using OrderProcessing.Domain.Interfaces.Repositories;
 using OrderProcessing.Domain.Entities;
 using OrderProcessing.Domain.ValueObjects;
@@ -76,7 +77,7 @@ public class ShoppingCartService : IShoppingCartService
 
         // Check if book is available (in stock)
         if (book.Quantity <= 0)
-            throw new BusinessRuleViolationException($"Book {book.Title} is currently out of stock");
+            throw new InsufficientStockException(isbn, book.Quantity, book.Title);
 
         // Get or create cart for user (ensures exactly one cart per user)
         var cart = await _shoppingCartRepository.GetOrCreateCartAsync(username);
@@ -86,7 +87,7 @@ public class ShoppingCartService : IShoppingCartService
         int newTotalQuantity = existingItem != null ? existingItem.Quantity + quantity : quantity;
 
         if (newTotalQuantity > book.Quantity)
-            throw new BusinessRuleViolationException($"Cannot add more items. Available stock: {book.Quantity}, Requested total: {newTotalQuantity}");
+            throw new InsufficientStockException(isbn, book.Quantity, book.Title);
 
         var cartItem = new CartItem(0, isbn, quantity, book.SellingPrice);
 
@@ -117,7 +118,7 @@ public class ShoppingCartService : IShoppingCartService
             throw new NotFoundException("Book", "ISBN", isbn);
 
         if (quantity > book.Quantity)
-            throw new BusinessRuleViolationException($"Cannot update quantity. Available stock: {book.Quantity}, Requested: {quantity}");
+            throw new InsufficientStockException(isbn, book.Quantity, book.Title);
 
         // Find existing cart item to get current unit price
         var existingItem = cart.CartItems.FirstOrDefault(i => i.ISBN == isbn);
@@ -154,7 +155,6 @@ public class ShoppingCartService : IShoppingCartService
 
     public async Task<int> CheckoutAsync(string username, CheckoutDto checkoutDto)
     {
-
         // Determine payment method
         bool useSaved = checkoutDto.SavedCardNumber.HasValue;
         bool useNew = checkoutDto.NewCardNumber.HasValue || !string.IsNullOrWhiteSpace(checkoutDto.NewCardExpiryDate) || !string.IsNullOrWhiteSpace(checkoutDto.CardholderName);
@@ -242,12 +242,24 @@ public class ShoppingCartService : IShoppingCartService
         var cartISBNs = cart.CartItems.Select(item => item.ISBN).ToList();
         var books = await _bookRepository.GetBookDetailsAsync(cartISBNs);
 
+        // Collect all insufficiencies rather than throwing on first to provide a batch response
+        var insuffList = new List<InsufficientStockException.InsufficientItem>();
         foreach (var item in cart.CartItems)
         {
             if (!books.TryGetValue(item.ISBN, out var book))
+            {
                 throw new NotFoundException("Book", "ISBN", item.ISBN);
+            }
+
             if (book.Quantity < item.Quantity)
-                throw new BusinessRuleViolationException($"Insufficient stock for book {book.Title}. Available: {book.Quantity}, Requested: {item.Quantity}");
+            {
+                insuffList.Add(new InsufficientStockException.InsufficientItem(item.ISBN, book.Quantity, book.Title));
+            }
+        }
+
+        if (insuffList.Any())
+        {
+            throw new InsufficientStockException(insuffList);
         }
 
         // Calculate total price
@@ -255,8 +267,10 @@ public class ShoppingCartService : IShoppingCartService
 
         // Create order items from cart items
         var orderItems = cart.CartItems.Select(item =>
-            new CustomerOrderItem { ISBN = item.ISBN, OrderNum = 0, Quantity = item.Quantity, UnitPrice = item.UnitPrice }
-        ).ToList();
+        {
+            var title = books.TryGetValue(item.ISBN, out var b) ? b.Title : item.ISBN;
+            return new CustomerOrderItem { ISBN = item.ISBN, OrderNum = 0, Quantity = item.Quantity, UnitPrice = item.UnitPrice};
+        }).ToList();
 
         // Create customer order with items and shipping address snapshot
         var orderId = await _orderRepository.AddAsync(
