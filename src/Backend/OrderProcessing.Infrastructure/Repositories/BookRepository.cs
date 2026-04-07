@@ -307,21 +307,81 @@ public class BookRepository : IBookRepository
     }
 
     // Batch update book quantities (for optimized checkout)
-    public async Task UpdateBookQuantitiesAsync(Dictionary<string, int> quantityChanges)
+        public async Task UpdateBookQuantitiesAsync(Dictionary<string, int> quantityChanges)
     {
         if (quantityChanges.Count == 0)
             return;
 
         using var connection = await _connectionFactory.CreateConnectionAsync();
+        using var transaction = connection.BeginTransaction();
 
-        var sql =
-        """
-            UPDATE Book
-            SET Quantity = Quantity + @QuantityChange
-            WHERE ISBN = @ISBN
-        """;
+        try
+        {
+                // Fetch and lock all affected rows in a consistent order to avoid deadlocks
+                var isbns = quantityChanges.Keys.ToArray();
+                var selectAllSql = "SELECT ISBN, Quantity, Title FROM Book WHERE ISBN = ANY(@ISBNs) FOR UPDATE";
+                var rows = (await connection.QueryAsync(selectAllSql, new { ISBNs = isbns }, transaction)).ToList();
 
-        var parameters = quantityChanges.Select(kvp => new { ISBN = kvp.Key, QuantityChange = kvp.Value });
-        await connection.ExecuteAsync(sql, parameters);
+                var rowMap = rows.ToDictionary(r => (string)r.isbn);
+
+                var insuff = new List<InsufficientStockException.InsufficientItem>();
+
+                // Validate all changes first and collect insufficiencies
+                foreach (var change in quantityChanges)
+                {
+                    var isbn = change.Key;
+                    var quantityChange = change.Value; // negative for checkout
+
+                    if (!rowMap.TryGetValue(isbn, out var row))
+                    {
+                        transaction.Rollback();
+                        throw new InvalidOperationException($"Book not found for ISBN {isbn}");
+                    }
+
+                    var currentQty = (int)row.quantity;
+                    var title = (string)row.title;
+                    var newQty = currentQty + quantityChange;
+                    if (newQty < 0)
+                    {
+                        insuff.Add(new InsufficientStockException.InsufficientItem(isbn, currentQty, title));
+                    }
+                }
+
+                if (insuff.Any())
+                {
+                    transaction.Rollback();
+                    throw new InsufficientStockException(insuff);
+                }
+
+                // Apply updates now that validation passed
+                var updateSql =
+                """
+                    UPDATE Book
+                    SET Quantity = @NewQuantity
+                    WHERE ISBN = @ISBN
+                """;
+
+                foreach (var change in quantityChanges)
+                {
+                    var isbn = change.Key;
+                    var quantityChange = change.Value;
+                    var row = rowMap[isbn];
+                    var currentQty = (int)row.quantity;
+                    var newQty = currentQty + quantityChange;
+                    await connection.ExecuteAsync(updateSql, new { ISBN = isbn, NewQuantity = newQty }, transaction);
+                }
+
+                transaction.Commit();
+        }
+        catch (PostgresException ex)
+        {
+            transaction.Rollback();
+            throw PostgresExceptionTranslator.Translate(ex);
+        }
+        catch
+        {
+            transaction.Rollback();
+            throw;
+        }
     }
 }

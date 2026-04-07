@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { addCart, getCartItems, updateCartQuantity, getCartItemCount } from '../api/addCart.js';
+import { toast } from 'react-toastify';
 import axios from 'axios';
 import API_BASE_URL from '../config/api.config.js';
 
@@ -64,10 +65,11 @@ export function CartProvider({ children }) {
         itemsArray = cartData.cartItems;
       }
       
-      // If no items found, ensure we have an empty array
+      // If no items found, ensure we have an empty array and zero count
       if (!itemsArray || itemsArray.length === 0) {
         console.log('CartContext: Cart is empty or no items found in response');
         setItems([]);
+        setCartCount(0);
         return;
       }
 
@@ -143,10 +145,11 @@ export function CartProvider({ children }) {
         return false;
       }
       
+
       console.log(`CartContext: Adding book to cart (ISBN: ${isbnStr})`);
       await addCart({ isbn: isbnStr });
 
-      // Reload cart data to update count and items
+      // Reload authoritative cart data after backend add
       await loadCart();
 
       setIsLoading(false);
@@ -165,21 +168,73 @@ export function CartProvider({ children }) {
   const removeFromCart = useCallback(async (id) => {
     try {
       console.log(`CartContext: Removing item ${id} from cart`);
+      // determine previous quantity so we can adjust stock
+      const prevItem = items.find(i => i.id === id);
+      const prevQty = prevItem?.quantity || 0;
+
       const { removeCartItem } = await import('../api/addCart.js');
       await removeCartItem(id);
 
       // Reload cart data to reflect the removal
       console.log('CartContext: Reloading cart data after item removal');
       await loadCart();
+      // authoritative reload already performed above
     } catch (error) {
       console.error('CartContext: Failed to remove item:', error);
       setError(error?.message || 'Failed to remove item');
     }
-  }, [loadCart]);
+  }, [loadCart, items]);
+  
+  // Batch adjust multiple cart items (used when backend reports insufficient stock for multiple items)
+  const adjustCartItems = useCallback(async (insufficientItems = []) => {
+    if (!Array.isArray(insufficientItems) || insufficientItems.length === 0) return;
+    const messages = [];
+
+    for (const it of insufficientItems) {
+      const isbn = it.isbn ?? it.id;
+      const available = typeof it.available !== 'undefined' ? Number(it.available) : null;
+      const title = it.title ?? null;
+      const displayName = title ?? isbn;
+
+      try {
+        if (available === null) {
+          // No actionable info, skip
+          messages.push(`Could not determine stock for ${displayName}. Please review your cart.`);
+          continue;
+        }
+
+        if (available <= 0) {
+          const { removeCartItem } = await import('../api/addCart.js');
+          await removeCartItem(isbn);
+          messages.push(`${displayName} was removed — out of stock.`);
+        } else {
+          const { updateCartQuantity } = await import('../api/addCart.js');
+          await updateCartQuantity(isbn, available);
+          messages.push(`Insufficient stock for ${displayName}. Quantity adjusted to ${available}.`);
+        }
+      } catch (err) {
+        console.error('CartContext: Failed to adjust item', isbn, err);
+        messages.push(`Failed to adjust ${displayName}. Please review your cart.`);
+      }
+    }
+
+    try {
+      await loadCart();
+    } catch (err) {
+      console.error('CartContext: Failed to reload cart after adjustments', err);
+    }
+
+    // Show notifications for each message
+    for (const m of messages) toast.error(m);
+  }, [items, loadCart]);
 
   const updateQuantity = useCallback(async (id, quantity) => {
     try {
       console.log(`CartContext: Updating item ${id} quantity to ${quantity}`);
+      // find previous quantity for delta
+      const prevItem = items.find(i => i.id === id);
+      const prevQty = prevItem?.quantity || 0;
+
       // Call API to update quantity on backend
       await updateCartQuantity(id, quantity);
 
@@ -188,9 +243,42 @@ export function CartProvider({ children }) {
       await loadCart();
     } catch (error) {
       console.error('CartContext: Failed to update quantity:', error);
-      setError(error?.message || 'Failed to update quantity');
+      const data = error?.response?.data ?? {};
+      const message = data?.message || data?.error || error?.message || 'Failed to update quantity';
+
+      // If backend returned structured insufficient-stock info, attempt to auto-adjust like during checkout
+      const isInsufficient = data?.error === 'Insufficient stock' || (data?.isbn && typeof data?.available !== 'undefined') || Array.isArray(data?.items);
+      if (isInsufficient) {
+        // Normalize into array of { isbn, available, title }
+        const insufficientItems = [];
+        if (Array.isArray(data?.items) && data.items.length > 0) {
+          for (const it of data.items) insufficientItems.push({ isbn: it.isbn, available: Number(it.available), title: it.title });
+        } else if (Array.isArray(data?.insufficient) && data.insufficient.length > 0) {
+          for (const it of data.insufficient) insufficientItems.push({ isbn: it.isbn, available: Number(it.available), title: it.title });
+        } else if (data?.isbn !== undefined && typeof data?.available !== 'undefined') {
+          insufficientItems.push({ isbn: data.isbn, available: Number(data.available), title: data.title });
+        } else {
+          // Fallback: single item - use id
+          insufficientItems.push({ isbn: id, available: null, title: null });
+        }
+
+        try {
+          await adjustCartItems(insufficientItems);
+        } catch (adjErr) {
+          console.error('CartContext: Failed to auto-adjust after insufficient-stock error:', adjErr);
+          // Fallback: reload authoritative cart and notify
+          try { await loadCart(); } catch (reloadErr) { console.error('CartContext: Failed to reload cart after insufficient-stock error:', reloadErr); }
+          toast.error(message);
+        }
+      } else {
+        // Generic failure
+        toast.error(message);
+      }
+
+      setError(message);
     }
-  }, [loadCart]);
+  }, [loadCart, items, adjustCartItems]);
+  
 
   const clearCart = useCallback(async () => {
     const token = localStorage.getItem('access');
@@ -221,8 +309,8 @@ export function CartProvider({ children }) {
   }, [items]);
 
   const value = useMemo(
-    () => ({ items, addToCart, removeFromCart, updateQuantity, clearCart, loadCart, summary, error, isLoading, cartCount, loadCartData }),
-    [items, addToCart, removeFromCart, updateQuantity, clearCart, loadCart, summary, error, isLoading, cartCount, loadCartData]
+    () => ({ items, addToCart, removeFromCart, updateQuantity, clearCart, loadCart, adjustCartItems, summary, error, isLoading, cartCount, loadCartData }),
+    [items, addToCart, removeFromCart, updateQuantity, clearCart, loadCart, adjustCartItems, summary, error, isLoading, cartCount, loadCartData]
   );
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;

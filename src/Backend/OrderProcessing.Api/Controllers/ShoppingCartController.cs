@@ -62,12 +62,6 @@ public class ShoppingCartController : ControllerBase
         return TypedResults.Ok(cartDetails);
     }
 
-    [HttpGet("test")]
-    public IActionResult Test()
-    {
-        return Ok(new { message = "Test endpoint working", timestamp = DateTime.Now });
-    }
-
     [HttpDelete]
     public async Task<Results<NoContent, UnauthorizedHttpResult>> ClearCart()
     {

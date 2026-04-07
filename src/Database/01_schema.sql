@@ -85,6 +85,7 @@ CREATE TABLE CustomerOrderItem (
     OrderNum INT NOT NULL REFERENCES CustomerOrder(OrderID) ON DELETE RESTRICT,
     Quantity INT,
     UnitPrice DECIMAL(10,2),
+    Title VARCHAR(100) NOT NULL,
     PRIMARY KEY (ISBN, OrderNum)
 );
 

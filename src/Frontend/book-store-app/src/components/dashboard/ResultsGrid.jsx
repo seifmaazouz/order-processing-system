@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faArrowAltCircleLeft, faArrowAltCircleRight, faClose, faDiagramNext, faShoppingCart } from '@fortawesome/free-solid-svg-icons';
@@ -15,13 +16,10 @@ export default function ResultsGrid({ results, lastQueryLabel, onStockUpdate }) 
   if (!results || results.length === 0) return null;
 
   const getStockStatus = (book) => {
-    // Handle both PascalCase and camelCase
-    console.log('Book properties:', Object.keys(book));
-    console.log('Book Stock/Quantity values:', { Stock: book.Stock, stock: book.stock, Quantity: book.Quantity, quantity: book.quantity });
-    const stock = book.Stock || book.stock || book.Quantity || book.quantity || book.stockLevel || 10; // default to 10 if not provided
-    console.log('Final stock value used:', stock);
+    // Prefer `displayStock` computed by Dashboard; fall back to Book.Stock / book.stock etc.
+    const stock = (book.displayStock ?? book.Stock ?? book.stock ?? book.Quantity ?? book.quantity ?? book.stockLevel) ?? 0;
     if (stock === 0) return { label: 'Out of Stock', color: 'bg-gray-100 text-gray-600', textColor: 'text-gray-500' };
-      if (stock <= 2) return { label: `Only ${stock} left`, color: 'bg-red-200 text-red-600', textColor: 'text-red-500' };
+    if (stock <= 2) return { label: `Only ${stock} left`, color: 'bg-red-200 text-red-600', textColor: 'text-red-500' };
     if (stock <= 5) return { label: `Only ${stock} left`, color: 'bg-orange-100 text-orange-600', textColor: 'text-orange-500' };
 
     return { label: 'In Stock', color: 'bg-green-100 text-green-600', textColor: 'text-green-500' };
@@ -59,17 +57,16 @@ export default function ResultsGrid({ results, lastQueryLabel, onStockUpdate }) 
 
     try {
       const success = await addToCart(book);
-      if (success) {
-        const bookTitle = book.Title || book.title || 'Book';
-        setToast({ type: 'success', message: `"${bookTitle}" added to cart!` });
-        setTimeout(() => setToast(null), 3000);
+        if (success) {
+          const bookTitle = book.Title || book.title || 'Book';
+          setToast({ type: 'success', message: `"${bookTitle}" added to cart!` });
+          setTimeout(() => setToast(null), 3000);
 
-        // Update local stock level (reduce by 1 since item was added to cart)
-        const currentStock = book.Quantity || book.quantity || book.Stock || book.stock || book.stockLevel || 10;
-        if (onStockUpdate && currentStock > 0) {
-          onStockUpdate(bookId, currentStock - 1);
-        }
-      } else {
+          // NOTE: CartContext now dispatches `cart:quantityChanged` optimistically.
+          // Avoid duplicating that dispatch here to prevent double-decrement.
+
+          // Do not mutate parent stock directly here — parent should listen to global `cart:quantityChanged`.
+        } else {
         setToast({ type: 'error', message: error || 'Failed to add item' });
         setTimeout(() => setToast(null), 4000);
       }
@@ -93,14 +90,16 @@ export default function ResultsGrid({ results, lastQueryLabel, onStockUpdate }) 
       </h3>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {results.map((book, idx) => {
-          // Smarter check: treat isAvailable === false as out of stock
-          let stock = book.Stock ?? book.stock ?? book.Quantity ?? book.quantity ?? book.stockLevel ?? 10;
-          let available = book.isAvailable !== undefined ? !!book.isAvailable : true;
-          let status;
-          if (!available || stock === 0) status = { label: 'Out of Stock', color: 'bg-gray-100 text-gray-600', textColor: 'text-gray-500', unavailable: true };
-          else if (stock <= 2) status = { label: `Only ${stock} left`, color: 'bg-red-200 text-red-600', textColor: 'text-red-500', unavailable: false };
-          else if (stock <= 5) status = { label: `Only ${stock} left`, color: 'bg-orange-100 text-orange-600', textColor: 'text-orange-500', unavailable: false };
-          else status = { label: 'In Stock', color: 'bg-green-100 text-green-600', textColor: 'text-green-500', unavailable: false };
+          // Prefer displayStock if available (Dashboard subtracts cart quantities)
+          const stock = (book.displayStock ?? book.Stock ?? book.stock ?? book.Quantity ?? book.quantity ?? book.stockLevel) ?? 0;
+          const available = book.isAvailable !== undefined ? !!book.isAvailable : true;
+          const status = !available || stock === 0
+            ? { label: 'Out of Stock', color: 'bg-gray-100 text-gray-600', textColor: 'text-gray-500', unavailable: true }
+            : stock <= 2
+            ? { label: `Only ${stock} left`, color: 'bg-red-200 text-red-600', textColor: 'text-red-500', unavailable: false }
+            : stock <= 5
+            ? { label: `Only ${stock} left`, color: 'bg-orange-100 text-orange-600', textColor: 'text-orange-500', unavailable: false }
+            : { label: 'In Stock', color: 'bg-green-100 text-green-600', textColor: 'text-green-500', unavailable: false };
 
           return (
             <BookCard
@@ -139,10 +138,10 @@ export default function ResultsGrid({ results, lastQueryLabel, onStockUpdate }) 
               transition={{ type: 'spring', stiffness: 220, damping: 24 }}
             >
               {/* Left hover area for Previous button */}
-              <div className="absolute left-0 top-0 bottom-0 w-24 group/left">
+              <div className="absolute left-0 top-0 bottom-0 w-24 group/left pointer-events-none">
                 <button
                   onClick={handlePrev}
-                  className="absolute left-2 top-1/2 -translate-y-1/2 h-10 w-10 rounded-full bg-gray-100 text-gray-700 border border-gray-300 hover:bg-gray-200 shadow-lg opacity-0 group-hover/left:opacity-100 transition-opacity duration-200 flex items-center justify-center"
+                  className="absolute left-2 top-1/2 -translate-y-1/2 h-10 w-10 rounded-full bg-gray-100 text-gray-700 border border-gray-300 hover:bg-gray-200 shadow-lg opacity-0 group-hover/left:opacity-100 transition-opacity duration-200 flex items-center justify-center pointer-events-auto"
                   aria-label="Previous"
                 >
                   <FontAwesomeIcon icon={faArrowAltCircleLeft} />
@@ -150,10 +149,10 @@ export default function ResultsGrid({ results, lastQueryLabel, onStockUpdate }) 
               </div>
 
               {/* Right hover area for Next button */}
-              <div className="absolute right-0 top-0 bottom-0 w-24 group/right">
+              <div className="absolute right-0 top-0 bottom-0 w-24 group/right pointer-events-none">
                 <button
                   onClick={handleNext}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 h-10 w-10 rounded-full bg-gray-100 text-gray-700 border border-gray-300 hover:bg-gray-200 shadow-lg opacity-0 group-hover/right:opacity-100 transition-opacity duration-200 flex items-center justify-center"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 h-10 w-10 rounded-full bg-gray-100 text-gray-700 border border-gray-300 hover:bg-gray-200 shadow-lg opacity-0 group-hover/right:opacity-100 transition-opacity duration-200 flex items-center justify-center pointer-events-auto"
                   aria-label="Next"
                 >
                   <FontAwesomeIcon icon={faArrowAltCircleRight} />
@@ -182,7 +181,8 @@ export default function ResultsGrid({ results, lastQueryLabel, onStockUpdate }) 
                 {/* Status Badge */}
                 <div className="flex justify-start mb-4">
                   {(() => {
-                    let stock = selectedBook.Stock ?? selectedBook.stock ?? selectedBook.Quantity ?? selectedBook.quantity ?? selectedBook.stockLevel ?? 10;
+                    // Prefer transient displayStock (adjusted by cart) for modal badge as well
+                    let stock = selectedBook.displayStock ?? selectedBook.Stock ?? selectedBook.stock ?? selectedBook.Quantity ?? selectedBook.quantity ?? selectedBook.stockLevel ?? 10;
                     let available = selectedBook.isAvailable !== undefined ? !!selectedBook.isAvailable : true;
                     let status;
                     if (!available || stock === 0) status = { label: 'Out of Stock', color: 'bg-gray-100 text-gray-600', textColor: 'text-gray-500', unavailable: true };
@@ -233,10 +233,10 @@ export default function ResultsGrid({ results, lastQueryLabel, onStockUpdate }) 
                   <span className="font-semibold text-gray-900">{selectedBook.Publisher || selectedBook.publisher}</span>
                 </div>
               )}
-              {(selectedBook.Stock !== undefined || selectedBook.stock !== undefined) && (
+              {((selectedBook.displayStock !== undefined) || (selectedBook.Stock !== undefined) || (selectedBook.stock !== undefined)) && (
                 <div className="flex justify-between border border-gray-100 rounded-md px-3 py-2">
                   <span className="text-gray-600">Stock</span>
-                  <span className="font-semibold text-gray-900">{(selectedBook.Stock || selectedBook.stock)} units</span>
+                  <span className="font-semibold text-gray-900">{(selectedBook.displayStock ?? selectedBook.Stock ?? selectedBook.stock)} units</span>
                 </div>
               )}
               {selectedBook.isAvailable !== undefined && (
@@ -260,7 +260,7 @@ export default function ResultsGrid({ results, lastQueryLabel, onStockUpdate }) 
               <div className="flex items-center gap-3 ml-auto">
                 <button
                   onClick={() => handleAddToCart(selectedBook)}
-                  disabled={(selectedBook.Stock || selectedBook.stock || 0) === 0 || isBookLoading(selectedBook) || isInCart(selectedBook)}
+                  disabled={(selectedBook.displayStock ?? selectedBook.Stock ?? selectedBook.stock ?? 0) === 0 || isBookLoading(selectedBook) || isInCart(selectedBook)}
                   className={`flex items-center gap-2 px-5 py-2 rounded-full text-white font-semibold shadow-md ${
                     isInCart(selectedBook)
                       ? 'bg-green-500 cursor-not-allowed'
@@ -274,7 +274,7 @@ export default function ResultsGrid({ results, lastQueryLabel, onStockUpdate }) 
                     ? 'In Cart'
                     : isBookLoading(selectedBook)
                     ? 'Adding...'
-                    : (selectedBook.Stock || selectedBook.stock || 0) === 0
+                    : (selectedBook.displayStock ?? selectedBook.Stock ?? selectedBook.stock ?? 0) === 0
                     ? 'Unavailable'
                     : 'Add to Cart'}
                 </button>
@@ -287,21 +287,24 @@ export default function ResultsGrid({ results, lastQueryLabel, onStockUpdate }) 
       )}
     </AnimatePresence>
 
-    {/* Toast Notification */}
-    <AnimatePresence>
-      {toast && (
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -20 }}
-          className={`fixed top-4 right-4 px-5 py-3 rounded-lg font-semibold text-white shadow-lg z-50 ${
-            toast.type === 'success' ? 'bg-green-500' : 'bg-red-500'
-          }`}
-        >
-          {toast.message}
-        </motion.div>
-      )}
-    </AnimatePresence>
+    {/* Toast Notification (top-center) rendered via portal to avoid transformed ancestor offset */}
+    {typeof document !== 'undefined' && toast && createPortal(
+      <AnimatePresence>
+        <div className="fixed inset-x-0 top-4 z-50 flex justify-center pointer-events-none">
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className={`px-5 py-3 rounded-lg font-semibold text-white shadow-lg pointer-events-auto ${
+              toast.type === 'success' ? 'bg-green-500' : 'bg-red-500'
+            }`}
+          >
+            {toast.message}
+          </motion.div>
+        </div>
+      </AnimatePresence>,
+      document.body
+    )}
     </div>
   );
 }

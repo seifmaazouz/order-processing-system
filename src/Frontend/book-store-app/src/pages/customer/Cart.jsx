@@ -11,7 +11,7 @@ import 'react-toastify/dist/ReactToastify.css';
 
 export default function Cart() {
   const navigate = useNavigate();
-  const { items, summary, cartCount, removeFromCart, updateQuantity, clearCart, loadCart } = useCart();
+  const { items, summary, cartCount, removeFromCart, updateQuantity, clearCart, loadCart, adjustCartItems, isLoading } = useCart();
   const SHIPPING_PERCENT = 0.05; // 5% shipping fee
   const shippingFee = summary.totalPrice * SHIPPING_PERCENT;
   const totalWithShipping = summary.totalPrice + shippingFee;
@@ -43,6 +43,8 @@ export default function Cart() {
     console.log('Cart component: Loading cart items on mount');
     loadCart();
   }, []); // Only load once on mount
+
+  // We use authoritative stock from `items` and compute available = stock - quantity.
 
   // Fetch saved cards and user address when checkout modal opens
   useEffect(() => {
@@ -82,7 +84,14 @@ export default function Cart() {
   const handleQtyChange = (id, delta) => {
     const item = items.find((i) => i.id === id);
     if (!item) return;
-    updateQuantity(id, Math.max(1, item.quantity + delta));
+    const baseStock = Number(item.stock ?? 0);
+    const qty = Number(item.quantity ?? 0);
+    const available = Math.max(0, baseStock - qty);
+    if (delta > 0 && available <= 0) {
+      toast.warn(`${item.title || id} has no more stock available.`);
+      return;
+    }
+    updateQuantity(id, Math.max(1, qty + delta));
   };
 
   const handleCheckout = async () => {
@@ -148,8 +157,51 @@ export default function Cart() {
       await loadCart(); // Refresh cart
       navigate('/orders');
     } catch (error) {
-      const errorMsg = error.response?.data?.message || error.response?.data?.error || error.message || 'Checkout failed';
-      toast.error(errorMsg);
+      // Robust handling for insufficient-stock errors.
+      // Attempt to parse structured response from backend, but fall back to message matching.
+      const data = error?.response?.data ?? {};
+      const message = data?.message || data?.error || error?.message || '';
+
+      const isInsufficient = (data?.error === 'Insufficient stock')
+        || (typeof message === 'string' && message.toLowerCase().includes('insufficient'))
+        || (data?.isbn && typeof data?.available !== 'undefined');
+
+      console.warn('Checkout failed:', { isInsufficient, message, data });
+
+      if (isInsufficient) {
+        // Close checkout modal and return user to cart immediately
+        try { setShowCheckoutModal(false); } catch (e) { console.warn('Failed to close checkout modal:', e); }
+
+        // Backend may return a single structured error or multiple items. Normalize to an array.
+        const insufficientItems = [];
+        if (Array.isArray(data?.items) && data.items.length > 0) {
+          // expected shape: [{ isbn, available, title }, ...]
+          for (const it of data.items) insufficientItems.push({ isbn: it.isbn, available: Number(it.available), title: it.title });
+        } else if (Array.isArray(data?.insufficient) && data.insufficient.length > 0) {
+          for (const it of data.insufficient) insufficientItems.push({ isbn: it.isbn, available: Number(it.available), title: it.title });
+        } else if (data?.error === 'Insufficient stock' && data?.isbn !== undefined && typeof data?.available !== 'undefined') {
+          insufficientItems.push({ isbn: data.isbn, available: Number(data.available), title: data.title });
+        }
+
+        if (insufficientItems.length > 0) {
+          try {
+            // Centralized adjustment in CartContext (performs API changes, dispatches quantity events and shows notifications)
+            await adjustCartItems(insufficientItems);
+          } catch (adjErr) {
+            console.error('Failed to auto-adjust cart items after checkout failure', adjErr);
+            // Fallback: reload authoritative cart and show generic message
+            try { await loadCart(); } catch (reloadErr) { console.error('Failed to reload cart after checkout failure:', reloadErr); }
+            toast.error('One or more items could not be adjusted. Please review your cart.');
+          }
+        } else {
+          // Non-structured insufficient message: notify user and reload authoritative cart state
+          toast.error(message || 'Insufficient stock — your cart was updated.');
+          try { await loadCart(); } catch (reloadErr) { console.error('Failed to reload cart after checkout failure:', reloadErr); }
+        }
+      } else {
+        const errorMsg = message || 'Checkout failed';
+        toast.error(errorMsg);
+      }
     } finally {
       setIsCheckingOut(false);
     }
@@ -233,13 +285,23 @@ export default function Cart() {
                       {authors && (
                         <p className="text-sm text-gray-600 mb-1">{authors}</p>
                       )}
-                      <p className="text-sm text-gray-500">Stock: {item.stock ?? 'N/A'}</p>
+                      {(() => {
+                        const baseStock = Number(item.stock ?? 0);
+                        const qty = Number(item.quantity ?? 0);
+                        const available = Math.max(0, baseStock - qty);
+                        return (
+                          <>
+                            <p className="text-sm text-gray-500">Available: {available}</p>
+                            {/* low-stock hint removed per user request */}
+                          </>
+                        );
+                      })()}
                       <div className="mt-3 flex items-center gap-3">
-                        <div className="flex items-center gap-2 bg-gray-100 rounded-full px-3 py-1">
+                          <div className="flex items-center gap-2 bg-gray-100 rounded-full px-3 py-1">
                           <button
                             onClick={() => handleQtyChange(item.id, -1)}
                             className="text-lg font-bold px-2"
-                            disabled={item.quantity <= 1}
+                            disabled={item.quantity <= 1 || isLoading}
                           >
                             -
                           </button>
@@ -247,6 +309,12 @@ export default function Cart() {
                           <button
                             onClick={() => handleQtyChange(item.id, 1)}
                             className="text-lg font-bold px-2"
+                            disabled={(() => {
+                              const baseStock = Number(item.stock ?? 0);
+                              const qty = Number(item.quantity ?? 0);
+                              const available = Math.max(0, baseStock - qty);
+                              return isLoading || available <= 0;
+                            })()}
                           >
                             +
                           </button>
@@ -472,7 +540,7 @@ export default function Cart() {
         </div>
       )}
 
-      <ToastContainer position="top-right" autoClose={3000} hideProgressBar />
+      
     </div>
   );
 }

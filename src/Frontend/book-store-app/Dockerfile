@@ -1,18 +1,19 @@
-FROM node:20-alpine
-
+# --- Build Stage ---
+FROM node:22-alpine AS builder
 WORKDIR /app
-
-# Copy package files
 COPY package*.json ./
-
-# Install dependencies
 RUN npm install
+COPY . ./
+RUN npm run build
 
-# Copy source code
-COPY . .
-
-# Expose Vite dev server port
+# --- Production Stage ---
+FROM node:22-alpine AS final
+WORKDIR /app
+COPY package*.json ./
+RUN npm install --production
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/node_modules ./node_modules
+ENV NODE_ENV=production
 EXPOSE 5174
-
-# Run Vite dev server on 0.0.0.0 and explicit port 5174 so it matches docker-compose mapping
-CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
+CMD ["npx", "vite", "preview", "--host", "0.0.0.0", "--port", "5174"]

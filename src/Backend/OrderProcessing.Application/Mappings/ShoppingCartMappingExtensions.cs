@@ -19,6 +19,20 @@ public static class ShoppingCartMappingExtensions
         );
     }
 
+    // Overload to support read-model mapping used in repository return types
+    public static CartItemDetailsDto ToCartItemDetailsDto(this CartItemReadModel item, string title, List<string> authors, int stock)
+    {
+        return new CartItemDetailsDto(
+            item.ISBN,
+            title,
+            authors,
+            item.Quantity,
+            item.UnitPrice,
+            item.Quantity * item.UnitPrice,
+            stock
+        );
+    }
+
     public static ShoppingCartDetailsDto ToShoppingCartDetailsDto(this ShoppingCartReadModel cart, List<CartItemDetailsDto> items)
     {
         return new ShoppingCartDetailsDto(
