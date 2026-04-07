@@ -12,11 +12,20 @@
         "@semantic-release/commit-analyzer",
         {
           "preset": "angular",
-              "releaseRules": [
-                { "type": "docs", "release": "patch" },
-                { "type": "refactor", "release": "patch" },
-                { "type": "test", "release": "patch" }
-              ]
+          "releaseRules": [
+            {
+              "type": "docs",
+              "release": "patch"
+            },
+            {
+              "type": "refactor",
+              "release": "patch"
+            },
+            {
+              "type": "test",
+              "release": "patch"
+            }
+          ]
         }
       ],
       "@semantic-release/release-notes-generator",
@@ -25,18 +34,22 @@
       [
         "@semantic-release/git",
         {
-          "assets": ["CHANGELOG.md", "package.json"],
+          "assets": [
+            "CHANGELOG.md",
+            "package.json"
+          ],
           "message": "chore(release): ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"
         }
       ]
     ]
   },
   "devDependencies": {
-    "@semantic-release/changelog": "^6.0.0",
+    "@semantic-release/changelog": "^6.0.3",
     "@semantic-release/commit-analyzer": "^11.0.0",
-    "@semantic-release/github": "^11.0.0",
     "@semantic-release/git": "^10.0.1",
+    "@semantic-release/github": "^11.0.0",
     "@semantic-release/release-notes-generator": "^13.0.0",
+    "conventional-changelog": "^7.2.0",
     "semantic-release": "^25.0.2"
   }
 }
