@@ -1,3 +1,12 @@
+## [1.0.1](https://github.com/seifmaazouz/order-processing-system/compare/v1.0.0...v1.0.1) (2026-04-08)
+
+
+### Bug Fixes
+
+* **backend:** include Title on CustomerOrderItem creation ([#79](https://github.com/seifmaazouz/order-processing-system/issues/79)) ([88cdf44](https://github.com/seifmaazouz/order-processing-system/commit/88cdf44be00680d91add3fc20c3842462d5a28e2))
+* **cart:** update shopping cart stock handling and structured insufficient-stock responses ([#76](https://github.com/seifmaazouz/order-processing-system/issues/76)) ([bf10552](https://github.com/seifmaazouz/order-processing-system/commit/bf10552b9d6bcfc1165bc27cdd9b63e34f18da3d))
+* **frontend:** correct cart stock display and disable increment when exhausted ([#80](https://github.com/seifmaazouz/order-processing-system/issues/80)) ([801eb1a](https://github.com/seifmaazouz/order-processing-system/commit/801eb1a8481faa1153cc8bad9d0acab8e12a8a55))
+
 # 1.0.0 (2026-01-05)
 
 ## Features
